@@ -2,11 +2,13 @@ import { prisma } from '@tcgwatch/db';
 import { createMarketProviders, TcgdexChaseCardProvider } from '@tcgwatch/market';
 import { todayUtc } from '@tcgwatch/shared';
 import type { WorkerContext } from '../context';
+import { selectChaseCards } from './chase-cards';
 
 /**
  * Relevé quotidien du marché secondaire :
  * - providers automatiques configurés (PokeTrace en V2) → MarketPrice (1 relevé/jour/source) ;
- * - cartes phares suivies → CardPrice via TCGdex (cotations Cardmarket agrégées).
+ * - cartes phares (choisies automatiquement pour les dernières extensions, ou ajoutées à la
+ *   main) → CardPrice via TCGdex (cotations Cardmarket agrégées).
  */
 export async function runMarketJob(ctx: WorkerContext) {
   const date = todayUtc();
@@ -32,6 +34,7 @@ export async function runMarketJob(ctx: WorkerContext) {
     }
   }
 
+  await selectChaseCards(ctx);
   const cards = await prisma.chaseCard.findMany({ select: { id: true, tcgdexId: true } });
   let cardQuotes = 0;
   if (cards.length) {

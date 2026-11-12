@@ -10,3 +10,4 @@ export { philibertAdapter, parsePhilibert } from './adapters/philibert';
 export { culturaAdapter, parseCultura } from './adapters/cultura';
 export { smythsAdapter, parseSmyths } from './adapters/smyths';
 export * from './directory';
+export * from './catalog';

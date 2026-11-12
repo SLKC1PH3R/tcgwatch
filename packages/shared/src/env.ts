@@ -51,6 +51,9 @@ const schema = z.object({
   /** Calendrier des sorties FR de Pokécardex (pokecardex.com/calendrier). */
   POKECARDEX_ENABLED: bool(true),
   POKECARDEX_CRON: z.string().default('15 6 * * *'),
+  /** Découverte automatique des fiches revendeurs (rayons Pokémon + recherche autorisée). */
+  DISCOVERY_ENABLED: bool(true),
+  DISCOVERY_CRON: z.string().default('45 6 * * *'),
 
   // Marché secondaire
   POKETRACE_API_KEY: optionalString,

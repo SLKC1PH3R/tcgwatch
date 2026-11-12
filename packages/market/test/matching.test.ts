@@ -1,0 +1,87 @@
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+import { describe, expect, it } from 'vitest';
+import { matchProduct, parsePokecardexCalendar, productTokens, searchQueryFor } from '../src';
+
+// Catalogue FR réel (extrait Pokécardex) et intitulés relevés chez les revendeurs.
+const catalog = parsePokecardexCalendar(
+  readFileSync(path.join(import.meta.dirname, 'fixtures', 'pokecardex-calendrier.html'), 'utf8'),
+).map((r) => ({ id: r.externalId, name: r.name, type: r.productType }));
+const nameOf = (title: string) => {
+  const m = matchProduct(title, catalog);
+  return m ? catalog.find((p) => p.id === m.productId)!.name : null;
+};
+
+describe('productTokens', () => {
+  it('ignore type, marque, série, codes et langue', () => {
+    expect(
+      productTokens("Coffret Dresseur d'élite (ETB) Pokémon :  Règne Delta [ME06] - FR"),
+    ).toEqual(['delta', 'regne']);
+    expect(productTokens('Collection Ultra-Premium 30ᵉ Anniversaire – Soirée')).toEqual([
+      '30ans',
+      'soiree',
+    ]);
+    expect(productTokens('Bundle 6 boosters Pokémon : Règne Delta [ME06] - FR')).toContain(
+      'bundle',
+    );
+  });
+});
+
+describe('matchProduct (intitulés réels)', () => {
+  it.each([
+    [
+      "Coffret Dresseur d'élite (ETB) Pokémon :  Règne Delta [ME06] - FR",
+      'Coffret Dresseur d’élite Méga-Évolution - Règne Delta',
+    ],
+    ['Display de 36 boosters Pokémon : Règne Delta [ME06] - FR', 'Boite de boosters Règne Delta'],
+    ['Tripack Pokémon : Règne Delta [ME06] - Otaria - FR', 'Tripack - Règne Delta - Otaria'],
+    // Philibert : pas d'illustration dans le nom, mais un seul tripack Règne Delta.
+    ['Pokémon ME06 - Règne Delta - Pack 3 Boosters', 'Tripack - Règne Delta - Otaria'],
+    [
+      'Bundle 6 boosters Pokémon : Règne Delta [ME06] - FR',
+      'Lot de boosters Méga-Évolution - Règne Delta',
+    ],
+    [
+      'Pokémon 30 ans - Ultra Premium Collection - Soirée',
+      'Collection Ultra-Premium 30ᵉ Anniversaire – Soirée',
+    ],
+  ])('%s → %s', (title, expected) => {
+    expect(nameOf(title)).toBe(expected);
+  });
+
+  it.each([
+    // Quatre boosters illustrés différents : ambigu, donc aucun rapprochement.
+    'Booster Pokémon : Règne Delta [ME06] - FR',
+    'POKÉMON ME06 : BOOSTER RÈGNE DELTA',
+    // Versions étrangères et accessoires.
+    'Booster Pokémon : The Glory of Team Rocket [SV10] - KO',
+    'Display Pokémon Règne Delta - EN',
+    'Portfolio A4 Pokémon Règne Delta [ME06] - Ultra Pro',
+    'Protège-cartes Pokémon Règne Delta',
+    // Type différent : un booster n'est pas un display.
+    'Booster Pokémon : Règne Delta - Méga-Rayquaza - Display',
+  ])('rien pour « %s »', (title) => {
+    if (title.endsWith('- Display')) {
+      expect(nameOf(title)).not.toBe('Booster Règne Delta - Méga-Rayquaza');
+    } else {
+      expect(nameOf(title)).toBeNull();
+    }
+  });
+
+  it('distingue display et demi-display', () => {
+    expect(nameOf('Demi-Display 18 boosters Pokémon : Règne Delta - FR')).toBe(
+      'Demi-Boîte de boosters Règne Delta',
+    );
+  });
+});
+
+describe('searchQueryFor', () => {
+  it('garde les mots distinctifs dans l’ordre', () => {
+    expect(searchQueryFor('Coffret Dresseur d’élite Méga-Évolution - Règne Delta')).toBe(
+      'Règne Delta',
+    );
+    expect(searchQueryFor('Collection Ultra-Premium 30ᵉ Anniversaire – Soirée')).toBe(
+      '30 ans Soirée',
+    );
+  });
+});

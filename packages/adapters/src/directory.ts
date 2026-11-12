@@ -23,6 +23,21 @@ export interface RetailerInfo {
   searchUrl?: string;
   minDelayMs: number;
   notes?: string;
+  /** Découverte automatique des fiches (pages autorisées par le robots.txt du site). */
+  discovery?: RetailerDiscovery;
+}
+
+export interface RetailerDiscovery {
+  /** URL d'une fiche produit du site (les autres liens sont ignorés). */
+  productUrl: RegExp;
+  /** Pages de rayon Pokémon ; « {page} » = numéro de page (1, 2, …). */
+  pages?: string[];
+  /** Nombre maximal de pages parcourues par rayon. */
+  maxPages?: number;
+  /** Recherche du site, si son robots.txt l'autorise ; « {q} » = termes recherchés. */
+  search?: string;
+  /** La recherche n'est rendue qu'en JavaScript (Chromium). */
+  searchNeedsBrowser?: boolean;
 }
 
 /**
@@ -43,6 +58,19 @@ export const RETAILER_DIRECTORY: RetailerInfo[] = [
     minDelayMs: 3000,
     notes:
       'Date « Sortie prévue le » sur la fiche, alerte de retour en stock. A repris Magic Bazar (magicbazar.fr redirige ici).',
+    discovery: {
+      productUrl: /^https:\/\/www\.play-in\.com\/fr\/produit\/\d+\//,
+      // Rayons « français » (8 produits mis en avant chacun) + recherche, autorisée par robots.txt.
+      pages: [
+        'https://www.play-in.com/fr/categorie/361/booster-pokemon-francais',
+        'https://www.play-in.com/fr/categorie/193/display-pokemon-francais',
+        'https://www.play-in.com/fr/categorie/194/coffret-pokemon',
+        'https://www.play-in.com/fr/categorie/195/deck-pokemon',
+        'https://www.play-in.com/fr/categorie/357/pokebox-tin-box',
+      ],
+      search: 'https://www.play-in.com/fr/recherche?q={q}',
+      searchNeedsBrowser: true,
+    },
   },
   {
     slug: 'philibert',
@@ -55,6 +83,12 @@ export const RETAILER_DIRECTORY: RetailerInfo[] = [
     searchUrl: 'https://www.philibertnet.com/fr/recherche?controller=search&search_query={q}',
     minDelayMs: 3000,
     notes: 'Précommandes ouvertes tôt ; « À venir » sans bouton = pas encore commandable.',
+    discovery: {
+      productUrl: /^https:\/\/www\.philibertnet\.com\/fr\/[a-z0-9-]+\/\d+-[^/]+\.html$/,
+      // Rayon mêlant FR, JP et CN : seuls les produits du catalogue FR sont retenus.
+      pages: ['https://www.philibertnet.com/fr/212-pokemon?p={page}'],
+      maxPages: 10,
+    },
   },
   {
     slug: 'agorajeux',
@@ -67,6 +101,11 @@ export const RETAILER_DIRECTORY: RetailerInfo[] = [
     searchUrl: 'https://www.agorajeux.com/recherche?controller=search&s={q}',
     minDelayMs: 3000,
     notes: 'PrestaShop : disponibilité lue sur le bouton panier de la fiche.',
+    discovery: {
+      productUrl: /^https:\/\/www\.agorajeux\.com\/\d+-[^/]+\.html$/,
+      pages: ['https://www.agorajeux.com/50-pokemon-jcc?page={page}'],
+      maxPages: 10,
+    },
   },
   {
     slug: 'ludifolie',
@@ -79,6 +118,11 @@ export const RETAILER_DIRECTORY: RetailerInfo[] = [
     searchUrl: 'https://www.ludifolie.com/recherche?controller=search&s={q}',
     minDelayMs: 3000,
     notes: 'PrestaShop. Rubrique précommandes dédiée.',
+    discovery: {
+      productUrl: /^https:\/\/www\.ludifolie\.com\/\d+-[^/]+\.html$/,
+      pages: ['https://www.ludifolie.com/59-cartes-pokemon?page={page}'],
+      maxPages: 8,
+    },
   },
   {
     slug: 'bcd-jeux',
@@ -91,6 +135,11 @@ export const RETAILER_DIRECTORY: RetailerInfo[] = [
     searchUrl: 'https://www.bcd-jeux.fr/recherche?controller=search&s={q}',
     minDelayMs: 3000,
     notes: 'PrestaShop : « En Stock, Expédié sous 24h » affiché sur la fiche.',
+    discovery: {
+      productUrl: /^https:\/\/www\.bcd-jeux\.fr\/pokemon-tcg\/\d+-[^/]+\.html$/,
+      pages: ['https://www.bcd-jeux.fr/511809-pokemon-tcg?page={page}'],
+      maxPages: 8,
+    },
   },
   {
     slug: 'esprit-jeu',

@@ -139,6 +139,7 @@ model Product {
   id                String           @id @default(cuid())
   name              String
   slug              String           @unique
+  externalId        String?          @unique /// ex. "pokecardex:3382" (catalogue importé)
   type              ProductType
   ean               String?          @unique
   imageUrl          String?
@@ -195,6 +196,7 @@ model Listing {
   // État dénormalisé (dernier relevé) pour des tableaux rapides
   lastTitle         String?
   lastImageUrl      String?
+  discovered        Boolean      @default(false) /// fiche trouvée automatiquement (rayons revendeurs)
   sku               String? /// référence du revendeur
   category          String? /// rayon du site (fil d'Ariane)
   lastPrice         Decimal?     @db.Decimal(10, 2)

@@ -4,6 +4,7 @@
  *   pnpm --filter @tcgwatch/worker check-once listings   # relève les listings à échéance
  *   pnpm --filter @tcgwatch/worker check-once tcgdex     # import TCGdex
  *   pnpm --filter @tcgwatch/worker check-once pokecardex # import du calendrier Pokécardex
+ *   pnpm --filter @tcgwatch/worker check-once discover   # découverte des fiches revendeurs
  *   pnpm --filter @tcgwatch/worker check-once market     # relevé du marché secondaire
  *   pnpm --filter @tcgwatch/worker check-once all-now    # force le relevé de TOUS les listings
  *   pnpm --filter @tcgwatch/worker check-once retailers  # synchronise l'annuaire des revendeurs
@@ -11,6 +12,7 @@
 import { prisma } from '@tcgwatch/db';
 import { createContext } from './context';
 import { checkDueListings } from './jobs/check-listings';
+import { discoverListings } from './jobs/discover-listings';
 import { importPokecardex } from './jobs/import-pokecardex';
 import { importTcgdex } from './jobs/import-tcgdex';
 import { runMarketJob } from './jobs/market';
@@ -36,6 +38,9 @@ try {
     case 'pokecardex':
       await importPokecardex(ctx);
       break;
+    case 'discover':
+      await discoverListings(ctx);
+      break;
     case 'market':
       await runMarketJob(ctx);
       break;
@@ -45,7 +50,7 @@ try {
     default:
       ctx.logger.error(
         { command },
-        'Commande inconnue (listings | all-now | tcgdex | pokecardex | market | retailers)',
+        'Commande inconnue (listings | all-now | tcgdex | pokecardex | discover | market | retailers)',
       );
       process.exitCode = 1;
   }

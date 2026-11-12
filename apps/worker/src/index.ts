@@ -3,6 +3,7 @@ import cron, { type ScheduledTask } from 'node-cron';
 import { createContext, type WorkerContext } from './context';
 import { startHealthServer } from './health';
 import { checkDueListings } from './jobs/check-listings';
+import { discoverListings } from './jobs/discover-listings';
 import { importPokecardex } from './jobs/import-pokecardex';
 import { importTcgdex } from './jobs/import-tcgdex';
 import { runMarketJob } from './jobs/market';
@@ -36,6 +37,7 @@ async function main() {
       listingsCron: env.LISTINGS_CRON,
       tcgdexCron: env.TCGDEX_CRON,
       pokecardexCron: env.POKECARDEX_ENABLED ? env.POKECARDEX_CRON : 'désactivé',
+      discoveryCron: env.DISCOVERY_ENABLED ? env.DISCOVERY_CRON : 'désactivé',
       marketCron: env.MARKET_CRON,
       playwright: env.PLAYWRIGHT_ENABLED,
       notifications: ctx.notifier.enabled,
@@ -50,6 +52,7 @@ async function main() {
   const tcgdexJob = exclusive(ctx, 'tcgdex', () => importTcgdex(ctx));
   const marketJob = exclusive(ctx, 'market', () => runMarketJob(ctx));
   const pokecardexJob = exclusive(ctx, 'pokecardex', () => importPokecardex(ctx));
+  const discoveryJob = exclusive(ctx, 'discovery', () => discoverListings(ctx));
 
   const tasks: ScheduledTask[] = [
     cron.schedule(env.LISTINGS_CRON, listingsJob, { timezone, name: 'listings' }),
@@ -59,6 +62,9 @@ async function main() {
   if (env.POKECARDEX_ENABLED) {
     tasks.push(cron.schedule(env.POKECARDEX_CRON, pokecardexJob, { timezone, name: 'pokecardex' }));
   }
+  if (env.DISCOVERY_ENABLED) {
+    tasks.push(cron.schedule(env.DISCOVERY_CRON, discoveryJob, { timezone, name: 'discovery' }));
+  }
 
   // Annuaire des revendeurs : nouveaux sites et métadonnées à jour à chaque démarrage.
   await exclusive(ctx, 'retailers', () => syncRetailers(ctx))();
@@ -66,8 +72,15 @@ async function main() {
   // Premier démarrage : calendrier vide → import TCGdex immédiat.
   const imported = await prisma.release.count({ where: { source: 'TCGDEX' } });
   if (imported === 0) void tcgdexJob();
-  const fromPokecardex = await prisma.release.count({ where: { source: 'POKECARDEX' } });
-  if (env.POKECARDEX_ENABLED && fromPokecardex === 0) void pokecardexJob();
+  // Premier démarrage du catalogue : produits Pokécardex, puis découverte de leurs fiches.
+  const catalogProducts = await prisma.product.count({ where: { externalId: { not: null } } });
+  const discovered = await prisma.listing.count({ where: { discovered: true } });
+  const chaseCards = await prisma.chaseCard.count();
+  void (async () => {
+    if (env.POKECARDEX_ENABLED && catalogProducts === 0) await pokecardexJob();
+    if (env.DISCOVERY_ENABLED && discovered === 0) await discoveryJob();
+    if (chaseCards === 0) await marketJob();
+  })();
   void listingsJob();
 
   let stopping = false;

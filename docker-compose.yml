@@ -43,6 +43,8 @@ services:
       TCGDEX_SERIES: ${TCGDEX_SERIES:-me,sv}
       POKECARDEX_ENABLED: ${POKECARDEX_ENABLED:-true}
       POKECARDEX_CRON: ${POKECARDEX_CRON:-15 6 * * *}
+      DISCOVERY_ENABLED: ${DISCOVERY_ENABLED:-true}
+      DISCOVERY_CRON: ${DISCOVERY_CRON:-45 6 * * *}
       POKETRACE_API_KEY: ${POKETRACE_API_KEY:-}
     networks: [dokploy-network]
 
