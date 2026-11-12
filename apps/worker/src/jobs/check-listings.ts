@@ -9,6 +9,7 @@ import { AVAILABILITY_LABELS, formatPrice, toNumber, type Availability } from '@
 import { detectAlerts, effectiveTarget, type DetectedAlert } from '../alerts';
 import type { WorkerContext } from '../context';
 import { enrichReleaseDate } from '../enrich';
+import { productDetailsPatch } from '../product-details';
 import { ERROR_STATE_THRESHOLD, nextCheckAfterError, nextCheckAfterSuccess } from '../scheduling';
 import { dispatchAlert } from './dispatch';
 
@@ -107,6 +108,9 @@ async function recordSuccess(
         lastCheckedAt: now,
         nextCheckAt: nextCheckAfterSuccess(now, listing.checkIntervalMin),
         lastTitle: result.title ?? listing.lastTitle,
+        lastImageUrl: result.imageUrl ?? listing.lastImageUrl,
+        sku: result.sku ?? listing.sku,
+        category: result.category ?? listing.category,
         lastPrice: result.price,
         lastCurrency: result.currency,
         lastAvailability: result.availability,
@@ -118,9 +122,8 @@ async function recordSuccess(
     }),
   ]);
 
-  // Complète la fiche produit (image, EAN) si elle est vide.
-  const productPatch: Prisma.ProductUpdateInput = {};
-  if (!listing.product.imageUrl && result.imageUrl) productPatch.imageUrl = result.imageUrl;
+  // Complète la fiche produit (images, description, marque, EAN) sans écraser la saisie.
+  const productPatch: Prisma.ProductUpdateInput = productDetailsPatch(listing.product, result);
   if (!listing.product.ean && result.ean) {
     const taken = await prisma.product.findUnique({ where: { ean: result.ean } });
     if (!taken) productPatch.ean = result.ean;

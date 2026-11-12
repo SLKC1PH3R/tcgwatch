@@ -5,12 +5,14 @@
  *   pnpm --filter @tcgwatch/worker check-once tcgdex     # import TCGdex
  *   pnpm --filter @tcgwatch/worker check-once market     # relevé du marché secondaire
  *   pnpm --filter @tcgwatch/worker check-once all-now    # force le relevé de TOUS les listings
+ *   pnpm --filter @tcgwatch/worker check-once retailers  # synchronise l'annuaire des revendeurs
  */
 import { prisma } from '@tcgwatch/db';
 import { createContext } from './context';
 import { checkDueListings } from './jobs/check-listings';
 import { importTcgdex } from './jobs/import-tcgdex';
 import { runMarketJob } from './jobs/market';
+import { syncRetailers } from './jobs/sync-retailers';
 
 const command = process.argv[2] ?? 'listings';
 const ctx = createContext();
@@ -32,8 +34,14 @@ try {
     case 'market':
       await runMarketJob(ctx);
       break;
+    case 'retailers':
+      await syncRetailers(ctx);
+      break;
     default:
-      ctx.logger.error({ command }, 'Commande inconnue (listings | all-now | tcgdex | market)');
+      ctx.logger.error(
+        { command },
+        'Commande inconnue (listings | all-now | tcgdex | market | retailers)',
+      );
       process.exitCode = 1;
   }
 } finally {

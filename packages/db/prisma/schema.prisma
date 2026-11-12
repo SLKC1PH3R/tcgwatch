@@ -59,6 +59,22 @@ enum AlertType {
   RELEASE_DATE
 }
 
+enum RetailerKind {
+  SPECIALIST /// boutique de jeux / cartes
+  CULTURE /// grande enseigne culturelle
+  TOYS /// magasin de jouets
+  SUPERMARKET /// hyper / place de marché généraliste
+  OTHER
+}
+
+/// Capacité de TCGWatch à relever les fiches du site.
+enum RetailerAccess {
+  OK /// relevé HTTP simple vérifié
+  BROWSER /// nécessite Chromium (Playwright), sans garantie
+  LIMITED /// protection anti-bot : relevés souvent bloqués
+  UNTESTED /// adaptateur générique, non vérifié
+}
+
 enum SealCondition {
   MINT
   NEAR_MINT
@@ -116,37 +132,46 @@ model Release {
 // ─── Module 2 — Produits, revendeurs, relevés ────────────
 
 model Product {
-  id                String         @id @default(cuid())
+  id                String           @id @default(cuid())
   name              String
-  slug              String         @unique
+  slug              String           @unique
   type              ProductType
-  ean               String?        @unique
+  ean               String?          @unique
   imageUrl          String?
-  msrp              Decimal?       @db.Decimal(10, 2) /// prix public conseillé
-  targetPrice       Decimal?       @db.Decimal(10, 2) /// seuil d'alerte par défaut (surchargé par Listing.targetPrice)
-  releaseDate       DateTime?      @db.Date /// date propre au produit (ex. "Sortie prévue le" revendeur)
+  images            String[]         @default([]) /// galerie (fiches revendeurs), imageUrl en tête
+  description       String?
+  brand             String?
+  msrp              Decimal?         @db.Decimal(10, 2) /// prix public conseillé
+  targetPrice       Decimal?         @db.Decimal(10, 2) /// seuil d'alerte par défaut (surchargé par Listing.targetPrice)
+  releaseDate       DateTime?        @db.Date /// date propre au produit (ex. "Sortie prévue le" revendeur)
   releaseDateSource ReleaseSource?
   notes             String?
   releaseId         String?
-  release           Release?       @relation(fields: [releaseId], references: [id], onDelete: SetNull)
+  release           Release?         @relation(fields: [releaseId], references: [id], onDelete: SetNull)
   listings          Listing[]
   marketPrices      MarketPrice[]
   collection        CollectionItem[]
   alerts            AlertEvent[]
-  createdAt         DateTime       @default(now())
-  updatedAt         DateTime       @updatedAt
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
 
   @@index([releaseId])
 }
 
 model Retailer {
-  id         String    @id @default(cuid())
+  id         String         @id @default(cuid())
   name       String
-  slug       String    @unique
-  domain     String    @unique /// domaine sans "www." (ex. "play-in.com")
+  slug       String         @unique
+  domain     String         @unique /// domaine sans "www." (ex. "play-in.com")
   adapterKey String /// "playin" | "philibert" | "cultura" | "smyths" | "jsonld"
-  minDelayMs Int       @default(3000)
-  enabled    Boolean   @default(true)
+  minDelayMs Int            @default(3000)
+  enabled    Boolean        @default(true)
+  kind       RetailerKind   @default(OTHER)
+  access     RetailerAccess @default(UNTESTED)
+  websiteUrl String?
+  pokemonUrl String? /// page « Pokémon » ou recherche du site
+  searchUrl  String? /// modèle de recherche, « {q} » = termes recherchés
+  notes      String?
   listings   Listing[]
 }
 
@@ -165,6 +190,9 @@ model Listing {
   lastCheckedAt     DateTime?
   // État dénormalisé (dernier relevé) pour des tableaux rapides
   lastTitle         String?
+  lastImageUrl      String?
+  sku               String? /// référence du revendeur
+  category          String? /// rayon du site (fil d'Ariane)
   lastPrice         Decimal?     @db.Decimal(10, 2)
   lastCurrency      String       @default("EUR")
   lastAvailability  Availability @default(UNKNOWN)

@@ -5,6 +5,7 @@ import { startHealthServer } from './health';
 import { checkDueListings } from './jobs/check-listings';
 import { importTcgdex } from './jobs/import-tcgdex';
 import { runMarketJob } from './jobs/market';
+import { syncRetailers } from './jobs/sync-retailers';
 
 /** Empêche deux exécutions simultanées d'une même tâche planifiée. */
 function exclusive(ctx: WorkerContext, name: string, fn: () => Promise<unknown>) {
@@ -52,6 +53,9 @@ async function main() {
     cron.schedule(env.TCGDEX_CRON, tcgdexJob, { timezone, name: 'tcgdex' }),
     cron.schedule(env.MARKET_CRON, marketJob, { timezone, name: 'market' }),
   ];
+
+  // Annuaire des revendeurs : nouveaux sites et métadonnées à jour à chaque démarrage.
+  await exclusive(ctx, 'retailers', () => syncRetailers(ctx))();
 
   // Premier démarrage : calendrier vide → import TCGdex immédiat.
   const imported = await prisma.release.count({ where: { source: 'TCGDEX' } });
