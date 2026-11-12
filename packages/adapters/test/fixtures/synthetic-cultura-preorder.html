@@ -1,0 +1,38 @@
+<!doctype html>
+<!--
+  FIXTURE SYNTHÉTIQUE — cultura.com bloque les requêtes HTTP simples (403 anti-bot),
+  aucune page réelle n'a pu être enregistrée. Structure reconstituée d'après une fiche produit
+  type (JSON-LD sans disponibilité + zone d'achat).
+  À remplacer : pnpm fixtures:record <url-cultura> cultura-preorder --browser
+-->
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <title>Coffret Dresseur d'Élite Pokémon Règne Delta | Cultura</title>
+    <meta property="og:title" content="Coffret Dresseur d'Élite Pokémon Écarlate et Violet Règne Delta" />
+    <meta property="og:image" content="https://cdn.cultura.com/exemple/etb-regne-delta.jpg" />
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "Product",
+        "name": "Coffret Dresseur d'Élite Pokémon Règne Delta",
+        "gtin13": "0196214144000",
+        "image": "https://cdn.cultura.com/exemple/etb-regne-delta.jpg",
+        "offers": { "@type": "Offer", "price": "59.99", "priceCurrency": "EUR" }
+      }
+    </script>
+  </head>
+  <body>
+    <main>
+      <div data-testid="product-buybox">
+        <h1>Coffret Dresseur d'Élite Pokémon Règne Delta</h1>
+        <p class="price">59,99 €</p>
+        <p class="availability">Date de sortie : 05/12/2026</p>
+        <button type="button">Précommander</button>
+      </div>
+      <section class="reco">
+        <article><span class="price">6,99 €</span><button>Ajouter au panier</button></article>
+      </section>
+    </main>
+  </body>
+</html>

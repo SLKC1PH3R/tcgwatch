@@ -1,0 +1,42 @@
+<!doctype html>
+<!--
+  FIXTURE SYNTHÉTIQUE — boutique générique (WooCommerce/Shopify) : JSON-LD dans un @graph,
+  @type multiple, AggregateOffer et disponibilité PreOrder avec date de début.
+-->
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          { "@type": "WebSite", "name": "Boutique Exemple" },
+          {
+            "@type": ["Product", "Thing"],
+            "name": "Tripack Pok&eacute;mon R&egrave;gne Delta",
+            "image": [{ "@type": "ImageObject", "url": "/media/tripack.jpg" }],
+            "gtin13": "196214144071",
+            "offers": [
+              {
+                "@type": "Offer",
+                "price": "21.90",
+                "priceCurrency": "EUR",
+                "availability": "http://schema.org/PreOrder",
+                "availabilityStarts": "2026-11-28"
+              },
+              {
+                "@type": "Offer",
+                "price": "0",
+                "priceCurrency": "EUR",
+                "availability": "https://schema.org/OutOfStock"
+              }
+            ]
+          }
+        ]
+      }
+    </script>
+  </head>
+  <body>
+    <main><h1>Tripack Pokémon Règne Delta</h1></main>
+  </body>
+</html>
