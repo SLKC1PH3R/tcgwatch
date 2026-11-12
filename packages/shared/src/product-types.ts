@@ -32,11 +32,11 @@ export function guessProductType(title: string): ProductTypeKey {
   const t = title.toLowerCase();
   if (/dresseur d.?[ée]lite|\betb\b/.test(t)) return 'ETB';
   if (/display|bo[iî]te de boosters|36 boosters|18 boosters/.test(t)) return 'DISPLAY';
-  if (/tri-?pack|pack (?:de )?3 boosters/.test(t)) return 'TRIPACK';
+  if (/tri-?pack|packs? (?:de )?3 boosters/.test(t)) return 'TRIPACK';
   if (/ultra.?premium|\bupc\b/.test(t)) return 'UPC';
-  if (/mini.?tin/.test(t)) return 'MINI_TIN';
+  if (/mini.?tin|\btin\b|mini-?bo[iî]te/.test(t)) return 'MINI_TIN';
   if (/pok[ée]box/.test(t)) return 'POKEBOX';
-  if (/\bdeck\b/.test(t)) return 'DECK';
+  if (/\bdecks?\b/.test(t)) return 'DECK';
   if (/blister|duo-?pack|pack 2 boosters/.test(t)) return 'BLISTER';
   if (/coffret|collection/.test(t)) return 'COFFRET';
   if (/booster/.test(t)) return 'BOOSTER';

@@ -68,6 +68,17 @@ describe('matchProduct (intitulés réels)', () => {
     }
   });
 
+  it('distingue deux produits par leur année', () => {
+    const catalog2 = [
+      { id: 'mars25', name: 'Pack 2 boosters Mars 2025', type: 'BLISTER' },
+      { id: 'mars26', name: 'Pack 2 boosters Mars 2026', type: 'BLISTER' },
+    ];
+    expect(matchProduct('PACK 2 BOOSTERS POKÉMON MARS 2026', catalog2)?.productId).toBe('mars26');
+    expect(productTokens('Deck Championnats du Monde Pokémon2025 : Pult Bomb - FR')).toContain(
+      '2025',
+    );
+  });
+
   it('distingue display et demi-display', () => {
     expect(nameOf('Demi-Display 18 boosters Pokémon : Règne Delta - FR')).toBe(
       'Demi-Boîte de boosters Règne Delta',

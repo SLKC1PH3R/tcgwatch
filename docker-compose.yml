@@ -40,7 +40,7 @@ services:
       LISTINGS_CRON: ${LISTINGS_CRON:-* * * * *}
       TCGDEX_CRON: ${TCGDEX_CRON:-0 6 * * *}
       MARKET_CRON: ${MARKET_CRON:-30 6 * * *}
-      TCGDEX_SERIES: ${TCGDEX_SERIES:-me,sv}
+      TCGDEX_SERIES: ${TCGDEX_SERIES:-me,sv,swsh,sm,xy,bw}
       POKECARDEX_ENABLED: ${POKECARDEX_ENABLED:-true}
       POKECARDEX_CRON: ${POKECARDEX_CRON:-15 6 * * *}
       DISCOVERY_ENABLED: ${DISCOVERY_ENABLED:-true}

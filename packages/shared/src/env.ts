@@ -47,7 +47,7 @@ const schema = z.object({
   LISTINGS_CRON: z.string().default('* * * * *'),
   TCGDEX_CRON: z.string().default('0 6 * * *'),
   MARKET_CRON: z.string().default('30 6 * * *'),
-  TCGDEX_SERIES: z.string().default('me,sv'),
+  TCGDEX_SERIES: z.string().default('me,sv,swsh,sm,xy,bw'),
   /** Calendrier des sorties FR de Pokécardex (pokecardex.com/calendrier). */
   POKECARDEX_ENABLED: bool(true),
   POKECARDEX_CRON: z.string().default('15 6 * * *'),

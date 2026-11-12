@@ -52,6 +52,9 @@ describe('guessProductType', () => {
     ['Duopack - Méga-Évolution – Raikou (V1)', 'BLISTER'],
     ['Collection Ultra-Premium 30ᵉ Anniversaire – Soirée', 'UPC'],
     ['Booster Règne Delta - Méga-Rayquaza', 'BOOSTER'],
+    ['Packs 3 boosters Écarlate et Violet Flammes Obsidiennes', 'TRIPACK'],
+    ['Tin Cube Février 2022', 'MINI_TIN'],
+    ['Decks Combat‑V Zeraora ou Deoxys', 'DECK'],
   ] as const)('%s → %s', (title, type) => {
     expect(guessProductType(title)).toBe(type);
   });

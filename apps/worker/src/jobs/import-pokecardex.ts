@@ -1,7 +1,10 @@
 import { prisma, type ProductType } from '@tcgwatch/db';
 import {
   parsePokecardexCalendar,
+  parsePokecardexForumCalendar,
   POKECARDEX_CALENDAR_URL,
+  POKECARDEX_FORUM_TOPICS,
+  pokecardexForumUrl,
   type PokecardexRelease,
 } from '@tcgwatch/market';
 import type { WorkerContext } from '../context';
@@ -27,6 +30,8 @@ export function slugify(input: string): string {
 }
 
 export interface PokecardexImportSummary extends ImportSummary {
+  /** Années passées relues depuis les sujets du forum. */
+  forumYears: number[];
   productsCreated: number;
   productsUpdated: number;
   examplesRemoved: number;
@@ -53,6 +58,7 @@ export async function importPokecardex(
   }
 
   const summary: PokecardexImportSummary = {
+    forumYears: [],
     created: 0,
     updated: 0,
     skipped: 0,
@@ -60,7 +66,8 @@ export async function importPokecardex(
     productsUpdated: 0,
     examplesRemoved: 0,
   };
-  for (const r of releases) {
+  const past = await forumReleases(ctx, summary);
+  for (const r of [...past, ...releases]) {
     const releaseId = await upsertRelease(r, summary);
     await upsertProduct(r, releaseId, summary);
   }
@@ -69,6 +76,38 @@ export async function importPokecardex(
   ctx.status.lastPokecardexImport = new Date();
   ctx.logger.info({ ...summary, total: releases.length }, 'Import Pokécardex terminé');
   return summary;
+}
+
+/**
+ * Sorties des années passées (sujets annuels du forum) : prix conseillés d'époque.
+ * Ces sujets ne bougent presque plus : relus le lundi, ou si une année manque encore.
+ */
+async function forumReleases(
+  ctx: Pick<WorkerContext, 'fetcher' | 'logger'>,
+  summary: PokecardexImportSummary,
+): Promise<PokecardexRelease[]> {
+  const out: PokecardexRelease[] = [];
+  const weekly = new Date().getUTCDay() === 1;
+  for (const [year, topic] of Object.entries(POKECARDEX_FORUM_TOPICS)) {
+    const known = await prisma.product.count({
+      where: { externalId: { startsWith: `pokecardex-forum:${year}:` } },
+    });
+    if (known > 0 && !weekly) continue;
+    try {
+      const url = pokecardexForumUrl(topic);
+      const parsed = parsePokecardexForumCalendar(
+        await ctx.fetcher.fetchHtml(url),
+        Number(year),
+        url,
+      );
+      if (parsed.length === 0) throw new Error('aucun produit lu (format du sujet modifié ?)');
+      out.push(...parsed);
+      summary.forumYears.push(Number(year));
+    } catch (err) {
+      ctx.logger.warn({ err, year }, 'Sujet du forum Pokécardex illisible : année ignorée');
+    }
+  }
+  return out;
 }
 
 async function upsertRelease(r: PokecardexRelease, summary: ImportSummary): Promise<string> {

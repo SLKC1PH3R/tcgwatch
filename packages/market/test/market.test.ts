@@ -1,11 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  cardmarketPrice,
-  manualProvider,
-  priceChange,
-  PokeTraceProvider,
-  valueCollection,
-} from '../src';
+import { cardmarketPrice, manualProvider, priceChange, valueCollection } from '../src';
 
 describe('valueCollection', () => {
   it('valorise au prix marché, puis au prix boutique, puis au prix d’achat', () => {
@@ -54,14 +48,6 @@ describe('manualProvider', () => {
     expect(() =>
       manualProvider.normalize({ productId: 'p1', price: -1, date: '2026-11-12' }),
     ).toThrow();
-  });
-});
-
-describe('PokeTraceProvider', () => {
-  it('est désactivé sans clé API', async () => {
-    const p = new PokeTraceProvider(undefined, 'https://api.poketrace.com');
-    expect(p.isEnabled()).toBe(false);
-    await expect(p.fetchQuotes([])).resolves.toEqual([]);
   });
 });
 

@@ -56,7 +56,13 @@ export function productTokens(title: string): string[] {
   if (/\b30\s*(?:e|eme|a|ans)\b|anniversaire/.test(t)) tokens.add('30ans');
   if (/\b(?:lot|bundle)\b/.test(t)) tokens.add('bundle');
   if (/\bdemi\b|\b18 boosters\b/.test(t)) tokens.add('demi');
-  for (const word of t.split(/[^a-z0-9]+/)) {
+  // « Pokémon2025 » → « pokemon 2025 » : l'année redevient un mot à part.
+  for (const word of t.replace(/([a-z])(20\d\d)\b/g, '$1 $2').split(/[^a-z0-9]+/)) {
+    // Une année distingue deux produits par ailleurs identiques (« Pack 2 boosters Mars 2025 »).
+    if (/^20[1-3]\d$/.test(word)) {
+      tokens.add(word);
+      continue;
+    }
     if (word.length < 2 || NOISE.has(word) || SET_CODE.test(word) || /^\d+[a-z]{0,3}$/.test(word))
       continue;
     if (word === 'ans' || word === 'anniversaire' || word === 'lot' || word === 'bundle') continue;

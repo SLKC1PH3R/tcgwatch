@@ -12,8 +12,6 @@ import type { WorkerContext } from '../context';
 
 /** Recherches Chromium par passage et par site (chacune prend plusieurs secondes). */
 const MAX_SEARCHES_PER_RETAILER = 25;
-/** Fenêtre des produits recherchés : sortis depuis moins d'un an ou à venir. */
-const CATALOG_WINDOW_DAYS = 365;
 
 export interface DiscoverySummary {
   pages: number;
@@ -43,9 +41,8 @@ interface Candidate {
 export async function discoverListings(
   ctx: Pick<WorkerContext, 'fetcher' | 'logger' | 'env' | 'browser'>,
 ): Promise<DiscoverySummary> {
-  const since = new Date(todayUtc().getTime() - CATALOG_WINDOW_DAYS * 86_400_000);
+  // Tout le catalogue, y compris les produits des années passées (prix actuel en boutique).
   const products = await prisma.product.findMany({
-    where: { OR: [{ releaseDate: null }, { releaseDate: { gte: since } }] },
     select: { id: true, name: true, type: true, listings: { select: { retailerId: true } } },
   });
   const catalog: CatalogProduct[] = products.map((p) => ({ id: p.id, name: p.name, type: p.type }));
@@ -132,14 +129,21 @@ async function collectCandidates(
 
   // 2. Recherche du site pour les produits encore introuvables (si autorisée et possible).
   if (discovery.search && (!discovery.searchNeedsBrowser || ctx.browser)) {
-    const queries = [
+    const pending = [
       ...new Set(
         catalog
           .filter((p) => !followed.has(p.id) && !best.has(p.id))
           .map((p) => searchQueryFor(p.name))
           .filter((q) => q.length >= 4),
       ),
-    ].slice(0, MAX_SEARCHES_PER_RETAILER);
+    ].sort();
+    // Rotation quotidienne : chaque jour une autre tranche du catalogue est recherchée.
+    const day = Math.floor(todayUtc().getTime() / 86_400_000);
+    const start = pending.length ? (day * MAX_SEARCHES_PER_RETAILER) % pending.length : 0;
+    const queries = [...pending.slice(start), ...pending.slice(0, start)].slice(
+      0,
+      MAX_SEARCHES_PER_RETAILER,
+    );
     for (const q of queries) {
       try {
         const url = discovery.search.replace('{q}', encodeURIComponent(q));

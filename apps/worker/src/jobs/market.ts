@@ -6,19 +6,28 @@ import { selectChaseCards } from './chase-cards';
 
 /**
  * Relevé quotidien du marché secondaire :
- * - providers automatiques configurés (PokeTrace en V2) → MarketPrice (1 relevé/jour/source) ;
+ * - providers automatiques configurés (PokeTrace : prix de revente Cardmarket des ventes FR)
+ *   → MarketPrice (1 relevé/jour/source) ;
  * - cartes phares (choisies automatiquement pour les dernières extensions, ou ajoutées à la
  *   main) → CardPrice via TCGdex (cotations Cardmarket agrégées).
  */
 export async function runMarketJob(ctx: WorkerContext) {
   const date = todayUtc();
   const providers = createMarketProviders(ctx.env).filter((p) => p.isEnabled());
-  const products = await prisma.product.findMany({ select: { id: true, name: true, ean: true } });
+  const products = await prisma.product.findMany({
+    select: { id: true, name: true, ean: true, type: true },
+  });
+  const sets = (
+    await prisma.release.findMany({
+      where: { tcgdexId: { not: null } },
+      select: { tcgdexId: true, nameFr: true },
+    })
+  ).map((r) => ({ tcgdexId: r.tcgdexId!, nameFr: r.nameFr }));
 
   let quotes = 0;
   for (const provider of providers) {
     try {
-      const results = await provider.fetchQuotes(products);
+      const results = await provider.fetchQuotes(products, { sets });
       for (const q of results) {
         await prisma.marketPrice.upsert({
           where: {
