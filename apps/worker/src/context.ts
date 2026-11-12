@@ -15,6 +15,7 @@ export interface WorkerContext {
     startedAt: Date;
     lastListingsTick?: Date;
     lastTcgdexImport?: Date;
+    lastPokecardexImport?: Date;
     lastMarketRun?: Date;
     lastError?: string;
   };

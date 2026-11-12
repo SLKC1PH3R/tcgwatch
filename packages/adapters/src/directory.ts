@@ -152,6 +152,19 @@ export const RETAILER_DIRECTORY: RetailerInfo[] = [
     minDelayMs: 5000,
     notes: 'Contenu chargé en JavaScript.',
   },
+  {
+    slug: 'maison-de-la-presse',
+    name: 'Maison de la Presse',
+    domain: 'maisondelapresse.com',
+    kind: 'CULTURE',
+    access: 'LIMITED',
+    websiteUrl: 'https://www.maisondelapresse.com/',
+    pokemonUrl:
+      'https://www.maisondelapresse.com/jeux-jouets/cartes-collectionner/cartes-pokemon.html',
+    minDelayMs: 5000,
+    notes:
+      'Protégé par Cloudflare, y compris contre Chromium : à surveiller via le rayon Pokémon (relevés automatiques bloqués).',
+  },
   // ── Magasins de jouets ────────────────────────────────────
   {
     slug: 'smyths',

@@ -9,7 +9,9 @@ function createClient(): PrismaClient {
   if (!connectionString) {
     throw new Error('DATABASE_URL est obligatoire pour se connecter à PostgreSQL');
   }
-  return new PrismaClient({ adapter: new PrismaPg({ connectionString }) });
+  // Taille du pool de connexions (défaut pg : 10). `prisma dev` n'accepte qu'une connexion.
+  const max = Number(process.env.DATABASE_POOL_MAX) || undefined;
+  return new PrismaClient({ adapter: new PrismaPg({ connectionString, max }) });
 }
 
 // Singleton : évite de multiplier les pools en développement (rechargement à chaud de Next.js).

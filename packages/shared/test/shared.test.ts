@@ -47,6 +47,11 @@ describe('guessProductType', () => {
     ['Booster Blister Pokémon : Règne Delta [ME06] - FR', 'BLISTER'],
     ['Collection avec figurine Pokémon : 30 Ans – Mewtwo', 'COFFRET'],
     ['Pokémon : Coffret ex Start 1 (3 boosters)', 'COFFRET'],
+    ['Boite de boosters Règne Delta', 'DISPLAY'],
+    ['Deck Combat 30ᵉ Anniversaire – Mentali-ex', 'DECK'],
+    ['Duopack - Méga-Évolution – Raikou (V1)', 'BLISTER'],
+    ['Collection Ultra-Premium 30ᵉ Anniversaire – Soirée', 'UPC'],
+    ['Booster Règne Delta - Méga-Rayquaza', 'BOOSTER'],
   ] as const)('%s → %s', (title, type) => {
     expect(guessProductType(title)).toBe(type);
   });

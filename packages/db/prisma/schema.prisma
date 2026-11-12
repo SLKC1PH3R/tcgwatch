@@ -23,6 +23,7 @@ enum ProductType {
   UPC
   MINI_TIN
   POKEBOX
+  DECK
   AUTRE
 }
 
@@ -33,6 +34,7 @@ enum ReleaseStatus {
 
 enum ReleaseSource {
   TCGDEX
+  POKECARDEX
   RETAILER
   MANUAL
   SEED
@@ -113,6 +115,8 @@ model Release {
   nameFr      String
   setCode     String? /// ex. "ME06"
   tcgdexId    String?       @unique /// id du set TCGdex (ex. "me06")
+  externalId  String?       @unique /// id dans une autre source (ex. "pokecardex:3382")
+  msrp        Decimal?      @db.Decimal(10, 2) /// prix public conseillé annoncé
   serie       String? /// ex. "Méga-Évolution"
   releaseDate DateTime?     @db.Date
   productType ProductType? /// null = l'extension elle-même
