@@ -1,7 +1,8 @@
 # TCGWatch — déploiement Dokploy (application de type « Docker Compose », build depuis le repo).
 #
 # Variables : onglet « Environment » de Dokploy (voir .env.example).
-# Le réseau `dokploy-network` est créé par Dokploy ; Traefik y route le domaine APP_DOMAIN.
+# Le réseau `dokploy-network` est créé par Dokploy ; Traefik y route le domaine APP_DOMAIN et
+# la base PostgreSQL gérée par Dokploy y est joignable (DATABASE_URL = son « Internal Connection URL »).
 
 name: tcgwatch
 
@@ -9,27 +10,10 @@ x-common-env: &common-env
   NODE_ENV: production
   TZ: ${TZ:-Europe/Paris}
   LOG_LEVEL: ${LOG_LEVEL:-info}
-  DATABASE_URL: postgresql://${POSTGRES_USER:-tcgwatch}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD est obligatoire}@postgres:5432/${POSTGRES_DB:-tcgwatch}?schema=public
+  DATABASE_URL: ${DATABASE_URL:?DATABASE_URL est obligatoire (Internal Connection URL de la base Dokploy)}
   APP_URL: ${APP_URL:-https://tcg.digitalstack.cloud}
 
 services:
-  postgres:
-    image: postgres:17-alpine
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER:-tcgwatch}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD est obligatoire}
-      POSTGRES_DB: ${POSTGRES_DB:-tcgwatch}
-      TZ: ${TZ:-Europe/Paris}
-    volumes:
-      - postgres-data:/var/lib/postgresql/data
-    healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}']
-      interval: 10s
-      timeout: 5s
-      retries: 10
-    networks: [internal]
-
   worker:
     build:
       context: .
@@ -37,9 +21,6 @@ services:
     restart: unless-stopped
     # Chromium a besoin d'un /dev/shm plus grand que les 64 Mo par défaut.
     shm_size: 512mb
-    depends_on:
-      postgres:
-        condition: service_healthy
     environment:
       <<: *common-env
       RUN_MIGRATIONS: 'true'
@@ -59,7 +40,7 @@ services:
       MARKET_CRON: ${MARKET_CRON:-30 6 * * *}
       TCGDEX_SERIES: ${TCGDEX_SERIES:-me,sv}
       POKETRACE_API_KEY: ${POKETRACE_API_KEY:-}
-    networks: [internal]
+    networks: [dokploy-network]
 
   web:
     build:
@@ -67,8 +48,6 @@ services:
       dockerfile: docker/web.Dockerfile
     restart: unless-stopped
     depends_on:
-      postgres:
-        condition: service_healthy
       # Le worker applique les migrations : le web démarre une fois le worker lancé.
       worker:
         condition: service_started
@@ -85,7 +64,7 @@ services:
       - uploads:/data/uploads
     expose:
       - '3000'
-    networks: [internal, dokploy-network]
+    networks: [dokploy-network]
     labels:
       - traefik.enable=true
       - traefik.docker.network=dokploy-network
@@ -100,10 +79,8 @@ services:
       - traefik.http.middlewares.tcgwatch-https.redirectscheme.scheme=https
 
 volumes:
-  postgres-data:
   uploads:
 
 networks:
-  internal:
   dokploy-network:
     external: true

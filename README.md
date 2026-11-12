@@ -119,55 +119,56 @@ Commandes utiles :
 
 La liste complète et commentée est dans [`.env.example`](.env.example). Aucun secret n'est présent dans le code.
 
-| Variable                                              | Défaut                                    | Rôle                                                                   |
-| ----------------------------------------------------- | ----------------------------------------- | ---------------------------------------------------------------------- |
-| `DATABASE_URL`                                        | —                                         | Connexion PostgreSQL (construite automatiquement dans le compose)      |
-| `POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_DB` | `tcgwatch` / **obligatoire** / `tcgwatch` | Conteneur Postgres du compose                                          |
-| `APP_DOMAIN`                                          | `tcg.digitalstack.cloud`                  | Domaine routé par Traefik                                              |
-| `APP_URL`                                             | `https://tcg.digitalstack.cloud`          | URL publique                                                           |
-| `TZ`                                                  | `Europe/Paris`                            | Fuseau des crons et de l'affichage                                     |
-| `ALLOW_REGISTRATION`                                  | `false`                                   | Autorise d'autres inscriptions après le premier compte                 |
-| `SESSION_TTL_DAYS`                                    | `30`                                      | Durée des sessions                                                     |
-| `COOKIE_SECURE`                                       | `true`                                    | Cookie HTTPS uniquement (`false` en local sans HTTPS)                  |
-| `NTFY_URL` / `NTFY_TOKEN`                             | —                                         | Topic ntfy (ex. `https://ntfy.sh/mon-topic-secret`) et jeton optionnel |
-| `TELEGRAM_BOT_TOKEN` / `TELEGRAM_CHAT_ID`             | —                                         | Notifications Telegram (optionnel)                                     |
-| `DEFAULT_CHECK_INTERVAL_MIN`                          | `30`                                      | Fréquence par défaut d'un relevé                                       |
-| `SCRAPER_USER_AGENT`                                  | Chrome récent                             | User-agent envoyé aux sites                                            |
-| `SCRAPER_MIN_DELAY_MS` / `SCRAPER_MAX_DELAY_MS`       | `2000` / `6000`                           | Délai aléatoire entre deux requêtes d'un même domaine                  |
-| `PLAYWRIGHT_ENABLED`                                  | `true`                                    | Repli Chromium pour les sites rendus en JavaScript                     |
-| `LISTINGS_CRON` / `TCGDEX_CRON` / `MARKET_CRON`       | `* * * * *` / `0 6 * * *` / `30 6 * * *`  | Planification                                                          |
-| `TCGDEX_SERIES`                                       | `me,sv`                                   | Séries TCGdex importées                                                |
-| `POKETRACE_API_KEY`                                   | —                                         | API PokeTrace (V2)                                                     |
-| `SEED_IF_EMPTY`                                       | `true` (compose)                          | Seed initial au premier démarrage si la base est vide                  |
+| Variable                                        | Défaut                                   | Rôle                                                                   |
+| ----------------------------------------------- | ---------------------------------------- | ---------------------------------------------------------------------- |
+| `DATABASE_URL`                                  | **obligatoire**                          | Connexion PostgreSQL (Internal Connection URL de la base Dokploy)      |
+| `APP_DOMAIN`                                    | `tcg.digitalstack.cloud`                 | Domaine routé par Traefik                                              |
+| `APP_URL`                                       | `https://tcg.digitalstack.cloud`         | URL publique                                                           |
+| `TZ`                                            | `Europe/Paris`                           | Fuseau des crons et de l'affichage                                     |
+| `ALLOW_REGISTRATION`                            | `false`                                  | Autorise d'autres inscriptions après le premier compte                 |
+| `SESSION_TTL_DAYS`                              | `30`                                     | Durée des sessions                                                     |
+| `COOKIE_SECURE`                                 | `true`                                   | Cookie HTTPS uniquement (`false` en local sans HTTPS)                  |
+| `NTFY_URL` / `NTFY_TOKEN`                       | —                                        | Topic ntfy (ex. `https://ntfy.sh/mon-topic-secret`) et jeton optionnel |
+| `TELEGRAM_BOT_TOKEN` / `TELEGRAM_CHAT_ID`       | —                                        | Notifications Telegram (optionnel)                                     |
+| `DEFAULT_CHECK_INTERVAL_MIN`                    | `30`                                     | Fréquence par défaut d'un relevé                                       |
+| `SCRAPER_USER_AGENT`                            | Chrome récent                            | User-agent envoyé aux sites                                            |
+| `SCRAPER_MIN_DELAY_MS` / `SCRAPER_MAX_DELAY_MS` | `2000` / `6000`                          | Délai aléatoire entre deux requêtes d'un même domaine                  |
+| `PLAYWRIGHT_ENABLED`                            | `true`                                   | Repli Chromium pour les sites rendus en JavaScript                     |
+| `LISTINGS_CRON` / `TCGDEX_CRON` / `MARKET_CRON` | `* * * * *` / `0 6 * * *` / `30 6 * * *` | Planification                                                          |
+| `TCGDEX_SERIES`                                 | `me,sv`                                  | Séries TCGdex importées                                                |
+| `POKETRACE_API_KEY`                             | —                                        | API PokeTrace (V2)                                                     |
+| `SEED_IF_EMPTY`                                 | `true` (compose)                         | Seed initial au premier démarrage si la base est vide                  |
 
 ## Déploiement sur Dokploy
 
-1. **Créer le projet** : dans Dokploy, _Create Project_ puis _Create Service_ et **Compose**.
-2. **Source** : choisir le fournisseur _GitHub_, le dépôt `SLKC1PH3R/tcgwatch`, la branche `main` et le
+1. **Créer la base** : dans le projet Dokploy, _Create Service_ puis **Database** et **PostgreSQL**.
+   Une fois démarrée, copier son _Internal Connection URL_ (onglet _General_). Ses sauvegardes S3
+   se configurent dans l'onglet _Backups_.
+1. **Créer l'application** : dans le même projet, _Create Service_ puis **Compose**.
+1. **Source** : choisir le fournisseur _GitHub_, le dépôt `SLKC1PH3R/tcgwatch`, la branche `main` et le
    chemin du compose `./docker-compose.yml`. Le type de compose est `docker-compose`.
-3. **Environment** : coller au minimum :
+1. **Environment** : coller au minimum :
    ```env
-   POSTGRES_PASSWORD=<mot-de-passe-fort>
+   DATABASE_URL=postgresql://postgres:<mot-de-passe>@<nom-interne-de-la-base>:5432/<base>
    APP_DOMAIN=tcg.digitalstack.cloud
    APP_URL=https://tcg.digitalstack.cloud
    NTFY_URL=https://ntfy.sh/<topic-secret>
    ```
-4. **DNS** : un enregistrement `A` de `tcg.digitalstack.cloud` vers l'IP du VPS.
-5. **Deploy**. Dokploy construit les deux images depuis le dépôt :
+1. **DNS** : un enregistrement `A` de `tcg.digitalstack.cloud` vers l'IP du VPS.
+1. **Deploy**. Dokploy construit les deux images depuis le dépôt :
    - le **worker** applique les migrations Prisma, fait le seed si la base est vide, puis démarre
      les crons ;
    - le **web** est exposé par Traefik en HTTPS (certificat Let's Encrypt via les labels du compose,
      redirection HTTP vers HTTPS).
-6. Ouvrir `https://tcg.digitalstack.cloud` et créer le compte propriétaire.
-7. _(Optionnel)_ Activer l'**Auto Deploy** (webhook GitHub) pour redéployer à chaque push sur `main`.
+1. Ouvrir `https://tcg.digitalstack.cloud` et créer le compte propriétaire.
+1. _(Optionnel)_ Activer l'**Auto Deploy** (webhook GitHub) pour redéployer à chaque push sur `main`.
 
-Healthchecks : `GET /api/health` sur le web (port 3000) et sur le worker (port 3001, réseau interne).
+Healthchecks : `GET /api/health` sur le web (port 3000) et sur le worker (port 3001, non exposé).
 
-> **Base gérée par Dokploy** : pour utiliser une base PostgreSQL créée dans Dokploy (et ses
-> sauvegardes S3), remplacez `DATABASE_URL` dans `x-common-env` par son _Internal Connection URL_,
-> retirez le service `postgres` et les `depends_on` correspondants.
+> La base n'est pas dans le compose : web et worker la joignent via le réseau `dokploy-network`,
+> sur lequel Dokploy place ses bases. Le mot de passe ne vit que dans l'onglet _Environment_.
 
-Volumes persistants : `postgres-data` (base) et `uploads` (photos de la collection).
+Volume persistant : `uploads` (photos de la collection). Les données sont dans la base Dokploy.
 
 ## Ajouter un adaptateur revendeur
 
