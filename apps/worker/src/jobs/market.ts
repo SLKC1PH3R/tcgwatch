@@ -1,0 +1,57 @@
+import { prisma } from '@tcgwatch/db';
+import { createMarketProviders, TcgdexChaseCardProvider } from '@tcgwatch/market';
+import { todayUtc } from '@tcgwatch/shared';
+import type { WorkerContext } from '../context';
+
+/**
+ * Relevé quotidien du marché secondaire :
+ * - providers automatiques configurés (PokeTrace en V2) → MarketPrice (1 relevé/jour/source) ;
+ * - cartes phares suivies → CardPrice via TCGdex (cotations Cardmarket agrégées).
+ */
+export async function runMarketJob(ctx: WorkerContext) {
+  const date = todayUtc();
+  const providers = createMarketProviders(ctx.env).filter((p) => p.isEnabled());
+  const products = await prisma.product.findMany({ select: { id: true, name: true, ean: true } });
+
+  let quotes = 0;
+  for (const provider of providers) {
+    try {
+      const results = await provider.fetchQuotes(products);
+      for (const q of results) {
+        await prisma.marketPrice.upsert({
+          where: {
+            productId_source_date: { productId: q.productId, source: q.source, date: q.date },
+          },
+          update: { price: q.price, currency: q.currency },
+          create: q,
+        });
+      }
+      quotes += results.length;
+    } catch (err) {
+      ctx.logger.error({ err, provider: provider.key }, 'Échec du provider de prix marché');
+    }
+  }
+
+  const cards = await prisma.chaseCard.findMany({ select: { id: true, tcgdexId: true } });
+  let cardQuotes = 0;
+  if (cards.length) {
+    try {
+      const results = await new TcgdexChaseCardProvider().fetchCardQuotes(cards, date);
+      for (const q of results) {
+        await prisma.cardPrice.upsert({
+          where: {
+            chaseCardId_source_date: { chaseCardId: q.chaseCardId, source: q.source, date: q.date },
+          },
+          update: { price: q.price },
+          create: q,
+        });
+      }
+      cardQuotes = results.length;
+    } catch (err) {
+      ctx.logger.error({ err }, 'Échec du relevé des cartes phares (TCGdex)');
+    }
+  }
+
+  ctx.status.lastMarketRun = new Date();
+  ctx.logger.info({ quotes, cardQuotes }, 'Relevé du marché secondaire terminé');
+}

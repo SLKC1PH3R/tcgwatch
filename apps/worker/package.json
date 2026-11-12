@@ -1,0 +1,31 @@
+{
+  "name": "@tcgwatch/worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch --env-file-if-exists=../../.env src/index.ts",
+    "build": "tsup",
+    "start": "node dist/index.js",
+    "typecheck": "tsc -p tsconfig.json",
+    "check-once": "tsx --env-file-if-exists=../../.env src/cli.ts"
+  },
+  "dependencies": {
+    "@prisma/adapter-pg": "^7.10.1",
+    "@prisma/client": "^7.10.1",
+    "dotenv": "^18.0.10",
+    "node-cron": "^4.6.0",
+    "pg": "^8.16.3",
+    "pino": "^10.4.0",
+    "playwright": "^1.65.0",
+    "prisma": "^7.10.1"
+  },
+  "devDependencies": {
+    "@tcgwatch/adapters": "workspace:*",
+    "@tcgwatch/db": "workspace:*",
+    "@tcgwatch/market": "workspace:*",
+    "@tcgwatch/shared": "workspace:*",
+    "tsup": "^9.0.0",
+    "tsx": "^4.23.15"
+  }
+}
