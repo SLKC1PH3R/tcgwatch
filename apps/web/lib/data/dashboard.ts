@@ -9,8 +9,8 @@ export async function getRecentRestocks(limit = 6) {
   return prisma.alertEvent.findMany({
     where: { type: { in: ['BACK_IN_STOCK', 'PREORDER_OPEN'] } },
     include: {
-      product: { select: { id: true, name: true } },
-      listing: { select: { retailer: { select: { name: true } } } },
+      product: { select: { id: true, name: true, imageUrl: true, images: true } },
+      listing: { select: { lastImageUrl: true, retailer: { select: { name: true } } } },
     },
     orderBy: { createdAt: 'desc' },
     take: limit,

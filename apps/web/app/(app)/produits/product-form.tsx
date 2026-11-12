@@ -14,6 +14,8 @@ export interface ProductFormValues {
   releaseId?: string | null;
   ean?: string | null;
   imageUrl?: string | null;
+  brand?: string | null;
+  description?: string | null;
   msrp?: number | null;
   targetPrice?: number | null;
   releaseDate?: string;
@@ -93,6 +95,19 @@ export function ProductForm({
       <div className="space-y-2">
         <Label htmlFor="imageUrl">URL de l’image</Label>
         <Input id="imageUrl" name="imageUrl" type="url" defaultValue={values.imageUrl ?? ''} />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="brand">Marque</Label>
+        <Input id="brand" name="brand" defaultValue={values.brand ?? ''} />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="description">Description</Label>
+        <Textarea
+          id="description"
+          name="description"
+          rows={4}
+          defaultValue={values.description ?? ''}
+        />
       </div>
       <div className="space-y-2">
         <Label htmlFor="notes">Notes</Label>

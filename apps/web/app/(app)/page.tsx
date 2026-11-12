@@ -10,6 +10,7 @@ import Link from 'next/link';
 import { formatDate, formatDateTime, formatPercent, formatPrice } from '@tcgwatch/shared';
 import { Countdown } from '@/components/countdown';
 import { PageHeader } from '@/components/page-header';
+import { Thumb } from '@/components/thumb';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -213,17 +214,22 @@ export default async function DashboardPage() {
               <ul className="divide-y">
                 {d.restocks.map((r) => (
                   <li key={r.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
-                    <div className="min-w-0">
-                      <Link
-                        href={`/produits/${r.product.id}`}
-                        className="text-sm font-medium hover:underline"
-                      >
-                        {r.product.name}
-                      </Link>
-                      <p className="text-xs text-muted-foreground">
-                        {ALERT_LABEL[r.type]} · {r.listing?.retailer.name ?? '—'} ·{' '}
-                        {formatDateTime(r.createdAt)}
-                      </p>
+                    <div className="flex min-w-0 items-center gap-3">
+                      <Thumb
+                        src={r.product.imageUrl ?? r.product.images[0] ?? r.listing?.lastImageUrl}
+                      />
+                      <div className="min-w-0">
+                        <Link
+                          href={`/produits/${r.product.id}`}
+                          className="text-sm font-medium hover:underline"
+                        >
+                          {r.product.name}
+                        </Link>
+                        <p className="text-xs text-muted-foreground">
+                          {ALERT_LABEL[r.type]} · {r.listing?.retailer.name ?? '—'} ·{' '}
+                          {formatDateTime(r.createdAt)}
+                        </p>
+                      </div>
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-medium tabular-nums">

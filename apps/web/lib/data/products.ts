@@ -1,11 +1,12 @@
 import 'server-only';
+import { dedupeImages } from '@tcgwatch/adapters';
 import { prisma, type Prisma } from '@tcgwatch/db';
 import { isBuyable, toNumber, type Availability } from '@tcgwatch/shared';
 
 const productInclude = {
   release: { select: { id: true, nameFr: true, setCode: true, releaseDate: true } },
   listings: {
-    include: { retailer: { select: { id: true, name: true, slug: true } } },
+    include: { retailer: { select: { id: true, name: true, slug: true, websiteUrl: true } } },
     orderBy: { createdAt: 'asc' },
   },
 } satisfies Prisma.ProductInclude;
@@ -28,6 +29,10 @@ export interface ListingDTO {
   lastError: string | null;
   consecutiveErrors: number;
   title: string | null;
+  retailerId: string;
+  imageUrl: string | null;
+  sku: string | null;
+  category: string | null;
 }
 
 export interface ProductDTO {
@@ -37,6 +42,11 @@ export interface ProductDTO {
   type: string;
   ean: string | null;
   imageUrl: string | null;
+  /** Image affichée : saisie, sinon galerie, sinon image d'une fiche revendeur. */
+  displayImage: string | null;
+  images: string[];
+  description: string | null;
+  brand: string | null;
   msrp: number | null;
   targetPrice: number | null;
   releaseDate: Date | null;
@@ -70,6 +80,10 @@ function toListingDTO(l: ProductRow['listings'][number]): ListingDTO {
     lastError: l.lastError,
     consecutiveErrors: l.consecutiveErrors,
     title: l.lastTitle,
+    retailerId: l.retailer.id,
+    imageUrl: l.lastImageUrl,
+    sku: l.sku,
+    category: l.category,
   };
 }
 
@@ -99,6 +113,12 @@ function toProductDTO(p: ProductRow): ProductDTO {
     type: p.type,
     ean: p.ean,
     imageUrl: p.imageUrl,
+    displayImage: p.imageUrl ?? p.images[0] ?? listings.find((l) => l.imageUrl)?.imageUrl ?? null,
+    images: dedupeImages(
+      [p.imageUrl, ...p.images, ...listings.map((l) => l.imageUrl)].filter((u): u is string => !!u),
+    ),
+    description: p.description,
+    brand: p.brand,
     msrp: toNumber(p.msrp),
     targetPrice: toNumber(p.targetPrice),
     releaseDate: p.releaseDate,

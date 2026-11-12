@@ -95,9 +95,30 @@ export function ListingRow({ listing }: { listing: ListingDTO }) {
           </form>
         </div>
       </div>
-      <p className="truncate text-xs text-muted-foreground" title={listing.url}>
-        {listing.title ?? listing.url}
-      </p>
+      <div className="flex items-center gap-3">
+        {listing.imageUrl && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            referrerPolicy="no-referrer"
+            src={listing.imageUrl}
+            alt=""
+            loading="lazy"
+            className="size-10 shrink-0 rounded border bg-white object-contain"
+          />
+        )}
+        <div className="min-w-0 space-y-0.5">
+          <p className="truncate text-xs text-muted-foreground" title={listing.url}>
+            {listing.title ?? listing.url}
+          </p>
+          {(listing.category || listing.sku) && (
+            <p className="truncate text-xs text-muted-foreground">
+              {listing.category}
+              {listing.category && listing.sku && ' · '}
+              {listing.sku && <>Réf. {listing.sku}</>}
+            </p>
+          )}
+        </div>
+      </div>
       <p className="text-xs text-muted-foreground">
         Dernier relevé : {formatDateTime(listing.lastCheckedAt)}
         {listing.lastInStockAt && (

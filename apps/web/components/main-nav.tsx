@@ -1,6 +1,6 @@
 'use client';
 
-import { CalendarDays, ChartLine, LayoutDashboard, Package, Vault } from 'lucide-react';
+import { CalendarDays, ChartLine, LayoutDashboard, Package, Store, Vault } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
@@ -9,6 +9,7 @@ const LINKS = [
   { href: '/', label: 'Tableau de bord', icon: LayoutDashboard },
   { href: '/calendrier', label: 'Calendrier', icon: CalendarDays },
   { href: '/produits', label: 'Produits suivis', icon: Package },
+  { href: '/revendeurs', label: 'Revendeurs', icon: Store },
   { href: '/collection', label: 'Ma collection', icon: Vault },
   { href: '/marche', label: 'Marché', icon: ChartLine },
 ] as const;

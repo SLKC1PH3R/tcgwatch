@@ -6,7 +6,7 @@ import { redirect } from 'next/navigation';
 import { z } from 'zod';
 import { AdapterError, detectRetailer } from '@tcgwatch/adapters';
 import { prisma, ProductType } from '@tcgwatch/db';
-import { AVAILABILITIES, guessProductType } from '@tcgwatch/shared';
+import { AVAILABILITIES, guessProductType, normalizeEan } from '@tcgwatch/shared';
 import { requireUser } from '@/lib/auth';
 import { getWebFetcher } from '@/lib/fetcher';
 import {
@@ -27,6 +27,11 @@ export interface TestedListing {
   availability: (typeof AVAILABILITIES)[number];
   releaseDate?: string;
   imageUrl?: string;
+  images?: string[];
+  description?: string;
+  brand?: string;
+  sku?: string;
+  category?: string;
   ean?: string;
   stockAlertUrl?: string;
 }
@@ -92,6 +97,11 @@ export async function testUrlAction(
       availability: r.availability,
       releaseDate: r.releaseDate?.toISOString().slice(0, 10),
       imageUrl: r.imageUrl,
+      images: r.images,
+      description: r.description,
+      brand: r.brand,
+      sku: r.sku,
+      category: r.category,
       ean: r.ean,
       stockAlertUrl: r.stockAlertUrl,
     };
@@ -136,6 +146,11 @@ const testedSchema = z.object({
   availability: z.enum(AVAILABILITIES),
   releaseDate: z.string().optional(),
   imageUrl: z.string().url().optional(),
+  images: z.array(z.string().url()).max(12).optional(),
+  description: z.string().max(2000).optional(),
+  brand: z.string().max(120).optional(),
+  sku: z.string().max(120).optional(),
+  category: z.string().max(200).optional(),
   ean: z.string().optional(),
   stockAlertUrl: z.string().url().optional(),
 });
@@ -204,12 +219,35 @@ export async function addListingAction(
         type: input.newType ?? 'AUTRE',
         releaseId: input.releaseId ?? null,
         imageUrl: tested?.imageUrl,
+        images: tested?.images ?? (tested?.imageUrl ? [tested.imageUrl] : []),
+        description: tested?.description,
+        brand: tested?.brand,
         ean: eanFree ? tested?.ean : undefined,
       },
     });
     productId = product.id;
-  } else if (!(await prisma.product.findUnique({ where: { id: productId } }))) {
-    return { error: 'Produit introuvable.' };
+  } else {
+    const existing = await prisma.product.findUnique({ where: { id: productId } });
+    if (!existing) return { error: 'Produit introuvable.' };
+    // Complète un produit existant sans écraser ce qui est déjà renseigné.
+    if (tested) {
+      const images = [
+        ...new Set([
+          ...existing.images,
+          ...(tested.images ?? []),
+          ...(tested.imageUrl ? [tested.imageUrl] : []),
+        ]),
+      ].slice(0, 12);
+      await prisma.product.update({
+        where: { id: productId },
+        data: {
+          imageUrl: existing.imageUrl ?? tested.imageUrl,
+          images,
+          description: existing.description ?? tested.description,
+          brand: existing.brand ?? tested.brand,
+        },
+      });
+    }
   }
 
   // Revendeur : existant ou créé à la volée
@@ -238,6 +276,9 @@ export async function addListingAction(
             lastCheckedAt: now,
             nextCheckAt: new Date(now.getTime() + input.checkIntervalMin * 60_000),
             lastTitle: tested.title,
+            lastImageUrl: tested.imageUrl,
+            sku: tested.sku,
+            category: tested.category,
             lastPrice: tested.price,
             lastCurrency: tested.currency,
             lastAvailability: tested.availability,
@@ -283,8 +324,18 @@ const productSchema = z.object({
   name: z.string().trim().min(2, 'Nom trop court').max(200),
   type: z.enum(ProductType),
   releaseId: optionalText,
-  ean: optionalText,
+  ean: optionalText.transform((v, ctx) => {
+    if (v === undefined) return undefined;
+    const ean = normalizeEan(v);
+    if (!ean) {
+      ctx.addIssue({ code: 'custom', message: 'EAN invalide (8 à 14 chiffres).' });
+      return z.NEVER;
+    }
+    return ean;
+  }),
   imageUrl: optionalText.pipe(z.string().url('URL d’image invalide').optional()),
+  brand: optionalText.pipe(z.string().max(120).optional()),
+  description: optionalText.pipe(z.string().max(2000, 'Description trop longue').optional()),
   msrp: optionalPrice,
   targetPrice: optionalPrice,
   releaseDate: optionalDate,
@@ -342,6 +393,8 @@ export async function updateProductAction(
       releaseId: d.releaseId ?? null,
       ean: d.ean ?? null,
       imageUrl: d.imageUrl ?? null,
+      brand: d.brand ?? null,
+      description: d.description ?? null,
       notes: d.notes ?? null,
       // Une date saisie à la main n'est plus écrasée par les revendeurs.
       releaseDateSource: dateChanged

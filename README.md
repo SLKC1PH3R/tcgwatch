@@ -24,7 +24,13 @@ prix du marché secondaire et valorisation de sa collection.
 - **Suivi stock & prix** : une architecture d'adaptateurs par site (JSON-LD schema.org générique, plus
   Play-In, Philibert, Cultura et Smyths Toys), une fréquence configurable par fiche, un délai aléatoire,
   une seule requête à la fois par domaine, un backoff exponentiel et le respect de `robots.txt`.
-  Formulaire « ajouter une URL » avec détection du revendeur et test immédiat.
+  Formulaire « ajouter une URL » avec détection du revendeur et test immédiat. Chaque relevé récupère
+  le maximum d'infos de la fiche : **galerie d'images** (dans la plus grande taille disponible),
+  description, marque, EAN normalisé, référence et rayon du site.
+- **Annuaire des revendeurs** : 17 sites français vendant du Pokémon TCG (boutiques spécialisées,
+  enseignes culturelles, jouets, grandes surfaces), chacun avec son lien vers le rayon Pokémon et
+  son statut de relevé vérifié (fiable, via Chromium, bloqué, non testé). Depuis une fiche produit,
+  un clic lance la recherche du produit sur chaque site où il n'est pas encore suivi.
 - **Alertes** [ntfy](https://ntfy.sh), et Telegram en option : retour en stock, prix ≤ prix cible
   (défini **par produit** et **par fiche revendeur**, la fiche est prioritaire), ouverture d'une
   précommande. Anti-doublon de 6 h.
@@ -174,8 +180,16 @@ Volume persistant : `uploads` (photos de la collection). Les données sont dans 
 
 ## Ajouter un adaptateur revendeur
 
-Un site qui publie un JSON-LD `schema.org/Product` correct fonctionne **sans code** : l'adaptateur
-générique est utilisé automatiquement. Pour un site qui demande une logique spécifique :
+Un site qui publie un JSON-LD `schema.org/Product` correct, ou une fiche PrestaShop standard
+(formulaire `#add-to-cart-or-refresh`), fonctionne **sans code** : l'adaptateur générique est utilisé
+automatiquement.
+
+Pour le faire apparaître dans la page **Revendeurs**, ajoutez-le à `RETAILER_DIRECTORY`
+(`packages/adapters/src/directory.ts`) avec son rayon Pokémon, son modèle de recherche (`{q}`) et son
+statut de relevé constaté. Le worker synchronise l'annuaire en base à chaque démarrage
+(`pnpm --filter @tcgwatch/worker check-once retailers` pour le faire à la main).
+
+Pour un site qui demande une logique spécifique :
 
 1. **Enregistrer une fiche réelle** comme fixture :
    ```bash

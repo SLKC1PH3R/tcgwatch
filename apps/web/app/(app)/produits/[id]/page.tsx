@@ -1,7 +1,8 @@
-import { Plus, Trash2 } from 'lucide-react';
+import { ExternalLink, Plus, Search, Trash2 } from 'lucide-react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { buildSearchUrl, RETAILER_ACCESS_LABELS, searchTermsFor } from '@tcgwatch/adapters';
 import { prisma } from '@tcgwatch/db';
 import {
   formatDate,
@@ -15,6 +16,7 @@ import {
 import { FormError } from '@/components/form-message';
 import { PageHeader } from '@/components/page-header';
 import { PriceChart } from '@/components/price-chart';
+import { ProductGallery } from '@/components/product-gallery';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -38,7 +40,7 @@ export default async function ProductPage({ params, searchParams }: Props) {
   const product = await getProduct(id);
   if (!product) notFound();
 
-  const [history, releases, alerts, marketPrices] = await Promise.all([
+  const [history, releases, alerts, marketPrices, retailers] = await Promise.all([
     getPriceHistory(id),
     getReleaseOptions(),
     prisma.alertEvent.findMany({
@@ -47,7 +49,23 @@ export default async function ProductPage({ params, searchParams }: Props) {
       take: 10,
     }),
     prisma.marketPrice.findMany({ where: { productId: id }, orderBy: { date: 'desc' }, take: 5 }),
+    prisma.retailer.findMany({
+      where: { enabled: true, searchUrl: { not: null } },
+      select: { id: true, name: true, searchUrl: true, access: true },
+      orderBy: { name: 'asc' },
+    }),
   ]);
+
+  // Recherche du produit sur les sites de l'annuaire où il n'est pas encore suivi.
+  const followed = new Set(product.listings.map((l) => l.retailerId));
+  const terms = searchTermsFor(product.name);
+  const searches = retailers
+    .filter((r) => !followed.has(r.id))
+    .map((r) => ({ ...r, href: buildSearchUrl(r.searchUrl, terms) }))
+    .filter((r): r is typeof r & { href: string } => !!r.href);
+  const categories = [
+    ...new Set(product.listings.map((l) => l.category).filter((c): c is string => !!c)),
+  ];
 
   return (
     <>
@@ -77,7 +95,7 @@ export default async function ProductPage({ params, searchParams }: Props) {
       <FormError message={erreur} />
 
       <div className="grid gap-6 lg:grid-cols-3">
-        <div className="space-y-6 lg:col-span-2">
+        <div className="min-w-0 space-y-6 lg:col-span-2">
           <Card>
             <CardHeader>
               <div className="space-y-1">
@@ -157,16 +175,84 @@ export default async function ProductPage({ params, searchParams }: Props) {
           </Card>
         </div>
 
-        <div className="space-y-6">
-          {product.imageUrl && (
-            <Card className="items-center py-4">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                referrerPolicy="no-referrer"
-                src={product.imageUrl}
-                alt={product.name}
-                className="max-h-56 object-contain"
-              />
+        <div className="min-w-0 space-y-6">
+          <Card>
+            <CardContent className="space-y-4">
+              {product.images.length > 0 ? (
+                <ProductGallery images={product.images} alt={product.name} />
+              ) : (
+                <p className="rounded-lg border border-dashed py-10 text-center text-sm text-muted-foreground">
+                  Pas encore d’image : elle sera reprise de la première fiche revendeur relevée.
+                </p>
+              )}
+              <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-sm">
+                {product.brand && (
+                  <>
+                    <dt className="text-muted-foreground">Marque</dt>
+                    <dd>{product.brand}</dd>
+                  </>
+                )}
+                {product.ean && (
+                  <>
+                    <dt className="text-muted-foreground">EAN</dt>
+                    <dd className="font-mono text-xs leading-5">{product.ean}</dd>
+                  </>
+                )}
+                {product.msrp !== null && (
+                  <>
+                    <dt className="text-muted-foreground">Prix public</dt>
+                    <dd className="tabular-nums">{formatPrice(product.msrp)}</dd>
+                  </>
+                )}
+                {product.targetPrice !== null && (
+                  <>
+                    <dt className="text-muted-foreground">Prix cible</dt>
+                    <dd className="tabular-nums">{formatPrice(product.targetPrice)}</dd>
+                  </>
+                )}
+                {categories.length > 0 && (
+                  <>
+                    <dt className="text-muted-foreground">Rayons</dt>
+                    <dd>{categories.join(' · ')}</dd>
+                  </>
+                )}
+              </dl>
+              {product.description && (
+                <p className="text-sm leading-relaxed text-muted-foreground">
+                  {product.description}
+                </p>
+              )}
+            </CardContent>
+          </Card>
+
+          {searches.length > 0 && (
+            <Card>
+              <CardHeader className="flex-col">
+                <CardTitle>Chercher chez d’autres revendeurs</CardTitle>
+                <CardDescription>
+                  Recherche « {terms} » sur les sites de l’annuaire. Copiez l’URL de la fiche
+                  trouvée dans « Ajouter une fiche revendeur ».
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ul className="grid gap-1.5 text-sm sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
+                  {searches.map((r) => (
+                    <li key={r.id}>
+                      <a
+                        href={r.href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-accent"
+                        title={RETAILER_ACCESS_LABELS[r.access]}
+                      >
+                        <Search className="size-3.5 shrink-0 text-muted-foreground" />
+                        <span className="truncate">{r.name}</span>
+                        <ExternalLink className="ml-auto size-3.5 shrink-0 text-muted-foreground" />
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </CardContent>
             </Card>
           )}
 
@@ -214,6 +300,8 @@ export default async function ProductPage({ params, searchParams }: Props) {
                   releaseId: product.release?.id,
                   ean: product.ean,
                   imageUrl: product.imageUrl,
+                  brand: product.brand,
+                  description: product.description,
                   msrp: product.msrp,
                   targetPrice: product.targetPrice,
                   releaseDate: toDateInput(product.releaseDate),

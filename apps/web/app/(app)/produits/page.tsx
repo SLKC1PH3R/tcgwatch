@@ -70,11 +70,11 @@ export default async function ProductsPage() {
                   <TableRow key={p.id} className="align-top">
                     <TableCell className="min-w-56">
                       <div className="flex items-start gap-3">
-                        {p.imageUrl ? (
+                        {p.displayImage ? (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img
                             referrerPolicy="no-referrer"
-                            src={p.imageUrl}
+                            src={p.displayImage}
                             alt=""
                             className="size-12 shrink-0 rounded-md border bg-white object-contain"
                             loading="lazy"

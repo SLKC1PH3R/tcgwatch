@@ -39,9 +39,10 @@ export function AddUrlForm({ products, releases, defaultInterval, preselectedPro
         <CardHeader className="flex-col">
           <CardTitle>1. Tester l’URL</CardTitle>
           <CardDescription>
-            Revendeurs avec adaptateur dédié : Play-In, Philibert, Cultura, Smyths Toys. Les autres
-            sites sont lus via leurs données structurées (JSON-LD). Amazon, Fnac et Cdiscount ne
-            sont pas pris en charge.
+            Adaptateurs dédiés : Play-In, Philibert, Cultura, Smyths Toys. Les autres sites sont lus
+            via leurs données structurées (JSON-LD) ou leur fiche PrestaShop ; voir la page
+            Revendeurs pour l’état de chaque site. Amazon, Fnac et Cdiscount ne sont pas pris en
+            charge.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -85,50 +86,90 @@ export function AddUrlForm({ products, releases, defaultInterval, preselectedPro
                 </p>
               )}
               {test.result && (
-                <div className="flex gap-4">
-                  {test.result.imageUrl && (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      referrerPolicy="no-referrer"
-                      src={test.result.imageUrl}
-                      alt=""
-                      className="size-20 rounded-md border bg-white object-contain"
-                    />
+                <div className="space-y-3">
+                  <div className="flex gap-4">
+                    {test.result.imageUrl && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        referrerPolicy="no-referrer"
+                        src={test.result.imageUrl}
+                        alt=""
+                        className="size-20 rounded-md border bg-white object-contain"
+                      />
+                    )}
+                    <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
+                      <dt className="text-muted-foreground">Titre</dt>
+                      <dd className="font-medium">{test.result.title ?? '—'}</dd>
+                      <dt className="text-muted-foreground">Prix</dt>
+                      <dd className="tabular-nums">
+                        {formatPrice(test.result.price, test.result.currency)}
+                      </dd>
+                      <dt className="text-muted-foreground">Dispo</dt>
+                      <dd>
+                        <AvailabilityBadge availability={test.result.availability} />
+                      </dd>
+                      {test.result.releaseDate && (
+                        <>
+                          <dt className="text-muted-foreground">Sortie</dt>
+                          <dd>
+                            {new Date(test.result.releaseDate).toLocaleDateString('fr-FR', {
+                              timeZone: 'UTC',
+                            })}
+                          </dd>
+                        </>
+                      )}
+                      {test.result.ean && (
+                        <>
+                          <dt className="text-muted-foreground">EAN</dt>
+                          <dd className="font-mono text-xs">{test.result.ean}</dd>
+                        </>
+                      )}
+                      {test.result.brand && (
+                        <>
+                          <dt className="text-muted-foreground">Marque</dt>
+                          <dd>{test.result.brand}</dd>
+                        </>
+                      )}
+                      {test.result.category && (
+                        <>
+                          <dt className="text-muted-foreground">Rayon</dt>
+                          <dd>{test.result.category}</dd>
+                        </>
+                      )}
+                      {test.result.sku && (
+                        <>
+                          <dt className="text-muted-foreground">Réf.</dt>
+                          <dd className="font-mono text-xs">{test.result.sku}</dd>
+                        </>
+                      )}
+                      {test.result.stockAlertUrl && (
+                        <>
+                          <dt className="text-muted-foreground">Alerte site</dt>
+                          <dd>détectée</dd>
+                        </>
+                      )}
+                    </dl>
+                  </div>
+                  {test.result.images && test.result.images.length > 1 && (
+                    <div className="flex flex-wrap gap-2">
+                      {test.result.images.map((src) => (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          key={src}
+                          referrerPolicy="no-referrer"
+                          src={src}
+                          alt=""
+                          loading="lazy"
+                          className="size-12 rounded-md border bg-white object-contain"
+                        />
+                      ))}
+                    </div>
                   )}
-                  <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
-                    <dt className="text-muted-foreground">Titre</dt>
-                    <dd className="font-medium">{test.result.title ?? '—'}</dd>
-                    <dt className="text-muted-foreground">Prix</dt>
-                    <dd className="tabular-nums">
-                      {formatPrice(test.result.price, test.result.currency)}
-                    </dd>
-                    <dt className="text-muted-foreground">Dispo</dt>
-                    <dd>
-                      <AvailabilityBadge availability={test.result.availability} />
-                    </dd>
-                    {test.result.releaseDate && (
-                      <>
-                        <dt className="text-muted-foreground">Sortie</dt>
-                        <dd>
-                          {new Date(test.result.releaseDate).toLocaleDateString('fr-FR', {
-                            timeZone: 'UTC',
-                          })}
-                        </dd>
-                      </>
-                    )}
-                    {test.result.ean && (
-                      <>
-                        <dt className="text-muted-foreground">EAN</dt>
-                        <dd className="font-mono text-xs">{test.result.ean}</dd>
-                      </>
-                    )}
-                    {test.result.stockAlertUrl && (
-                      <>
-                        <dt className="text-muted-foreground">Alerte site</dt>
-                        <dd>détectée</dd>
-                      </>
-                    )}
-                  </dl>
+                  {test.result.description && (
+                    <p className="line-clamp-4 text-sm text-muted-foreground">
+                      {test.result.description}
+                    </p>
+                  )}
                 </div>
               )}
             </div>
