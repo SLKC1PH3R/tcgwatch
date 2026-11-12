@@ -142,6 +142,43 @@ export const RETAILER_DIRECTORY: RetailerInfo[] = [
     },
   },
   {
+    slug: 'akilon',
+    name: 'Akilon',
+    domain: 'akilon.eu',
+    kind: 'SPECIALIST',
+    access: 'OK',
+    websiteUrl: 'https://akilon.eu/',
+    pokemonUrl: 'https://akilon.eu/categorie-produit/cartes-pokemon-tcg-figurines/',
+    searchUrl: 'https://akilon.eu/?s={q}&post_type=product',
+    minDelayMs: 3000,
+    notes:
+      'WooCommerce. Rayon mêlant cartes, figurines et accessoires : seuls les produits scellés du catalogue FR sont suivis (protections, Poké Balls, sleeves ignorés).',
+    discovery: {
+      productUrl: /^https:\/\/akilon\.eu\/produit\/[^/]+\/$/,
+      pages: ['https://akilon.eu/categorie-produit/cartes-pokemon-tcg-figurines/page/{page}/'],
+      maxPages: 12,
+    },
+  },
+  {
+    slug: 'masterset',
+    name: 'Masterset',
+    domain: 'masterset.store',
+    kind: 'SPECIALIST',
+    access: 'OK',
+    websiteUrl: 'https://masterset.store/',
+    pokemonUrl: 'https://masterset.store/collections/pokemon',
+    searchUrl: 'https://masterset.store/search?q={q}&type=product',
+    // Shopify répond 429 au-delà de quelques requêtes rapprochées.
+    minDelayMs: 8000,
+    notes:
+      'Shopify. Rayon mêlant FR, japonais, chinois, coréen, figurines et autres jeux : seuls les produits FR du catalogue sont suivis. Limites d’achat par client fréquentes.',
+    discovery: {
+      productUrl: /^https:\/\/masterset\.store\/products\/[^/]+$/,
+      pages: ['https://masterset.store/collections/pokemon?page={page}'],
+      maxPages: 30,
+    },
+  },
+  {
     slug: 'esprit-jeu',
     name: 'Esprit Jeu',
     domain: 'espritjeu.com',

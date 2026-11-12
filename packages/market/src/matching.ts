@@ -29,19 +29,29 @@ const NOISE = new Set(
 const SET_CODE = /^(?:me|ev|eb|sv|swsh|ssh|sm|xy|bw|m)\d+(?:[.,]\d+)?[a-z]?$/;
 
 /** Marqueurs d'une version non française (le catalogue est 100 % FR). */
-const FOREIGN =
-  /\b(?:anglais|anglaise|english|japonais|japonaise|japanese|cor[ée]en(?:ne)?|korean|chinois(?:e)?|chinese|allemand|italien|espagnol|portugais)\b|(?:^|[\s[(\-–])(?:EN|ENG|UK|JP|JAP|JPN|KO|KR|CN|CHN)(?=$|[\s\])\-–])/;
+const FOREIGN_WORD =
+  /\b(?:anglais|anglaise|english|japonais|japonaise|japanese|cor[ée]en(?:ne)?|korean|chinois(?:e)?|chinese|simplified|allemand|italien|espagnol|portugais)\b/i;
+/** Codes de langue en capitales seulement (« EN », « [CN] ») : « en » est un mot français. */
+const FOREIGN_CODE = /(?:^|[\s[(\-–])(?:EN|ENG|UK|JP|JAP|JPN|KO|KR|CN|CHN)(?=$|[\s\])\-–])/;
+
+/** Autres jeux de cartes vendus dans les mêmes rayons. */
+const OTHER_GAME =
+  /\b(?:mtg|magic|palworld|one piece|lorcana|yu-?gi-?oh|dragon ball|digimon|riftbound|star wars unlimited)\b/i;
+
+/** Lots de boîtes (cases, cartons) : un prix sans rapport avec le produit à l'unité. */
+const BULK = /\b(?:case|caisse|carton)\b(?! ?(?:de )?rangement)/i;
 
 /** Accessoires et produits dérivés : jamais des produits scellés de cartes. */
 const ACCESSORY =
-  /prot[eè]ge|sleeves?|pochettes?|classeur|portfolio|binder|deck ?box|tapis|playmat|toploader|range-?cartes|album|peluche|figurine seule|puzzle|monopoly|jeu de soci[ée]t[ée]|lampe|mug|t-?shirt|sac\b|calendrier de l.avent|4d build|carte[s]? (?:à l'unit[ée]|seule)|gradée?/i;
+  /prot[eè]ge|protection|crystal ?box|bo[iî]tier|phoenix shield|pok[ée] ?ball|\b(?:lune|hyper|honor|super|master|luxe|soin) ?ball\b|sleeves?|pochettes?|classeur|portfolio|binder|deck ?box|tapis|playmat|toploader|range-?cartes|album|peluche|figurine seule|puzzle|monopoly|jeu de soci[ée]t[ée]|lampe|mug|t-?shirt|sac\b|calendrier de l.avent|4d build|carte[s]? (?:à l'unit[ée]|seule)|gradée?/i;
 
 export function isForeignTitle(title: string): boolean {
-  return FOREIGN.test(title);
+  return FOREIGN_WORD.test(title) || FOREIGN_CODE.test(title);
 }
 
+/** Accessoire, autre jeu ou lot de boîtes : jamais rapproché d'un produit du catalogue. */
 export function isAccessoryTitle(title: string): boolean {
-  return ACCESSORY.test(title);
+  return ACCESSORY.test(title) || OTHER_GAME.test(title) || BULK.test(title);
 }
 
 function normalize(text: string): string {
@@ -54,7 +64,9 @@ export function productTokens(title: string): string[] {
   const tokens = new Set<string>();
   // Synonymes porteurs de sens, avant de retirer chiffres et mots de type.
   if (/\b30\s*(?:e|eme|a|ans)\b|anniversaire/.test(t)) tokens.add('30ans');
-  if (/\b(?:lot|bundle)\b/.test(t)) tokens.add('bundle');
+  // « Lot de boosters » = bundle de 6 ; « Lot 4 boosters » (autre nombre) n'en est pas un.
+  if (/\bbundle\b|\blot\b(?!\s*(?:de\s*)?(?:[1-57-9]|\d{2,})\s*boosters?)/.test(t))
+    tokens.add('bundle');
   if (/\bdemi\b|\b18 boosters\b/.test(t)) tokens.add('demi');
   // « Pokémon2025 » → « pokemon 2025 » : l'année redevient un mot à part.
   for (const word of t.replace(/([a-z])(20\d\d)\b/g, '$1 $2').split(/[^a-z0-9]+/)) {
@@ -96,6 +108,16 @@ export function matchProduct(title: string, catalog: CatalogProduct[]): CatalogM
   const tokens = productTokens(title);
   if (tokens.length === 0) return null;
   const set = new Set(tokens);
+  // « Lot 4 boosters » : ni un booster à l'unité ni un bundle de 6 → pas de rapprochement.
+  if (
+    type === 'BOOSTER' &&
+    !set.has('bundle') &&
+    /\b(?:[2-9]|\d{2,})\s*boosters?\b/.test(normalize(title))
+  )
+    return null;
+  // « Lot 2 Tripacks », « Lot de 3 ETB » : plusieurs exemplaires, prix sans rapport.
+  if (/\blot\s+(?:de\s+)?(?:[2-9]|\d{2,})\s+(?!boosters?\b)[a-z]/.test(normalize(title)))
+    return null;
 
   const sameType = catalog.filter((p) => p.type === type);
   const exact: CatalogProduct[] = [];

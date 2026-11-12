@@ -58,14 +58,20 @@ function fromMiniatures($: CheerioAPI, pageUrl: string): CatalogLink[] {
 }
 
 /** Repli : toute ancre vers une URL de fiche produit du site. */
-function fromAnchors($: CheerioAPI, pageUrl: string, productUrl: RegExp): CatalogLink[] {
-  const out: CatalogLink[] = [];
+function fromAnchors(
+  $: CheerioAPI,
+  pageUrl: string,
+  productUrl: RegExp,
+): (CatalogLink & { fromAlt?: boolean })[] {
+  const out: (CatalogLink & { fromAlt?: boolean })[] = [];
   $('a[href]').each((_, el) => {
     const a = $(el);
     const url = absolute(a.attr('href'), pageUrl);
     if (!url || !productUrl.test(url)) return;
-    const title = clean(a.text()) || clean(a.attr('title')) || clean(a.find('img').attr('alt'));
-    if (title.length >= 8) out.push({ title, url });
+    const text = clean(a.text()) || clean(a.attr('title')) || clean(a.attr('aria-label'));
+    // Le texte alternatif d'une image est souvent une description SEO : dernier recours.
+    const title = text || clean(a.find('img').attr('alt'));
+    if (title.length >= 8) out.push({ title, url, fromAlt: !text });
   });
   return out;
 }
@@ -81,8 +87,10 @@ export function extractCatalogLinks(
   productUrl: RegExp,
 ): CatalogLink[] {
   const $ = load(html);
+  // Images en chargement différé : le <noscript> contient du HTML lu comme du texte.
+  $('noscript, script, style, template').remove();
   const host = new URL(pageUrl).hostname;
-  const best = new Map<string, string>();
+  const best = new Map<string, { title: string; fromAlt: boolean }>();
   for (const link of [
     ...fromItemList($, pageUrl),
     ...fromMiniatures($, pageUrl),
@@ -97,8 +105,14 @@ export function extractCatalogLinks(
     if (u.hostname !== host || !productUrl.test(link.url)) continue;
     u.search = '';
     const key = u.toString();
+    const fromAlt = 'fromAlt' in link && link.fromAlt === true;
     const current = best.get(key);
-    if (!current || link.title.length > current.length) best.set(key, link.title);
+    // Un titre affiché l'emporte sur un texte alternatif ; à égalité, le plus complet.
+    const better =
+      !current ||
+      (current.fromAlt && !fromAlt) ||
+      (current.fromAlt === fromAlt && link.title.length > current.title.length);
+    if (better) best.set(key, { title: link.title, fromAlt });
   }
-  return [...best].map(([url, title]) => ({ url, title }));
+  return [...best].map(([url, { title }]) => ({ url, title }));
 }

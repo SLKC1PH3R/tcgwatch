@@ -40,13 +40,17 @@ interface Candidate {
  */
 export async function discoverListings(
   ctx: Pick<WorkerContext, 'fetcher' | 'logger' | 'env' | 'browser'>,
+  /** Slug d'un seul revendeur (test d'un site ajouté) ; tous par défaut. */
+  only?: string,
 ): Promise<DiscoverySummary> {
   // Tout le catalogue, y compris les produits des années passées (prix actuel en boutique).
   const products = await prisma.product.findMany({
     select: { id: true, name: true, type: true, listings: { select: { retailerId: true } } },
   });
   const catalog: CatalogProduct[] = products.map((p) => ({ id: p.id, name: p.name, type: p.type }));
-  const retailers = await prisma.retailer.findMany({ where: { enabled: true } });
+  const retailers = await prisma.retailer.findMany({
+    where: { enabled: true, ...(only ? { slug: only } : {}) },
+  });
   const byDomain = new Map(RETAILER_DIRECTORY.map((r) => [r.domain, r]));
 
   const summary: DiscoverySummary = { pages: 0, links: 0, matched: 0, created: 0 };

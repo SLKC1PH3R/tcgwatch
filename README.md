@@ -26,7 +26,7 @@ prix du marché secondaire et valorisation de sa collection.
   par les imports).
 - **Catalogue 100 % automatique et 100 % français** : chaque sortie FR du calendrier Pokécardex
   devient un produit suivi (nom, type, image, date, prix conseillé). Chaque jour, le worker parcourt
-  les rayons Pokémon des boutiques (Play-In, Philibert, Agorajeux, Ludifolie, BCD Jeux — uniquement
+  les rayons Pokémon des boutiques (Play-In, Philibert, Agorajeux, Ludifolie, BCD Jeux, Akilon, Masterset — uniquement
   les pages autorisées par leur `robots.txt`) et la recherche Play-In, puis rattache les fiches
   trouvées aux produits du catalogue : même type et mêmes mots distinctifs, versions EN/JP/KO et
   accessoires écartés, aucun rattachement en cas de doute. Aucune saisie n'est nécessaire.
@@ -41,7 +41,9 @@ prix du marché secondaire et valorisation de sa collection.
   Formulaire « ajouter une URL » avec détection du revendeur et test immédiat. Chaque relevé récupère
   le maximum d'infos de la fiche : **galerie d'images** (dans la plus grande taille disponible),
   description, marque, EAN normalisé, référence et rayon du site.
-- **Annuaire des revendeurs** : 18 sites français vendant du Pokémon TCG (boutiques spécialisées,
+- **Recherche globale** (barre latérale, raccourcis `/` et Ctrl+K) : produits scellés FR avec prix
+  conseillé, meilleur prix boutique et revente, extensions, et cartes Pokémon (prix Cardmarket via TCGdex).
+- **Annuaire des revendeurs** : 20 sites français vendant du Pokémon TCG (boutiques spécialisées,
   enseignes culturelles, jouets, grandes surfaces), chacun avec son lien vers le rayon Pokémon et
   son statut de relevé vérifié (fiable, via Chromium, bloqué, non testé). Depuis une fiche produit,
   un clic lance la recherche du produit sur chaque site où il n'est pas encore suivi.

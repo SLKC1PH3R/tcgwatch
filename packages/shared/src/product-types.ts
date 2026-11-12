@@ -30,7 +30,10 @@ export const PRODUCT_TYPE_LABELS: Record<ProductTypeKey, string> = {
 /** Devine le type de produit à partir d'un intitulé de fiche revendeur. */
 export function guessProductType(title: string): ProductTypeKey {
   const t = title.toLowerCase();
-  if (/dresseur d.?[ée]lite|\betb\b/.test(t)) return 'ETB';
+  if (/dresseur d.?[ée]lite|elite trainer box|\betb\b/.test(t)) return 'ETB';
+  // « Display Baggaïd 3 Boosters » : un pack vendu en présentoir, pas une boîte de 36.
+  if (/display/.test(t) && /\b3\s*boosters?\b/.test(t)) return 'TRIPACK';
+  if (/display/.test(t) && /\b2\s*boosters?\b/.test(t)) return 'BLISTER';
   if (/display|bo[iî]te de boosters|36 boosters|18 boosters/.test(t)) return 'DISPLAY';
   if (/tri-?pack|packs? (?:de )?3 boosters/.test(t)) return 'TRIPACK';
   if (/ultra.?premium|\bupc\b/.test(t)) return 'UPC';

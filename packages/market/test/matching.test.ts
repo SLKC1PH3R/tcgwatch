@@ -45,8 +45,46 @@ describe('matchProduct (intitulés réels)', () => {
       'Pokémon 30 ans - Ultra Premium Collection - Soirée',
       'Collection Ultra-Premium 30ᵉ Anniversaire – Soirée',
     ],
+    // Akilon (WooCommerce) : intitulés en anglais / avec tirets longs.
+    [
+      'Pokémon ME06 Règne Delta – Elite Trainer Box – 9 Boosters – Français',
+      'Coffret Dresseur d’élite Méga-Évolution - Règne Delta',
+    ],
+    [
+      'Display Pokémon ME06 Règne Delta – 36 Boosters Français Scellés',
+      'Boite de boosters Règne Delta',
+    ],
+    // Masterset (Shopify) : préfixes de précommande / limite et suffixe de boutique.
+    [
+      '[PRECOMMANDE] [LIMITE2] Display 36 boosters - ME06 Règne Delta [FR]-MASTERSET',
+      'Boite de boosters Règne Delta',
+    ],
+    [
+      "[PRECOMMANDE] [LIMITE2] ETB (Coffret dresseur d'élite) - ME06 Règne Delta [FR]-MASTERSET",
+      'Coffret Dresseur d’élite Méga-Évolution - Règne Delta',
+    ],
   ])('%s → %s', (title, expected) => {
     expect(nameOf(title)).toBe(expected);
+  });
+
+  it.each([
+    // Versions étrangères, autres jeux, lots de boîtes (Masterset).
+    'Pokémon [Japonais] - Boîte de 30 Boosters No Shrink - M6 Storm Emeralda-MASTERSET',
+    '[PRECOMMANDE] Display 15 boosters [Chinois] - Gem Pack Vol.7-MASTERSET',
+    'Pokémon - Case scellée 24 boosters blisters - ME06 - Règne Delta-MASTERSET',
+    'MTG - Decks Commander - Marvel Super Heroes',
+    // Plusieurs exemplaires d'un même produit.
+    'Lot 2 Tripacks - ME06 Règne Delta-MASTERSET',
+    // Accessoires dont l'intitulé ressemble à un produit scellé.
+    'Phoenix Shield – Crystal Box Display Pokémon 36 Boosters – Protection transparente – FR/NL/EN/DE',
+    'Phoenix Shield – Acrylic Case Magnetic – Pokémon ETB – Protection UV 98 % – FR/NL/EN/DE',
+    'Pokémon – Poké Ball TCG 2024 – 3 Boosters + Autocollants (Rouge/Blanc)',
+    // Pack de 3 boosters vendu en présentoir (24,99 €) : surtout pas le display de 36.
+    'Pokémon EV09 Aventures Ensemble – Display Baggaïd 3 Boosters | Écarlate & Violet',
+    // 4 boosters à l'unité : ni le booster seul ni le bundle de 6.
+    'Pokémon ME06 Règne Delta – Lot 4 Boosters – 4 Visuels Différents – Français',
+  ])('ignore « %s »', (title) => {
+    expect(nameOf(title)).toBeNull();
   });
 
   it.each([

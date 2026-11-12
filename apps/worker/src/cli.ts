@@ -4,7 +4,7 @@
  *   pnpm --filter @tcgwatch/worker check-once listings   # relève les listings à échéance
  *   pnpm --filter @tcgwatch/worker check-once tcgdex     # import TCGdex
  *   pnpm --filter @tcgwatch/worker check-once pokecardex # import du calendrier Pokécardex
- *   pnpm --filter @tcgwatch/worker check-once discover   # découverte des fiches revendeurs
+ *   pnpm --filter @tcgwatch/worker check-once discover [slug]  # découverte des fiches revendeurs
  *   pnpm --filter @tcgwatch/worker check-once market     # relevé du marché secondaire
  *   pnpm --filter @tcgwatch/worker check-once all-now    # force le relevé de TOUS les listings
  *   pnpm --filter @tcgwatch/worker check-once retailers  # synchronise l'annuaire des revendeurs
@@ -39,7 +39,7 @@ try {
       await importPokecardex(ctx);
       break;
     case 'discover':
-      await discoverListings(ctx);
+      await discoverListings(ctx, process.argv[3]);
       break;
     case 'market':
       await runMarketJob(ctx);
