@@ -2,6 +2,8 @@ import { LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { requireUser } from '@/lib/auth';
 import { MainNav } from '@/components/main-nav';
+import { SearchBox } from '@/components/search-box';
+import { Suspense } from 'react';
 import { logoutAction } from '../(auth)/actions';
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
@@ -22,6 +24,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             </Button>
           </form>
         </div>
+        <Suspense>
+          <SearchBox className="mx-4 mb-2 md:mx-3 md:mb-3" />
+        </Suspense>
         <MainNav />
         <div className="absolute inset-x-0 bottom-0 hidden border-t p-4 md:block">
           <p className="truncate text-sm font-medium">{user.name ?? user.email}</p>
