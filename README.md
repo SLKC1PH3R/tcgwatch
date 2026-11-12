@@ -122,7 +122,6 @@ La liste complète et commentée est dans [`.env.example`](.env.example). Aucun 
 | Variable                                        | Défaut                                   | Rôle                                                                   |
 | ----------------------------------------------- | ---------------------------------------- | ---------------------------------------------------------------------- |
 | `DATABASE_URL`                                  | **obligatoire**                          | Connexion PostgreSQL (Internal Connection URL de la base Dokploy)      |
-| `APP_DOMAIN`                                    | `tcg.digitalstack.cloud`                 | Domaine routé par Traefik                                              |
 | `APP_URL`                                       | `https://tcg.digitalstack.cloud`         | URL publique                                                           |
 | `TZ`                                            | `Europe/Paris`                           | Fuseau des crons et de l'affichage                                     |
 | `ALLOW_REGISTRATION`                            | `false`                                  | Autorise d'autres inscriptions après le premier compte                 |
@@ -150,16 +149,19 @@ La liste complète et commentée est dans [`.env.example`](.env.example). Aucun 
 1. **Environment** : coller au minimum :
    ```env
    DATABASE_URL=postgresql://postgres:<mot-de-passe>@<nom-interne-de-la-base>:5432/<base>
-   APP_DOMAIN=tcg.digitalstack.cloud
    APP_URL=https://tcg.digitalstack.cloud
    NTFY_URL=https://ntfy.sh/<topic-secret>
    ```
-1. **DNS** : un enregistrement `A` de `tcg.digitalstack.cloud` vers l'IP du VPS.
+1. **Domains** : _Add Domain_, service `web`, host `tcg.digitalstack.cloud`, path `/`, container port
+   `3000`, HTTPS activé avec _Let's Encrypt_.
+1. **DNS** : un enregistrement `A` de `tcg.digitalstack.cloud` vers l'IP du VPS. Derrière le proxy
+   Cloudflare (nuage orange), régler le chiffrement SSL/TLS sur **Full** (ou _Full (strict)_ une fois
+   le certificat émis) ; le mode _Flexible_ provoque des boucles de redirection.
 1. **Deploy**. Dokploy construit les deux images depuis le dépôt :
    - le **worker** applique les migrations Prisma, fait le seed si la base est vide, puis démarre
      les crons ;
-   - le **web** est exposé par Traefik en HTTPS (certificat Let's Encrypt via les labels du compose,
-     redirection HTTP vers HTTPS).
+   - le **web** est exposé par Traefik en HTTPS selon le domaine déclaré à l'étape _Domains_.
+     Après tout ajout ou changement de domaine, il faut **redéployer** le compose.
 1. Ouvrir `https://tcg.digitalstack.cloud` et créer le compte propriétaire.
 1. _(Optionnel)_ Activer l'**Auto Deploy** (webhook GitHub) pour redéployer à chaque push sur `main`.
 

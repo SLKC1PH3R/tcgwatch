@@ -1,8 +1,10 @@
 # TCGWatch — déploiement Dokploy (application de type « Docker Compose », build depuis le repo).
 #
 # Variables : onglet « Environment » de Dokploy (voir .env.example).
-# Le réseau `dokploy-network` est créé par Dokploy ; Traefik y route le domaine APP_DOMAIN et
-# la base PostgreSQL gérée par Dokploy y est joignable (DATABASE_URL = son « Internal Connection URL »).
+# Le domaine (HTTPS Let's Encrypt) se déclare dans l'onglet « Domains » de Dokploy : service `web`,
+# port 3000. Dokploy ajoute lui-même les labels Traefik au redéploiement.
+# La base PostgreSQL gérée par Dokploy est joignable via `dokploy-network`
+# (DATABASE_URL = son « Internal Connection URL »).
 
 name: tcgwatch
 
@@ -65,18 +67,6 @@ services:
     expose:
       - '3000'
     networks: [dokploy-network]
-    labels:
-      - traefik.enable=true
-      - traefik.docker.network=dokploy-network
-      - traefik.http.routers.tcgwatch-web.rule=Host(`${APP_DOMAIN:-tcg.digitalstack.cloud}`)
-      - traefik.http.routers.tcgwatch-web.entrypoints=websecure
-      - traefik.http.routers.tcgwatch-web.tls.certresolver=letsencrypt
-      - traefik.http.services.tcgwatch-web.loadbalancer.server.port=3000
-      # Redirection HTTP → HTTPS
-      - traefik.http.routers.tcgwatch-web-http.rule=Host(`${APP_DOMAIN:-tcg.digitalstack.cloud}`)
-      - traefik.http.routers.tcgwatch-web-http.entrypoints=web
-      - traefik.http.routers.tcgwatch-web-http.middlewares=tcgwatch-https
-      - traefik.http.middlewares.tcgwatch-https.redirectscheme.scheme=https
 
 volumes:
   uploads:
