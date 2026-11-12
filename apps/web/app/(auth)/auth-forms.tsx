@@ -20,7 +20,7 @@ export function LoginForm({
   return (
     <Card>
       <CardHeader className="flex-col">
-        <CardTitle>Connexion</CardTitle>
+        <CardTitle className="text-2xl">Connexion</CardTitle>
         <CardDescription>Accédez à votre tableau de bord.</CardDescription>
       </CardHeader>
       <CardContent>
@@ -70,7 +70,7 @@ export function RegisterForm({ firstUser }: { firstUser: boolean }) {
   return (
     <Card>
       <CardHeader className="flex-col">
-        <CardTitle>Créer un compte</CardTitle>
+        <CardTitle className="text-2xl">Créer un compte</CardTitle>
         <CardDescription>
           {firstUser
             ? 'Premier lancement : ce compte sera le propriétaire de l’instance.'

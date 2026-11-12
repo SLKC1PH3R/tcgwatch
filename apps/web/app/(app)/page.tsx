@@ -45,9 +45,9 @@ export default async function DashboardPage() {
         }
       />
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+      <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
         {/* Valeur de la collection */}
-        <Card>
+        <Card className="holo-frame md:col-span-2">
           <CardHeader>
             <div className="space-y-1">
               <CardTitle className="flex items-center gap-2">
@@ -58,12 +58,12 @@ export default async function DashboardPage() {
           </CardHeader>
           <CardContent className="space-y-3">
             <div>
-              <p className="text-3xl font-semibold tabular-nums">
+              <p className="font-display text-5xl font-extrabold tracking-tight tabular-nums md:text-6xl">
                 {formatPrice(d.valuation.estimatedValue)}
               </p>
               <p className="text-sm text-muted-foreground">valeur estimée</p>
             </div>
-            <div className="grid grid-cols-2 gap-3 text-sm">
+            <div className="grid max-w-md grid-cols-2 gap-3 text-sm">
               <div>
                 <p className="text-muted-foreground">Investi</p>
                 <p className="font-medium tabular-nums">{formatPrice(d.valuation.totalCost)}</p>
@@ -206,7 +206,7 @@ export default async function DashboardPage() {
         </Card>
 
         {/* Derniers retours en stock */}
-        <Card className="xl:col-span-2">
+        <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <PackageCheck className="size-4 text-muted-foreground" /> Derniers retours en stock

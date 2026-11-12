@@ -17,7 +17,10 @@ const LINKS = [
 export function MainNav() {
   const pathname = usePathname();
   return (
-    <nav className="flex gap-1 overflow-x-auto px-3 pb-2 md:flex-col md:px-3 md:pb-0">
+    <nav
+      aria-label="Navigation principale"
+      className="flex w-fit max-w-full gap-1 overflow-x-auto rounded-full border bg-popover p-1"
+    >
       {LINKS.map(({ href, label, icon: Icon }) => {
         const active = href === '/' ? pathname === '/' : pathname.startsWith(href);
         return (
@@ -26,11 +29,11 @@ export function MainNav() {
             href={href}
             aria-current={active ? 'page' : undefined}
             className={cn(
-              'flex shrink-0 items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground',
-              active && 'bg-accent text-accent-foreground',
+              'flex h-9 shrink-0 items-center gap-2 rounded-full px-4 text-sm font-semibold text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground',
+              active && 'bg-foreground text-background hover:bg-foreground hover:text-background',
             )}
           >
-            <Icon className="size-4" />
+            <Icon className="size-4 lg:hidden" aria-hidden />
             {label}
           </Link>
         );

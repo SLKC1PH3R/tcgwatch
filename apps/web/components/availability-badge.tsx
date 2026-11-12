@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge';
 const VARIANT: Record<Availability, 'success' | 'info' | 'destructive' | 'secondary'> = {
   IN_STOCK: 'success',
   PREORDER: 'info',
-  OUT_OF_STOCK: 'destructive',
+  OUT_OF_STOCK: 'secondary',
   UNKNOWN: 'secondary',
 };
 

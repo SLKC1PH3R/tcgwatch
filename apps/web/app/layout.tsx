@@ -1,4 +1,6 @@
 import type { Metadata, Viewport } from 'next';
+import '@fontsource-variable/manrope';
+import '@fontsource-variable/unbounded';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -8,10 +10,8 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#f8f9fc' },
-    { media: '(prefers-color-scheme: dark)', color: '#16181f' },
-  ],
+  themeColor: '#0c0d16',
+  colorScheme: 'dark',
 };
 
 // Toutes les pages lisent la base et la session : aucun rendu statique au build.

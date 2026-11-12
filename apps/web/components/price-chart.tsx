@@ -12,13 +12,8 @@ import {
   YAxis,
 } from 'recharts';
 
-const COLORS = [
-  'var(--chart-1)',
-  'var(--chart-2)',
-  'var(--chart-3)',
-  'var(--chart-4)',
-  'var(--chart-5)',
-];
+// --chart-1 (jaune) est réservé au prix marché ; les boutiques prennent les autres teintes holo.
+const COLORS = ['var(--chart-2)', 'var(--chart-3)', 'var(--chart-4)', 'var(--chart-5)'];
 const eur = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' });
 const day = (d: string) =>
   new Date(`${d}T00:00:00Z`).toLocaleDateString('fr-FR', {
@@ -99,9 +94,8 @@ export function PriceChart({
               key={s}
               type="monotone"
               dataKey={s}
-              stroke={s === 'Marché' ? 'var(--foreground)' : COLORS[i % COLORS.length]}
-              strokeDasharray={s === 'Marché' ? '6 3' : undefined}
-              strokeWidth={2}
+              stroke={s === 'Marché' ? 'var(--chart-1)' : COLORS[i % COLORS.length]}
+              strokeWidth={s === 'Marché' ? 3 : 2}
               dot={false}
               connectNulls
             />

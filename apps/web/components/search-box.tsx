@@ -40,7 +40,7 @@ export function SearchBox({ className }: { className?: string }) {
         if (q) router.push(`/recherche?q=${encodeURIComponent(q)}`);
       }}
     >
-      <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
+      <Search className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-muted-foreground" />
       <input
         ref={input}
         key={current}
@@ -50,9 +50,9 @@ export function SearchBox({ className }: { className?: string }) {
         placeholder="Rechercher…"
         aria-label="Rechercher un produit, une extension ou une carte"
         autoComplete="off"
-        className="h-9 w-full min-w-0 rounded-md border border-input bg-background pr-10 pl-8 text-sm shadow-xs outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+        className="h-10 w-full min-w-0 rounded-full border border-input bg-card pr-10 pl-9 text-sm shadow-xs outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
       />
-      <kbd className="pointer-events-none absolute top-1/2 right-2 hidden -translate-y-1/2 rounded border bg-muted px-1.5 font-mono text-[10px] text-muted-foreground md:block">
+      <kbd className="pointer-events-none absolute top-1/2 right-3 hidden -translate-y-1/2 rounded border bg-muted px-1.5 font-mono text-[10px] text-muted-foreground md:block">
         /
       </kbd>
     </form>
