@@ -85,7 +85,13 @@ describe('PokeTraceProvider', () => {
         ],
       },
     });
-    const provider = new PokeTraceProvider('cle-test', 'https://api.poketrace.test', impl, tcgdex);
+    const provider = new PokeTraceProvider(
+      'cle-test',
+      'https://api.poketrace.test',
+      impl,
+      tcgdex,
+      0,
+    );
     const quotes = await provider.fetchQuotes(products, { sets });
     expect(quotes.map((q) => [q.productId, q.price, q.source])).toEqual([['etb', 75, 'poketrace']]);
     expect(calls).toHaveLength(2);

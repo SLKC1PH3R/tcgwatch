@@ -56,6 +56,8 @@ const schema = z.object({
   DISCOVERY_CRON: z.string().default('45 6 * * *'),
 
   // Marché secondaire
+  CARDNEXUS_API_KEY: optionalString,
+  CARDNEXUS_API_URL: z.string().url().default('https://public-api.cardnexus.com'),
   POKETRACE_API_KEY: optionalString,
   POKETRACE_API_URL: z.string().url().default('https://api.poketrace.com'),
 

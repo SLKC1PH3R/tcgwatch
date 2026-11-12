@@ -101,8 +101,8 @@ export default async function MarketPage({
                 <CardTitle>Produits scellés</CardTitle>
                 <CardDescription>
                   {sealed.length} produits FR · prix conseillé à la sortie (Pokécardex), meilleur
-                  prix achetable aujourd’hui chez les revendeurs suivis, prix de revente (ventes FR
-                  sur Cardmarket via PokeTrace, ou saisie).
+                  prix achetable aujourd’hui chez les revendeurs suivis, prix de revente (annonces
+                  FR sur CardNexus, ou saisie).
                 </CardDescription>
               </div>
               <nav aria-label="Période" className="flex flex-wrap gap-1.5">
@@ -352,9 +352,10 @@ export default async function MarketPage({
                 </li>
               </ul>
               <p className="mt-3 text-xs text-muted-foreground">
-                Prix de revente automatique : créez une clé gratuite sur poketrace.com (100
-                requêtes/jour) et renseignez <code>POKETRACE_API_KEY</code>. Seules les ventes en
-                français des displays, ETB et bundles sont retenues.
+                Prix de revente automatique : créez une clé API gratuite dans votre compte CardNexus
+                (Réglages → API) et renseignez <code>CARDNEXUS_API_KEY</code> : seule l’annonce en
+                français la moins chère est retenue. PokeTrace demande l’offre Pro pour le marché
+                européen.
               </p>
             </CardContent>
           </Card>

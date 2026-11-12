@@ -159,7 +159,8 @@ La liste complète et commentée est dans [`.env.example`](.env.example). Aucun 
 | `LISTINGS_CRON` / `TCGDEX_CRON` / `MARKET_CRON` | `* * * * *` / `0 6 * * *` / `30 6 * * *` | Planification                                                                                                     |
 | `TCGDEX_SERIES`                                 | `me,sv,swsh,sm,xy,bw`                    | Séries TCGdex importées (Méga-Évolution, Écarlate et Violet, Épée et Bouclier, Soleil et Lune, XY, Noir et Blanc) |
 | `POKECARDEX_ENABLED` / `POKECARDEX_CRON`        | `true` / `15 6 * * *`                    | Import du calendrier des produits FR de Pokécardex                                                                |
-| `POKETRACE_API_KEY`                             | —                                        | Clé PokeTrace (gratuite, 100 req/jour) : prix de revente Cardmarket des ventes FR                                 |
+| `CARDNEXUS_API_KEY`                             | —                                        | Clé API CardNexus (gratuite) : annonce FR la moins chère de chaque produit scellé                                 |
+| `POKETRACE_API_KEY`                             | —                                        | Clé PokeTrace **offre Pro** (marché EU) : ventes Cardmarket FR                                                    |
 | `SEED_IF_EMPTY`                                 | `true` (compose)                         | Seed initial au premier démarrage si la base est vide                                                             |
 
 ## Déploiement sur Dokploy

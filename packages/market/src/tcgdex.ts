@@ -32,6 +32,14 @@ const setSchema = z.object({
     .optional(),
 });
 
+const cardBrief = z.object({
+  id: z.string(),
+  localId: z.string(),
+  name: z.string(),
+  image: z.string().optional(),
+});
+export type TcgdexCardBrief = z.infer<typeof cardBrief>;
+
 const cardmarketPricing = z
   .object({
     unit: z.string().optional(),
@@ -94,6 +102,12 @@ export class TcgdexClient {
 
   getCard(id: string) {
     return this.get(`/cards/${encodeURIComponent(id)}`, cardSchema);
+  }
+
+  /** Cartes dont le nom contient `name` (fiches courtes : id, numéro, nom, image). */
+  searchCards(name: string, limit = 40) {
+    const q = new URLSearchParams({ name, 'pagination:itemsPerPage': String(limit) });
+    return this.get(`/cards?${q}`, z.array(cardBrief));
   }
 }
 

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { CardNexusProvider } from './cardnexus';
 import { cardmarketPrice, TcgdexClient } from './tcgdex';
 
 /**
@@ -99,6 +100,8 @@ export class PokeTraceProvider implements MarketPriceProvider {
     private readonly baseUrl: string,
     private readonly fetchImpl: typeof fetch = fetch,
     private readonly tcgdexEn = new TcgdexClient('https://api.tcgdex.net/v2/en'),
+    /** L'offre gratuite n'accepte qu'une requête à la fois (burst limit 1). */
+    private readonly pauseMs = 1_100,
   ) {}
 
   isEnabled() {
@@ -107,12 +110,16 @@ export class PokeTraceProvider implements MarketPriceProvider {
 
   private async get(path: string): Promise<unknown> {
     if (this.requests >= PokeTraceProvider.MAX_REQUESTS) throw new QuotaError();
+    if (this.requests > 0) await new Promise((r) => setTimeout(r, this.pauseMs));
     this.requests++;
     const res = await this.fetchImpl(`${this.baseUrl.replace(/\/$/, '')}/v2${path}`, {
       headers: { 'X-API-Key': this.apiKey!, accept: 'application/json' },
       signal: AbortSignal.timeout(20_000),
     });
     if (res.status === 429) throw new QuotaError();
+    // Offre sans accès au marché européen (« EU market data requires a Pro plan ») :
+    // inutile d'insister sur les autres extensions.
+    if (res.status === 403) throw new QuotaError('Marché EU PokeTrace réservé à l’offre Pro');
     if (!res.ok) throw new Error(`PokeTrace ${path} : HTTP ${res.status}`);
     return res.json();
   }
@@ -153,8 +160,8 @@ export class PokeTraceProvider implements MarketPriceProvider {
 }
 
 class QuotaError extends Error {
-  constructor() {
-    super('Quota PokeTrace atteint');
+  constructor(message = 'Quota PokeTrace atteint') {
+    super(message);
   }
 }
 
@@ -302,6 +309,12 @@ export class TcgdexChaseCardProvider {
 export function createMarketProviders(env: {
   POKETRACE_API_KEY?: string;
   POKETRACE_API_URL: string;
+  CARDNEXUS_API_KEY?: string;
+  CARDNEXUS_API_URL?: string;
 }): MarketPriceProvider[] {
-  return [manualProvider, new PokeTraceProvider(env.POKETRACE_API_KEY, env.POKETRACE_API_URL)];
+  return [
+    manualProvider,
+    new CardNexusProvider(env.CARDNEXUS_API_KEY, env.CARDNEXUS_API_URL),
+    new PokeTraceProvider(env.POKETRACE_API_KEY, env.POKETRACE_API_URL),
+  ];
 }
