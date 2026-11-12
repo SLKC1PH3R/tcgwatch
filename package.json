@@ -1,0 +1,41 @@
+{
+  "name": "tcgwatch",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Dashboard self-hosted de suivi des produits scellés Pokémon TCG (FR) : sorties, stocks, prix, collection.",
+  "license": "MIT",
+  "type": "module",
+  "packageManager": "pnpm@12.18.0",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "dev": "pnpm --parallel --filter @tcgwatch/web --filter @tcgwatch/worker dev",
+    "postinstall": "pnpm --filter @tcgwatch/db generate",
+    "build": "pnpm -r build",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "typecheck": "pnpm -r typecheck",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "db:generate": "pnpm --filter @tcgwatch/db generate",
+    "db:migrate": "pnpm --filter @tcgwatch/db migrate:dev",
+    "db:deploy": "pnpm --filter @tcgwatch/db migrate:deploy",
+    "db:seed": "pnpm --filter @tcgwatch/db seed",
+    "fixtures:record": "pnpm --filter @tcgwatch/adapters fixtures:record"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.5",
+    "@types/node": "^24.0.0",
+    "eslint": "^9.39.5",
+    "eslint-config-next": "^16.4.6",
+    "eslint-config-prettier": "^10.1.8",
+    "globals": "^17.14.0",
+    "prettier": "~3.9.10",
+    "prettier-plugin-tailwindcss": "^0.8.1",
+    "typescript": "~6.0.3",
+    "typescript-eslint": "^8.72.2",
+    "vitest": "^5.1.0"
+  }
+}

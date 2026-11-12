@@ -1,0 +1,44 @@
+# Dépendances
+node_modules/
+.pnpm-store/
+
+# Builds
+.next/
+out/
+dist/
+build/
+*.tsbuildinfo
+next-env.d.ts
+
+# Client Prisma généré
+packages/db/src/generated/
+
+# Environnement / secrets
+.env
+.env.*
+!.env.example
+
+# Tests / Playwright
+coverage/
+playwright-report/
+test-results/
+blob-report/
+playwright/.cache/
+
+# Fixtures brutes (pages complètes enregistrées) — seules les fixtures élaguées sont versionnées
+packages/adapters/test/fixtures/raw/
+*.raw.html
+
+# Uploads (photos de collection)
+uploads/
+apps/web/uploads/
+
+# Logs / OS / IDE
+*.log
+npm-debug.log*
+pnpm-debug.log*
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
