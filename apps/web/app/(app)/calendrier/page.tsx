@@ -1,9 +1,17 @@
-import { Check, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react';
+import { Check, ChevronLeft, ChevronRight, ExternalLink, Trash2 } from 'lucide-react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { formatDate, PRODUCT_TYPE_LABELS, todayUtc, type ProductTypeKey } from '@tcgwatch/shared';
+import {
+  formatDate,
+  formatPrice,
+  PRODUCT_TYPE_LABELS,
+  todayUtc,
+  toNumber,
+  type ProductTypeKey,
+} from '@tcgwatch/shared';
 import { Countdown } from '@/components/countdown';
 import { PageHeader } from '@/components/page-header';
+import { Thumb } from '@/components/thumb';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,7 +19,9 @@ import {
   getCalendarEvents,
   getReleasesForEdit,
   getUpcomingEvents,
+  parseCalendarFilter,
   type CalendarEvent,
+  type CalendarFilter,
 } from '@/lib/data/releases';
 import { toDateInput } from '@/lib/form';
 import { cn } from '@/lib/utils';
@@ -31,7 +41,30 @@ const SOURCE_LABEL: Record<string, string> = {
   RETAILER: 'Revendeur',
   MANUAL: 'Manuel',
   SEED: 'Seed',
+  POKECARDEX: 'Pokécardex',
 };
+
+const FILTERS: { value: CalendarFilter | undefined; label: string }[] = [
+  { value: undefined, label: 'Tout' },
+  { value: 'extension', label: 'Extensions' },
+  { value: 'ETB', label: 'ETB' },
+  { value: 'DISPLAY', label: 'Displays' },
+  { value: 'TRIPACK', label: 'Tripacks' },
+  { value: 'BOOSTER', label: 'Boosters' },
+  { value: 'BLISTER', label: 'Blisters' },
+  { value: 'COFFRET', label: 'Coffrets' },
+  { value: 'UPC', label: 'UPC' },
+  { value: 'POKEBOX', label: 'Pokébox' },
+  { value: 'MINI_TIN', label: 'Mini Tins' },
+  { value: 'DECK', label: 'Decks' },
+];
+
+/** Nombre de sorties affichées dans une case du mois avant « +N ». */
+const MAX_PER_DAY = 3;
+
+function typeLabel(type: string | null): string | null {
+  return type ? (PRODUCT_TYPE_LABELS[type as ProductTypeKey] ?? type) : null;
+}
 
 function parseMonth(value?: string): Date {
   const m = value?.match(/^(\d{4})-(\d{2})$/);
@@ -54,9 +87,25 @@ function buildGrid(month: Date): Date[] {
 export default async function CalendarPage({
   searchParams,
 }: {
-  searchParams: Promise<{ mois?: string; tout?: string; edit?: string }>;
+  searchParams: Promise<{
+    mois?: string;
+    tout?: string;
+    edit?: string;
+    type?: string;
+    jour?: string;
+  }>;
 }) {
-  const { mois, tout, edit } = await searchParams;
+  const { mois, tout, edit, type, jour } = await searchParams;
+  const filter = parseCalendarFilter(type);
+  const selectedDay = jour && /^\d{4}-\d{2}-\d{2}$/.test(jour) ? jour : undefined;
+  /** Lien du calendrier qui conserve mois et filtre. */
+  const href = (params: Record<string, string | undefined>) => {
+    const q = new URLSearchParams();
+    const all = { mois, type: filter, ...params };
+    for (const [k, v] of Object.entries(all)) if (v) q.set(k, v);
+    const qs = q.toString();
+    return qs ? `/calendrier?${qs}` : '/calendrier';
+  };
   const month = parseMonth(mois);
   const grid = buildGrid(month);
   const prev = new Date(Date.UTC(month.getUTCFullYear(), month.getUTCMonth() - 1, 1));
@@ -64,9 +113,9 @@ export default async function CalendarPage({
   const today = todayUtc();
 
   const [events, upcoming, releases] = await Promise.all([
-    getCalendarEvents(grid[0]!, new Date(grid[41]!.getTime() + 86_400_000)),
-    getUpcomingEvents(15),
-    getReleasesForEdit(),
+    getCalendarEvents(grid[0]!, new Date(grid[41]!.getTime() + 86_400_000), filter),
+    getUpcomingEvents(15, filter),
+    getReleasesForEdit(filter),
   ]);
 
   const byDay = new Map<string, CalendarEvent[]>();
@@ -89,24 +138,41 @@ export default async function CalendarPage({
     <>
       <PageHeader
         title="Calendrier des sorties"
-        description="Import quotidien TCGdex, enrichi par les dates « Sortie prévue le » détectées chez les revendeurs."
+        description="Import quotidien des extensions (TCGdex) et des produits scellés FR (Pokécardex), enrichi par les dates « Sortie prévue le » des revendeurs."
       />
 
-      <div className="grid gap-6 xl:grid-cols-[1fr_340px]">
+      <nav aria-label="Filtrer par type" className="mb-4 flex flex-wrap gap-1.5">
+        {FILTERS.map((f) => (
+          <Link
+            key={f.label}
+            href={href({ type: f.value, jour: undefined })}
+            aria-current={filter === f.value ? 'page' : undefined}
+            className={cn(
+              'rounded-full border px-3 py-1 text-xs font-medium transition-colors hover:bg-accent',
+              filter === f.value &&
+                'border-primary bg-primary text-primary-foreground hover:bg-primary/90',
+            )}
+          >
+            {f.label}
+          </Link>
+        ))}
+      </nav>
+
+      <div className="grid gap-6 xl:grid-cols-[1fr_340px] [&>*]:min-w-0">
         <Card>
           <CardHeader className="items-center">
             <CardTitle className="capitalize">{monthLabel}</CardTitle>
             <div className="flex gap-1">
               <Button asChild size="icon" variant="outline" aria-label="Mois précédent">
-                <Link href={`/calendrier?mois=${monthKey(prev)}`}>
+                <Link href={href({ mois: monthKey(prev) })}>
                   <ChevronLeft />
                 </Link>
               </Button>
               <Button asChild size="sm" variant="outline">
-                <Link href="/calendrier">Aujourd’hui</Link>
+                <Link href={href({ mois: undefined })}>Aujourd’hui</Link>
               </Button>
               <Button asChild size="icon" variant="outline" aria-label="Mois suivant">
-                <Link href={`/calendrier?mois=${monthKey(next)}`}>
+                <Link href={href({ mois: monthKey(next) })}>
                   <ChevronRight />
                 </Link>
               </Button>
@@ -133,18 +199,22 @@ export default async function CalendarPage({
                     className={cn(
                       'min-h-20 border-r border-b p-1 last:border-r-0 sm:min-h-24 [&:nth-child(7n)]:border-r-0',
                       !inMonth && 'bg-muted/30 text-muted-foreground',
+                      k === selectedDay && 'bg-primary/5 ring-2 ring-primary ring-inset',
                     )}
                   >
-                    <span
+                    <Link
+                      href={href({ mois: monthKey(month), jour: k })}
+                      aria-label={`Sorties du ${formatDate(day)}`}
                       className={cn(
-                        'inline-flex size-6 items-center justify-center rounded-full text-xs',
-                        isToday && 'bg-primary font-semibold text-primary-foreground',
+                        'inline-flex size-6 items-center justify-center rounded-full text-xs hover:bg-accent',
+                        isToday &&
+                          'bg-primary font-semibold text-primary-foreground hover:bg-primary/90',
                       )}
                     >
                       {day.getUTCDate()}
-                    </span>
+                    </Link>
                     <div className="mt-1 space-y-1">
-                      {dayEvents.map((e) => (
+                      {dayEvents.slice(0, MAX_PER_DAY).map((e) => (
                         <Link
                           key={`${e.kind}-${e.id}`}
                           href={e.href}
@@ -160,6 +230,15 @@ export default async function CalendarPage({
                           {e.title}
                         </Link>
                       ))}
+                      {dayEvents.length > MAX_PER_DAY && (
+                        <Link
+                          href={href({ mois: monthKey(month), jour: k })}
+                          className="block rounded px-1 text-[11px] font-medium text-muted-foreground hover:text-foreground"
+                        >
+                          +{dayEvents.length - MAX_PER_DAY} autre
+                          {dayEvents.length - MAX_PER_DAY > 1 ? 's' : ''}
+                        </Link>
+                      )}
                     </div>
                   </div>
                 );
@@ -179,40 +258,31 @@ export default async function CalendarPage({
 
         <Card>
           <CardHeader>
-            <CardTitle>À venir</CardTitle>
+            <CardTitle>
+              {selectedDay
+                ? `Sorties du ${formatDate(new Date(`${selectedDay}T00:00:00Z`))}`
+                : 'À venir'}
+            </CardTitle>
+            {selectedDay && (
+              <Link
+                href={href({ jour: undefined })}
+                className="text-xs text-primary hover:underline"
+              >
+                Voir « À venir »
+              </Link>
+            )}
           </CardHeader>
           <CardContent>
-            {upcoming.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Aucune sortie à venir connue.</p>
-            ) : (
-              <ul className="divide-y">
-                {upcoming.map((e) => (
-                  <li
-                    key={`${e.kind}-${e.id}`}
-                    className="flex items-center justify-between gap-3 py-2"
-                  >
-                    <div className="min-w-0">
-                      <Link
-                        href={e.href}
-                        className="block truncate text-sm font-medium hover:underline"
-                      >
-                        {e.title}
-                      </Link>
-                      <p className="text-xs text-muted-foreground">
-                        {formatDate(e.date)}
-                        {e.status === 'AUTO' && ' · à valider'}
-                      </p>
-                    </div>
-                    <Countdown date={e.date} />
-                  </li>
-                ))}
-              </ul>
-            )}
+            <EventList
+              events={selectedDay ? (byDay.get(selectedDay) ?? []) : upcoming}
+              showDate={!selectedDay}
+              empty={selectedDay ? 'Aucune sortie ce jour-là.' : 'Aucune sortie à venir connue.'}
+            />
           </CardContent>
         </Card>
       </div>
 
-      <div className="mt-6 grid gap-6 xl:grid-cols-[1fr_340px]">
+      <div className="mt-6 grid gap-6 xl:grid-cols-[1fr_340px] [&>*]:min-w-0">
         <Card>
           <CardHeader>
             <div className="space-y-1">
@@ -258,6 +328,7 @@ export default async function CalendarPage({
                             {formatDate(r.releaseDate)}
                             {r.productType &&
                               ` · ${PRODUCT_TYPE_LABELS[r.productType as ProductTypeKey]}`}
+                            {r.msrp !== null && ` · ${formatPrice(toNumber(r.msrp))}`}
                             {` · ${SOURCE_LABEL[r.source] ?? r.source}`}
                             {r._count.products > 0 && ` · ${r._count.products} produit(s)`}
                           </p>
@@ -288,7 +359,14 @@ export default async function CalendarPage({
                           status: r.status,
                         }}
                       />
-                      <div className="flex gap-2 border-t pt-3">
+                      <div className="flex flex-wrap gap-2 border-t pt-3">
+                        {r.sourceUrl && (
+                          <Button asChild size="sm" variant="ghost">
+                            <a href={r.sourceUrl} target="_blank" rel="noopener noreferrer">
+                              Source : {SOURCE_LABEL[r.source] ?? r.source} <ExternalLink />
+                            </a>
+                          </Button>
+                        )}
                         {r.status === 'AUTO' && (
                           <form action={validateReleaseAction.bind(null, r.id)}>
                             <Button size="sm" variant="success" type="submit">
@@ -328,5 +406,42 @@ export default async function CalendarPage({
         </Card>
       </div>
     </>
+  );
+}
+
+function EventList({
+  events,
+  showDate,
+  empty,
+}: {
+  events: CalendarEvent[];
+  showDate: boolean;
+  empty: string;
+}) {
+  if (events.length === 0) return <p className="text-sm text-muted-foreground">{empty}</p>;
+  return (
+    <ul className="divide-y">
+      {events.map((e) => (
+        <li key={`${e.kind}-${e.id}`} className="flex items-center gap-3 py-2">
+          <Thumb src={e.imageUrl} className="size-11" />
+          <div className="min-w-0 flex-1">
+            <Link href={e.href} className="line-clamp-2 text-sm font-medium hover:underline">
+              {e.title}
+            </Link>
+            <p className="text-xs text-muted-foreground">
+              {[
+                showDate ? formatDate(e.date) : null,
+                typeLabel(e.productType),
+                e.msrp !== null ? formatPrice(e.msrp) : null,
+                e.status === 'AUTO' ? 'à valider' : null,
+              ]
+                .filter(Boolean)
+                .join(' · ')}
+            </p>
+          </div>
+          {showDate && <Countdown date={e.date} />}
+        </li>
+      ))}
+    </ul>
   );
 }

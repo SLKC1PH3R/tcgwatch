@@ -18,16 +18,19 @@ prix du marché secondaire et valorisation de sa collection.
 ## Fonctionnalités
 
 - **Calendrier des sorties** : import quotidien des extensions FR depuis l'API [TCGdex](https://tcgdex.dev)
-  (gratuite, sans clé), enrichi par les dates « Sortie prévue le … » détectées sur les fiches revendeurs.
-  Vue mensuelle, liste « à venir » avec compte à rebours, édition et validation manuelles
-  (statuts `auto` / `validé`).
+  (gratuite, sans clé) et des **produits scellés FR** (displays, ETB, tripacks, coffrets, UPC…, avec
+  image et prix conseillé) depuis le [calendrier Pokécardex](https://www.pokecardex.com/calendrier),
+  enrichi par les dates « Sortie prévue le … » détectées sur les fiches revendeurs.
+  Vue mensuelle filtrable par type, détail d'un jour, liste « à venir » avec compte à rebours,
+  édition et validation manuelles (statuts `auto` / `validé` : une sortie validée n'est plus modifiée
+  par les imports).
 - **Suivi stock & prix** : une architecture d'adaptateurs par site (JSON-LD schema.org générique, plus
   Play-In, Philibert, Cultura et Smyths Toys), une fréquence configurable par fiche, un délai aléatoire,
   une seule requête à la fois par domaine, un backoff exponentiel et le respect de `robots.txt`.
   Formulaire « ajouter une URL » avec détection du revendeur et test immédiat. Chaque relevé récupère
   le maximum d'infos de la fiche : **galerie d'images** (dans la plus grande taille disponible),
   description, marque, EAN normalisé, référence et rayon du site.
-- **Annuaire des revendeurs** : 17 sites français vendant du Pokémon TCG (boutiques spécialisées,
+- **Annuaire des revendeurs** : 18 sites français vendant du Pokémon TCG (boutiques spécialisées,
   enseignes culturelles, jouets, grandes surfaces), chacun avec son lien vers le rayon Pokémon et
   son statut de relevé vérifié (fiable, via Chromium, bloqué, non testé). Depuis une fiche produit,
   un clic lance la recherche du produit sur chaque site où il n'est pas encore suivi.
@@ -97,6 +100,7 @@ Pas de PostgreSQL sous la main ? Prisma fournit une base locale intégrée :
 ```bash
 pnpm --filter @tcgwatch/db exec prisma dev -d
 # copier l'URL "TCP" affichée (postgres://postgres:postgres@localhost:…/template1) dans DATABASE_URL
+# et ajouter DATABASE_POOL_MAX=1 : cette base n'accepte qu'une connexion à la fois
 ```
 
 Ou avec Docker : `docker run -d -p 5432:5432 -e POSTGRES_PASSWORD=change-me -e POSTGRES_USER=tcgwatch postgres:17-alpine`.
@@ -141,6 +145,7 @@ La liste complète et commentée est dans [`.env.example`](.env.example). Aucun 
 | `PLAYWRIGHT_ENABLED`                            | `true`                                   | Repli Chromium pour les sites rendus en JavaScript                     |
 | `LISTINGS_CRON` / `TCGDEX_CRON` / `MARKET_CRON` | `* * * * *` / `0 6 * * *` / `30 6 * * *` | Planification                                                          |
 | `TCGDEX_SERIES`                                 | `me,sv`                                  | Séries TCGdex importées                                                |
+| `POKECARDEX_ENABLED` / `POKECARDEX_CRON`        | `true` / `15 6 * * *`                    | Import du calendrier des produits FR de Pokécardex                     |
 | `POKETRACE_API_KEY`                             | —                                        | API PokeTrace (V2)                                                     |
 | `SEED_IF_EMPTY`                                 | `true` (compose)                         | Seed initial au premier démarrage si la base est vide                  |
 

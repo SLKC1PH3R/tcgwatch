@@ -180,17 +180,22 @@ export default async function DashboardPage() {
                     key={`${e.kind}-${e.id}`}
                     className="flex items-center justify-between gap-3 py-2"
                   >
-                    <div className="min-w-0">
-                      <Link
-                        href={e.href}
-                        className="block truncate text-sm font-medium hover:underline"
-                      >
-                        {e.title}
-                      </Link>
-                      <p className="text-xs text-muted-foreground">
-                        {formatDate(e.date)}
-                        {e.subtitle ? ` · ${e.subtitle}` : ''}
-                      </p>
+                    <div className="flex min-w-0 items-center gap-3">
+                      <Thumb src={e.imageUrl} />
+                      <div className="min-w-0">
+                        <Link
+                          href={e.href}
+                          title={e.title}
+                          className="line-clamp-2 text-sm font-medium hover:underline"
+                        >
+                          {e.title}
+                        </Link>
+                        <p className="text-xs text-muted-foreground">
+                          {formatDate(e.date)}
+                          {e.subtitle ? ` · ${e.subtitle}` : ''}
+                          {e.msrp !== null ? ` · ${formatPrice(e.msrp)}` : ''}
+                        </p>
+                      </div>
                     </div>
                     <Countdown date={e.date} />
                   </li>
