@@ -1,0 +1,279 @@
+// TCGWatch — schéma de données
+// Prisma 7 : l'URL de connexion est fournie par prisma.config.ts (DATABASE_URL).
+
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "esm"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── Enums ───────────────────────────────────────────────
+
+enum ProductType {
+  ETB
+  DISPLAY
+  TRIPACK
+  BOOSTER
+  BLISTER
+  COFFRET
+  UPC
+  MINI_TIN
+  POKEBOX
+  AUTRE
+}
+
+enum ReleaseStatus {
+  AUTO
+  VALIDATED
+}
+
+enum ReleaseSource {
+  TCGDEX
+  RETAILER
+  MANUAL
+  SEED
+}
+
+enum Availability {
+  IN_STOCK
+  OUT_OF_STOCK
+  PREORDER
+  UNKNOWN
+}
+
+enum ListingState {
+  ACTIVE
+  PAUSED
+  ERROR
+  BLOCKED_BY_ROBOTS
+}
+
+enum AlertType {
+  BACK_IN_STOCK
+  PREORDER_OPEN
+  PRICE_TARGET
+  RELEASE_DATE
+}
+
+enum SealCondition {
+  MINT
+  NEAR_MINT
+  DAMAGED
+  OPENED
+}
+
+// ─── Authentification ────────────────────────────────────
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  name         String?
+  passwordHash String
+  sessions     Session[]
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+}
+
+/// L'identifiant est le SHA-256 du jeton envoyé dans le cookie (le jeton brut n'est jamais stocké).
+model Session {
+  id        String   @id
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+// ─── Module 1 — Calendrier des sorties ───────────────────
+
+model Release {
+  id          String        @id @default(cuid())
+  nameFr      String
+  setCode     String? /// ex. "ME06"
+  tcgdexId    String?       @unique /// id du set TCGdex (ex. "me06")
+  serie       String? /// ex. "Méga-Évolution"
+  releaseDate DateTime?     @db.Date
+  productType ProductType? /// null = l'extension elle-même
+  imageUrl    String?
+  source      ReleaseSource @default(MANUAL)
+  sourceUrl   String?
+  status      ReleaseStatus @default(AUTO)
+  notes       String?
+  products    Product[]
+  chaseCards  ChaseCard[]
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@index([releaseDate])
+}
+
+// ─── Module 2 — Produits, revendeurs, relevés ────────────
+
+model Product {
+  id                String         @id @default(cuid())
+  name              String
+  slug              String         @unique
+  type              ProductType
+  ean               String?        @unique
+  imageUrl          String?
+  msrp              Decimal?       @db.Decimal(10, 2) /// prix public conseillé
+  targetPrice       Decimal?       @db.Decimal(10, 2) /// seuil d'alerte par défaut (surchargé par Listing.targetPrice)
+  releaseDate       DateTime?      @db.Date /// date propre au produit (ex. "Sortie prévue le" revendeur)
+  releaseDateSource ReleaseSource?
+  notes             String?
+  releaseId         String?
+  release           Release?       @relation(fields: [releaseId], references: [id], onDelete: SetNull)
+  listings          Listing[]
+  marketPrices      MarketPrice[]
+  collection        CollectionItem[]
+  alerts            AlertEvent[]
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  @@index([releaseId])
+}
+
+model Retailer {
+  id         String    @id @default(cuid())
+  name       String
+  slug       String    @unique
+  domain     String    @unique /// domaine sans "www." (ex. "play-in.com")
+  adapterKey String /// "playin" | "philibert" | "cultura" | "smyths" | "jsonld"
+  minDelayMs Int       @default(3000)
+  enabled    Boolean   @default(true)
+  listings   Listing[]
+}
+
+model Listing {
+  id                String       @id @default(cuid())
+  productId         String
+  product           Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
+  retailerId        String
+  retailer          Retailer     @relation(fields: [retailerId], references: [id])
+  url               String       @unique
+  stockAlertUrl     String?
+  targetPrice       Decimal?     @db.Decimal(10, 2) /// prioritaire sur Product.targetPrice
+  checkIntervalMin  Int          @default(30)
+  state             ListingState @default(ACTIVE)
+  nextCheckAt       DateTime     @default(now())
+  lastCheckedAt     DateTime?
+  // État dénormalisé (dernier relevé) pour des tableaux rapides
+  lastTitle         String?
+  lastPrice         Decimal?     @db.Decimal(10, 2)
+  lastCurrency      String       @default("EUR")
+  lastAvailability  Availability @default(UNKNOWN)
+  lastInStockAt     DateTime?
+  consecutiveErrors Int          @default(0)
+  lastError         String?
+  snapshots         Snapshot[]
+  alerts            AlertEvent[]
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  @@index([state, nextCheckAt])
+  @@index([productId])
+}
+
+model Snapshot {
+  id           String       @id @default(cuid())
+  listingId    String
+  listing      Listing      @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  price        Decimal?     @db.Decimal(10, 2)
+  currency     String       @default("EUR")
+  availability Availability
+  releaseDate  DateTime?    @db.Date
+  createdAt    DateTime     @default(now())
+
+  @@index([listingId, createdAt])
+  @@index([createdAt])
+}
+
+model AlertEvent {
+  id           String    @id @default(cuid())
+  type         AlertType
+  productId    String
+  product      Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  listingId    String?
+  listing      Listing?  @relation(fields: [listingId], references: [id], onDelete: SetNull)
+  title        String
+  message      String
+  url          String?
+  price        Decimal?  @db.Decimal(10, 2)
+  dedupeKey    String
+  sentNtfy     Boolean   @default(false)
+  sentTelegram Boolean   @default(false)
+  acknowledged Boolean   @default(false)
+  createdAt    DateTime  @default(now())
+
+  @@index([acknowledged, createdAt])
+  @@index([dedupeKey, createdAt])
+  @@index([type, createdAt])
+}
+
+// ─── Module 3 — Marché secondaire ────────────────────────
+
+/// Un relevé par jour, par produit et par source : l'historique se construit tout seul.
+model MarketPrice {
+  id        String   @id @default(cuid())
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  source    String /// "manual" | "poketrace" | ...
+  price     Decimal  @db.Decimal(10, 2)
+  currency  String   @default("EUR")
+  date      DateTime @db.Date
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([productId, source, date])
+  @@index([productId, date])
+}
+
+/// Cartes phares d'une extension, suivies via le provider TCGdex.
+model ChaseCard {
+  id        String      @id @default(cuid())
+  releaseId String
+  release   Release     @relation(fields: [releaseId], references: [id], onDelete: Cascade)
+  tcgdexId  String      @unique /// ex. "me06-130"
+  name      String
+  rarity    String?
+  imageUrl  String?
+  prices    CardPrice[]
+  createdAt DateTime    @default(now())
+}
+
+model CardPrice {
+  id          String    @id @default(cuid())
+  chaseCardId String
+  chaseCard   ChaseCard @relation(fields: [chaseCardId], references: [id], onDelete: Cascade)
+  source      String /// "tcgdex-cardmarket"
+  price       Decimal   @db.Decimal(10, 2)
+  currency    String    @default("EUR")
+  date        DateTime  @db.Date
+
+  @@unique([chaseCardId, source, date])
+}
+
+// ─── Module 4 — Ma collection ────────────────────────────
+
+model CollectionItem {
+  id            String        @id @default(cuid())
+  productId     String
+  product       Product       @relation(fields: [productId], references: [id], onDelete: Restrict)
+  quantity      Int           @default(1)
+  purchasePrice Decimal       @db.Decimal(10, 2) /// prix unitaire payé
+  purchaseDate  DateTime      @db.Date
+  store         String?
+  condition     SealCondition @default(MINT)
+  photoPath     String?
+  notes         String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@index([productId])
+}
