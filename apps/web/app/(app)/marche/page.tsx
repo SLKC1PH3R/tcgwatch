@@ -8,6 +8,7 @@ import {
   formatPercent,
   formatPrice,
   PRODUCT_TYPE_LABELS,
+  todayUtc,
   toNumber,
   type ProductTypeKey,
 } from '@tcgwatch/shared';
@@ -34,7 +35,20 @@ import { MarketPriceForm } from './market-price-form';
 
 export const metadata: Metadata = { title: 'Marché secondaire' };
 
-export default async function MarketPage() {
+const PERIODS = [
+  { value: 'recent', label: 'Nouveautés' },
+  { value: 'anciennes', label: 'Anciennes collections' },
+  { value: 'tout', label: 'Tout' },
+] as const;
+type Period = (typeof PERIODS)[number]['value'];
+
+export default async function MarketPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ periode?: string }>;
+}) {
+  const { periode } = await searchParams;
+  const period: Period = PERIODS.some((p) => p.value === periode) ? (periode as Period) : 'recent';
   const [products, market, cards, releases] = await Promise.all([
     getProducts(),
     latestMarketPrices(),
@@ -52,8 +66,18 @@ export default async function MarketPage() {
     }),
   ]);
   const providers = createMarketProviders(getEnv());
+  // Nouveautés : sorties depuis moins de 6 mois ou à venir ; anciennes : le reste.
+  const recentLimit = todayUtc().getTime() - 183 * 86_400_000;
+  const isRecent = (d: Date | null) => !d || d.getTime() >= recentLimit;
   // Produits avec au moins une donnée de prix : boutique achetable d'abord, puis par sortie.
   const sealed = products
+    .filter((p) =>
+      period === 'tout'
+        ? true
+        : period === 'recent'
+          ? isRecent(p.releaseDate)
+          : !isRecent(p.releaseDate),
+    )
     .map((p) => ({ p, m: market.get(p.id), best: bestOffer(p.listings) }))
     .filter(({ p, m, best }) => best || m || p.msrp !== null)
     .sort(
@@ -76,27 +100,46 @@ export default async function MarketPage() {
               <div className="space-y-1">
                 <CardTitle>Produits scellés</CardTitle>
                 <CardDescription>
-                  {sealed.length} produits FR avec un prix · prix conseillé (Pokécardex), meilleur
-                  prix achetable chez les revendeurs suivis et prix marché quand il est connu.
+                  {sealed.length} produits FR · prix conseillé à la sortie (Pokécardex), meilleur
+                  prix achetable aujourd’hui chez les revendeurs suivis, prix de revente (ventes FR
+                  sur Cardmarket via PokeTrace, ou saisie).
                 </CardDescription>
               </div>
+              <nav aria-label="Période" className="flex flex-wrap gap-1.5">
+                {PERIODS.map((p) => (
+                  <Link
+                    key={p.value}
+                    href={p.value === 'recent' ? '/marche' : `/marche?periode=${p.value}`}
+                    aria-current={period === p.value ? 'page' : undefined}
+                    className={cn(
+                      'rounded-full border px-3 py-1 text-xs font-medium transition-colors hover:bg-accent',
+                      period === p.value &&
+                        'border-primary bg-primary text-primary-foreground hover:bg-primary/90',
+                    )}
+                  >
+                    {p.label}
+                  </Link>
+                ))}
+              </nav>
             </CardHeader>
             <CardContent className="px-2">
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Produit</TableHead>
-                    <TableHead className="text-right">Prix conseillé</TableHead>
+                    <TableHead className="text-right">Prix conseillé (sortie)</TableHead>
                     <TableHead className="text-right">Meilleur prix boutique</TableHead>
                     <TableHead className="text-right">vs conseillé</TableHead>
-                    <TableHead className="text-right">Prix marché</TableHead>
-                    <TableHead className="text-right">Marché / boutique</TableHead>
+                    <TableHead className="text-right">Prix de revente</TableHead>
+                    <TableHead className="text-right">Plus-value</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {sealed.map(({ p, m, best }) => {
                     const vsMsrp = best && p.msrp ? best.price / p.msrp - 1 : null;
-                    const gap = m && best ? m.price / best.price - 1 : null;
+                    // Plus-value latente : revente (sinon prix boutique actuel) vs prix d'époque.
+                    const current = m?.price ?? null;
+                    const gain = current !== null && p.msrp ? current / p.msrp - 1 : null;
                     return (
                       <TableRow key={p.id}>
                         <TableCell>
@@ -157,8 +200,14 @@ export default async function MarketPage() {
                             '—'
                           )}
                         </TableCell>
-                        <TableCell className="text-right tabular-nums">
-                          {formatPercent(gap)}
+                        <TableCell
+                          className={cn(
+                            'text-right tabular-nums',
+                            gain !== null && gain > 0.05 && 'text-success',
+                            gain !== null && gain < -0.05 && 'text-destructive',
+                          )}
+                        >
+                          {formatPercent(gain)}
                         </TableCell>
                       </TableRow>
                     );
@@ -303,8 +352,9 @@ export default async function MarketPage() {
                 </li>
               </ul>
               <p className="mt-3 text-xs text-muted-foreground">
-                PokeTrace est prévu pour la V2 : renseignez <code>POKETRACE_API_KEY</code> pour
-                l’activer une fois implémenté.
+                Prix de revente automatique : créez une clé gratuite sur poketrace.com (100
+                requêtes/jour) et renseignez <code>POKETRACE_API_KEY</code>. Seules les ventes en
+                français des displays, ETB et bundles sont retenues.
               </p>
             </CardContent>
           </Card>

@@ -30,6 +30,11 @@ prix du marché secondaire et valorisation de sa collection.
   les pages autorisées par leur `robots.txt`) et la recherche Play-In, puis rattache les fiches
   trouvées aux produits du catalogue : même type et mêmes mots distinctifs, versions EN/JP/KO et
   accessoires écartés, aucun rattachement en cas de doute. Aucune saisie n'est nécessaire.
+- **Anciennes collections (2022 → 2025)** : produits et **prix conseillés d'époque** lus dans les
+  sujets publics « Calendrier des sorties » du forum Pokécardex, extensions FR depuis Noir et Blanc
+  via TCGdex. Leur prix actuel est relevé chez les revendeurs ; le **prix de revente** (ventes FR sur
+  Cardmarket) vient de l'API PokeTrace (clé gratuite). Les pages `/series` de Pokécardex sont
+  chiffrées par le site : elles ne sont pas exploitées.
 - **Suivi stock & prix** : une architecture d'adaptateurs par site (JSON-LD schema.org générique, plus
   Play-In, Philibert, Cultura et Smyths Toys), une fréquence configurable par fiche, un délai aléatoire,
   une seule requête à la fois par domaine, un backoff exponentiel et le respect de `robots.txt`.
@@ -137,25 +142,25 @@ Commandes utiles :
 
 La liste complète et commentée est dans [`.env.example`](.env.example). Aucun secret n'est présent dans le code.
 
-| Variable                                        | Défaut                                   | Rôle                                                                   |
-| ----------------------------------------------- | ---------------------------------------- | ---------------------------------------------------------------------- |
-| `DATABASE_URL`                                  | **obligatoire**                          | Connexion PostgreSQL (Internal Connection URL de la base Dokploy)      |
-| `APP_URL`                                       | `https://tcg.digitalstack.cloud`         | URL publique                                                           |
-| `TZ`                                            | `Europe/Paris`                           | Fuseau des crons et de l'affichage                                     |
-| `ALLOW_REGISTRATION`                            | `false`                                  | Autorise d'autres inscriptions après le premier compte                 |
-| `SESSION_TTL_DAYS`                              | `30`                                     | Durée des sessions                                                     |
-| `COOKIE_SECURE`                                 | `true`                                   | Cookie HTTPS uniquement (`false` en local sans HTTPS)                  |
-| `NTFY_URL` / `NTFY_TOKEN`                       | —                                        | Topic ntfy (ex. `https://ntfy.sh/mon-topic-secret`) et jeton optionnel |
-| `TELEGRAM_BOT_TOKEN` / `TELEGRAM_CHAT_ID`       | —                                        | Notifications Telegram (optionnel)                                     |
-| `DEFAULT_CHECK_INTERVAL_MIN`                    | `30`                                     | Fréquence par défaut d'un relevé                                       |
-| `SCRAPER_USER_AGENT`                            | Chrome récent                            | User-agent envoyé aux sites                                            |
-| `SCRAPER_MIN_DELAY_MS` / `SCRAPER_MAX_DELAY_MS` | `2000` / `6000`                          | Délai aléatoire entre deux requêtes d'un même domaine                  |
-| `PLAYWRIGHT_ENABLED`                            | `true`                                   | Repli Chromium pour les sites rendus en JavaScript                     |
-| `LISTINGS_CRON` / `TCGDEX_CRON` / `MARKET_CRON` | `* * * * *` / `0 6 * * *` / `30 6 * * *` | Planification                                                          |
-| `TCGDEX_SERIES`                                 | `me,sv`                                  | Séries TCGdex importées                                                |
-| `POKECARDEX_ENABLED` / `POKECARDEX_CRON`        | `true` / `15 6 * * *`                    | Import du calendrier des produits FR de Pokécardex                     |
-| `POKETRACE_API_KEY`                             | —                                        | API PokeTrace (V2)                                                     |
-| `SEED_IF_EMPTY`                                 | `true` (compose)                         | Seed initial au premier démarrage si la base est vide                  |
+| Variable                                        | Défaut                                   | Rôle                                                                                                              |
+| ----------------------------------------------- | ---------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `DATABASE_URL`                                  | **obligatoire**                          | Connexion PostgreSQL (Internal Connection URL de la base Dokploy)                                                 |
+| `APP_URL`                                       | `https://tcg.digitalstack.cloud`         | URL publique                                                                                                      |
+| `TZ`                                            | `Europe/Paris`                           | Fuseau des crons et de l'affichage                                                                                |
+| `ALLOW_REGISTRATION`                            | `false`                                  | Autorise d'autres inscriptions après le premier compte                                                            |
+| `SESSION_TTL_DAYS`                              | `30`                                     | Durée des sessions                                                                                                |
+| `COOKIE_SECURE`                                 | `true`                                   | Cookie HTTPS uniquement (`false` en local sans HTTPS)                                                             |
+| `NTFY_URL` / `NTFY_TOKEN`                       | —                                        | Topic ntfy (ex. `https://ntfy.sh/mon-topic-secret`) et jeton optionnel                                            |
+| `TELEGRAM_BOT_TOKEN` / `TELEGRAM_CHAT_ID`       | —                                        | Notifications Telegram (optionnel)                                                                                |
+| `DEFAULT_CHECK_INTERVAL_MIN`                    | `30`                                     | Fréquence par défaut d'un relevé                                                                                  |
+| `SCRAPER_USER_AGENT`                            | Chrome récent                            | User-agent envoyé aux sites                                                                                       |
+| `SCRAPER_MIN_DELAY_MS` / `SCRAPER_MAX_DELAY_MS` | `2000` / `6000`                          | Délai aléatoire entre deux requêtes d'un même domaine                                                             |
+| `PLAYWRIGHT_ENABLED`                            | `true`                                   | Repli Chromium pour les sites rendus en JavaScript                                                                |
+| `LISTINGS_CRON` / `TCGDEX_CRON` / `MARKET_CRON` | `* * * * *` / `0 6 * * *` / `30 6 * * *` | Planification                                                                                                     |
+| `TCGDEX_SERIES`                                 | `me,sv,swsh,sm,xy,bw`                    | Séries TCGdex importées (Méga-Évolution, Écarlate et Violet, Épée et Bouclier, Soleil et Lune, XY, Noir et Blanc) |
+| `POKECARDEX_ENABLED` / `POKECARDEX_CRON`        | `true` / `15 6 * * *`                    | Import du calendrier des produits FR de Pokécardex                                                                |
+| `POKETRACE_API_KEY`                             | —                                        | Clé PokeTrace (gratuite, 100 req/jour) : prix de revente Cardmarket des ventes FR                                 |
+| `SEED_IF_EMPTY`                                 | `true` (compose)                         | Seed initial au premier démarrage si la base est vide                                                             |
 
 ## Déploiement sur Dokploy
 
