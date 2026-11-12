@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { daysUntil, guessProductType, parseFrenchDate, parsePrice } from '../src';
+import { daysUntil, guessProductType, normalizeEan, parseFrenchDate, parsePrice } from '../src';
 
 describe('parsePrice', () => {
   it.each([
@@ -46,7 +46,19 @@ describe('guessProductType', () => {
     ['Display 36 boosters Règne Delta', 'DISPLAY'],
     ['Booster Blister Pokémon : Règne Delta [ME06] - FR', 'BLISTER'],
     ['Collection avec figurine Pokémon : 30 Ans – Mewtwo', 'COFFRET'],
+    ['Pokémon : Coffret ex Start 1 (3 boosters)', 'COFFRET'],
   ] as const)('%s → %s', (title, type) => {
     expect(guessProductType(title)).toBe(type);
+  });
+});
+
+describe('normalizeEan', () => {
+  it('ramène UPC, EAN-13 et GTIN-14 à la même forme', () => {
+    expect(normalizeEan('0196214134966')).toBe('196214134966');
+    expect(normalizeEan('196214134966')).toBe('196214134966');
+    expect(normalizeEan('00196214134966')).toBe('196214134966');
+    expect(normalizeEan('12-34')).toBeNull();
+    expect(normalizeEan('')).toBeNull();
+    expect(normalizeEan(undefined)).toBeNull();
   });
 });

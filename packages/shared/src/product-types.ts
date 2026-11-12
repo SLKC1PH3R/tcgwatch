@@ -30,7 +30,7 @@ export function guessProductType(title: string): ProductTypeKey {
   const t = title.toLowerCase();
   if (/dresseur d.?[ée]lite|\betb\b/.test(t)) return 'ETB';
   if (/display|36 boosters|18 boosters/.test(t)) return 'DISPLAY';
-  if (/tri-?pack|pack 3 boosters|3 boosters/.test(t)) return 'TRIPACK';
+  if (/tri-?pack|pack (?:de )?3 boosters/.test(t)) return 'TRIPACK';
   if (/ultra.?premium|\bupc\b/.test(t)) return 'UPC';
   if (/mini.?tin/.test(t)) return 'MINI_TIN';
   if (/pok[ée]box/.test(t)) return 'POKEBOX';
@@ -38,4 +38,14 @@ export function guessProductType(title: string): ProductTypeKey {
   if (/coffret|collection/.test(t)) return 'COFFRET';
   if (/booster/.test(t)) return 'BOOSTER';
   return 'AUTRE';
+}
+
+/**
+ * Forme canonique d'un EAN/UPC/GTIN : chiffres seuls, zéros de tête retirés
+ * (« 0196214134966 » et « 196214134966 » désignent le même produit). null si invalide.
+ */
+export function normalizeEan(value: string | number | null | undefined): string | null {
+  if (value === null || value === undefined) return null;
+  const digits = String(value).replace(/\D/g, '').replace(/^0+/, '');
+  return digits.length >= 8 && digits.length <= 14 ? digits : null;
 }

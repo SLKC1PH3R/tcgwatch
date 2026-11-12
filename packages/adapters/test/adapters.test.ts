@@ -3,7 +3,13 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
   AdapterError,
+  adapterKeyFor,
+  buildSearchUrl,
   detectRetailer,
+  isBlockedDomain,
+  normalizeDomain,
+  RETAILER_DIRECTORY,
+  searchTermsFor,
   getAdapterForUrl,
   mapSchemaAvailability,
   parseCultura,
@@ -62,6 +68,13 @@ describe('Play-In (fixtures réelles)', () => {
     });
     expect(iso(r.releaseDate)).toBe('2026-11-06');
     expect(r.imageUrl).toMatch(/^https:\/\/media\.play-in\.com\//);
+    expect(r).toMatchObject({
+      brand: 'The Pokemon Company',
+      sku: '676233',
+      category: 'Booster Pokémon français',
+    });
+    expect(r.description).toMatch(/^Rayquaza fait son grand retour/);
+    expect(r.images).toEqual([r.imageUrl]);
   });
 
   it('produit à venir : prix 0 → null, rupture, date « Sortie prévue le »', () => {
@@ -87,7 +100,13 @@ describe('Philibert (fixtures réelles)', () => {
       price: 19.95,
       availability: 'PREORDER',
       ean: '196214144071',
+      sku: '3PACK01ME06',
     });
+    // HTML retiré de la description ; galerie en grande taille (thickbox), sans doublon.
+    expect(r.description).toMatch(/^Le Pack 3 Boosters Pokémon ME06/);
+    expect(r.description).not.toContain('<p>');
+    expect(r.imageUrl).toContain('903025-thickbox_default');
+    expect(r.images).toHaveLength(2);
   });
 
   it('en stock : bouton « Ajouter au panier »', () => {
@@ -107,6 +126,49 @@ describe('Philibert (fixtures réelles)', () => {
     expect(r.availability).toBe('OUT_OF_STOCK');
     expect(r.price).toBeNull();
     expect(r.title).toContain('Mewtwo');
+  });
+});
+
+describe('PrestaShop générique (fixtures réelles)', () => {
+  it('Agorajeux : bouton panier désactivé → rupture, prix et grande image', () => {
+    const r = parseGeneric(
+      fixture('agorajeux-out-of-stock'),
+      'https://www.agorajeux.com/19459-pokemon-me04-display.html',
+    );
+    expect(r.availability).toBe('OUT_OF_STOCK');
+    expect(r.price).toBe(216);
+    expect(r.imageUrl).toContain('large_default');
+    expect(r.images).toHaveLength(1);
+    expect(r.description).toMatch(/Chaos Ascendant/);
+  });
+
+  it('BCD Jeux : « En Stock, Expédié sous 24h » → en stock', () => {
+    const r = parseGeneric(
+      fixture('bcd-jeux-lucario'),
+      'https://www.bcd-jeux.fr/pokemon-tcg/39011-pokemon-anniversaire-30-ans-collection-autocollant-reajustable-lucario-pokemon.html',
+    );
+    expect(r.availability).toBe('IN_STOCK');
+    expect(r.title).toContain('Lucario');
+    expect(r.imageUrl).toContain('large_default');
+    // Le fil d'Ariane se termine par le produit lui-même : pas de catégorie inventée.
+    expect(r.category).toBeUndefined();
+  });
+});
+
+describe('E.Leclerc via JSON-LD (fixture réelle)', () => {
+  it('EAN normalisé, galerie, marque et rayon', () => {
+    const r = parseGeneric(
+      fixture('leclerc-coffret'),
+      'https://www.e.leclerc/fp/pokemon-coffret-ex-start-1-3-boosters-0196214134966',
+    );
+    expect(r).toMatchObject({
+      availability: 'IN_STOCK',
+      ean: '196214134966',
+      brand: 'Pokémon',
+      category: 'Cartes Pokémon',
+    });
+    expect(r.price).toBeGreaterThan(0);
+    expect(r.images?.length).toBeGreaterThanOrEqual(2);
   });
 });
 
@@ -158,5 +220,37 @@ describe('Registre des adaptateurs', () => {
     ]) {
       expect(() => getAdapterForUrl(url)).toThrow(AdapterError);
     }
+  });
+});
+
+describe('Annuaire des revendeurs', () => {
+  it('slugs et domaines uniques, cohérents avec les URL', () => {
+    const slugs = RETAILER_DIRECTORY.map((r) => r.slug);
+    const domains = RETAILER_DIRECTORY.map((r) => r.domain);
+    expect(new Set(slugs).size).toBe(slugs.length);
+    expect(new Set(domains).size).toBe(domains.length);
+    for (const r of RETAILER_DIRECTORY) {
+      expect(normalizeDomain(r.websiteUrl)).toBe(r.domain);
+      expect(normalizeDomain(r.pokemonUrl)).toBe(r.domain);
+      if (r.searchUrl) expect(r.searchUrl).toContain('{q}');
+      expect(isBlockedDomain(r.websiteUrl)).toBe(false);
+    }
+  });
+
+  it('associe le bon adaptateur', () => {
+    const key = (slug: string) => adapterKeyFor(RETAILER_DIRECTORY.find((r) => r.slug === slug)!);
+    expect(key('play-in')).toBe('playin');
+    expect(key('philibert')).toBe('philibert');
+    expect(key('smyths')).toBe('smyths');
+    expect(key('agorajeux')).toBe('jsonld');
+  });
+
+  it('construit des recherches produit propres', () => {
+    const terms = searchTermsFor('Booster Blister Pokémon : Règne Delta [ME06] - FR');
+    expect(terms).toBe('Booster Blister Pokémon Règne Delta');
+    expect(buildSearchUrl('https://www.play-in.com/fr/recherche?q={q}', terms)).toBe(
+      'https://www.play-in.com/fr/recherche?q=Booster+Blister+Pok%C3%A9mon+R%C3%A8gne+Delta',
+    );
+    expect(buildSearchUrl(null, terms)).toBeUndefined();
   });
 });

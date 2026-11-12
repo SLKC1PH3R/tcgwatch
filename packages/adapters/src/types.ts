@@ -11,8 +11,18 @@ export interface ListingResult {
   /** Date « Sortie prévue le … » détectée sur la fiche. */
   releaseDate?: Date;
   title?: string;
+  /** Image principale (la plus grande disponible). */
   imageUrl?: string;
+  /** Galerie complète, image principale incluse, sans doublon. */
+  images?: string[];
+  /** Description texte (HTML retiré), tronquée à 2 000 caractères. */
+  description?: string;
+  brand?: string;
+  /** Référence interne du revendeur. */
+  sku?: string;
   ean?: string;
+  /** Rayon du site (dernier niveau du fil d'Ariane), ex. « Booster Pokémon français ». */
+  category?: string;
   /** Lien vers le dispositif d'alerte de stock du site, s'il existe. */
   stockAlertUrl?: string;
 }
