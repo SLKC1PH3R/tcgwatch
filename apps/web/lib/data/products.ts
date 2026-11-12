@@ -33,12 +33,14 @@ export interface ListingDTO {
   imageUrl: string | null;
   sku: string | null;
   category: string | null;
+  discovered: boolean;
 }
 
 export interface ProductDTO {
   id: string;
   name: string;
   slug: string;
+  externalId: string | null;
   type: string;
   ean: string | null;
   imageUrl: string | null;
@@ -84,6 +86,7 @@ function toListingDTO(l: ProductRow['listings'][number]): ListingDTO {
     imageUrl: l.lastImageUrl,
     sku: l.sku,
     category: l.category,
+    discovered: l.discovered,
   };
 }
 
@@ -110,6 +113,7 @@ function toProductDTO(p: ProductRow): ProductDTO {
     id: p.id,
     name: p.name,
     slug: p.slug,
+    externalId: p.externalId,
     type: p.type,
     ean: p.ean,
     imageUrl: p.imageUrl,

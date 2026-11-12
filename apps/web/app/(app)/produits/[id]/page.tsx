@@ -76,7 +76,9 @@ export default async function ProductPage({ params, searchParams }: Props) {
             <Badge variant="outline">
               {PRODUCT_TYPE_LABELS[product.type as ProductTypeKey] ?? product.type}
             </Badge>
-            {product.release && <span>{product.release.nameFr}</span>}
+            {product.release && product.release.nameFr !== product.name && (
+              <span>{product.release.nameFr}</span>
+            )}
             {(product.releaseDate ?? product.release?.releaseDate) && (
               <span>
                 · sortie le {formatDate(product.releaseDate ?? product.release?.releaseDate)}
@@ -217,6 +219,16 @@ export default async function ProductPage({ params, searchParams }: Props) {
                   </>
                 )}
               </dl>
+              {product.externalId?.startsWith('pokecardex:') && (
+                <a
+                  href="https://www.pokecardex.com/calendrier"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+                >
+                  Catalogue : calendrier Pokécardex <ExternalLink className="size-3" />
+                </a>
+              )}
               {product.description && (
                 <p className="text-sm leading-relaxed text-muted-foreground">
                   {product.description}

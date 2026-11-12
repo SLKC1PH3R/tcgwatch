@@ -90,7 +90,9 @@ export default async function ProductsPage() {
                             <Badge variant="outline">
                               {PRODUCT_TYPE_LABELS[p.type as ProductTypeKey] ?? p.type}
                             </Badge>
-                            {p.release && <span>{p.release.setCode ?? p.release.nameFr}</span>}
+                            {p.release && (p.release.setCode || p.release.nameFr !== p.name) && (
+                              <span>{p.release.setCode ?? p.release.nameFr}</span>
+                            )}
                             {(p.releaseDate ?? p.release?.releaseDate) && (
                               <span>· {formatDate(p.releaseDate ?? p.release?.releaseDate)}</span>
                             )}

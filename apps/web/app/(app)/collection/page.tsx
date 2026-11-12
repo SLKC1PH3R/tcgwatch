@@ -65,7 +65,7 @@ export default async function CollectionPage() {
         />
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[1fr_360px]">
+      <div className="grid gap-6 xl:grid-cols-[1fr_360px] [&>*]:min-w-0">
         <Card className="py-2">
           <CardContent className="px-2">
             {rows.length === 0 ? (

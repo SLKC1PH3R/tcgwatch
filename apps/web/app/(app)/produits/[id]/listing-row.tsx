@@ -38,6 +38,14 @@ export function ListingRow({ listing }: { listing: ListingDTO }) {
           <span className="font-medium">{listing.retailerName}</span>
           <AvailabilityBadge availability={listing.availability} />
           <span className="font-semibold tabular-nums">{formatPrice(listing.price)}</span>
+          {listing.discovered && (
+            <Badge
+              variant="secondary"
+              title="Fiche trouvée automatiquement dans les rayons du site"
+            >
+              Auto
+            </Badge>
+          )}
           {listing.state !== 'ACTIVE' && (
             <Badge variant={listing.state === 'PAUSED' ? 'secondary' : 'destructive'}>
               {STATE_LABEL[listing.state]}

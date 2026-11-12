@@ -24,6 +24,12 @@ prix du marché secondaire et valorisation de sa collection.
   Vue mensuelle filtrable par type, détail d'un jour, liste « à venir » avec compte à rebours,
   édition et validation manuelles (statuts `auto` / `validé` : une sortie validée n'est plus modifiée
   par les imports).
+- **Catalogue 100 % automatique et 100 % français** : chaque sortie FR du calendrier Pokécardex
+  devient un produit suivi (nom, type, image, date, prix conseillé). Chaque jour, le worker parcourt
+  les rayons Pokémon des boutiques (Play-In, Philibert, Agorajeux, Ludifolie, BCD Jeux — uniquement
+  les pages autorisées par leur `robots.txt`) et la recherche Play-In, puis rattache les fiches
+  trouvées aux produits du catalogue : même type et mêmes mots distinctifs, versions EN/JP/KO et
+  accessoires écartés, aucun rattachement en cas de doute. Aucune saisie n'est nécessaire.
 - **Suivi stock & prix** : une architecture d'adaptateurs par site (JSON-LD schema.org générique, plus
   Play-In, Philibert, Cultura et Smyths Toys), une fréquence configurable par fiche, un délai aléatoire,
   une seule requête à la fois par domaine, un backoff exponentiel et le respect de `robots.txt`.
@@ -37,9 +43,11 @@ prix du marché secondaire et valorisation de sa collection.
 - **Alertes** [ntfy](https://ntfy.sh), et Telegram en option : retour en stock, prix ≤ prix cible
   (défini **par produit** et **par fiche revendeur**, la fiche est prioritaire), ouverture d'une
   précommande. Anti-doublon de 6 h.
-- **Marché secondaire** : historique quotidien des prix (saisie manuelle du prix Cardmarket constaté),
-  graphique « prix boutiques vs prix marché », ratio prix marché / prix d'achat, suivi des cartes phares
-  via TCGdex. Provider PokeTrace prévu (squelette). **Cardmarket n'est jamais scrapé.**
+- **Marché secondaire** : meilleur prix boutique comparé au prix conseillé, historique quotidien des
+  prix, graphique « prix boutiques vs prix marché », ratio prix marché / prix d'achat. **Cartes phares
+  choisies automatiquement** (cartes secrètes les mieux cotées des 4 dernières extensions) et cotées
+  chaque jour via TCGdex. Le prix marché des produits scellés n'a pas de source automatique autorisée :
+  saisie manuelle ou PokeTrace. Provider PokeTrace prévu (squelette). **Cardmarket n'est jamais scrapé.**
 - **Ma collection** : quantité, prix d'achat, date, magasin, état du scellé, photo ; valeur estimée,
   plus-value latente, export CSV (compatible Excel FR).
 - **Tableau de bord** : prochaines sorties, derniers retours en stock, alertes actives, valeur de la

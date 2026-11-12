@@ -3,9 +3,17 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { prisma } from '@tcgwatch/db';
 import { createMarketProviders } from '@tcgwatch/market';
-import { formatDate, formatPercent, formatPrice, toNumber } from '@tcgwatch/shared';
+import {
+  formatDate,
+  formatPercent,
+  formatPrice,
+  PRODUCT_TYPE_LABELS,
+  toNumber,
+  type ProductTypeKey,
+} from '@tcgwatch/shared';
 import { getEnv } from '@tcgwatch/shared/env';
 import { PageHeader } from '@/components/page-header';
+import { Thumb } from '@/components/thumb';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -19,6 +27,7 @@ import {
 } from '@/components/ui/table';
 import { latestMarketPrices } from '@/lib/data/collection';
 import { bestOffer, getProducts } from '@/lib/data/products';
+import { cn } from '@/lib/utils';
 import { deleteChaseCardAction } from './actions';
 import { ChaseCardForm } from './chase-card-form';
 import { MarketPriceForm } from './market-price-form';
@@ -43,6 +52,15 @@ export default async function MarketPage() {
     }),
   ]);
   const providers = createMarketProviders(getEnv());
+  // Produits avec au moins une donnée de prix : boutique achetable d'abord, puis par sortie.
+  const sealed = products
+    .map((p) => ({ p, m: market.get(p.id), best: bestOffer(p.listings) }))
+    .filter(({ p, m, best }) => best || m || p.msrp !== null)
+    .sort(
+      (a, b) =>
+        Number(!!b.best) - Number(!!a.best) ||
+        (b.p.releaseDate?.getTime() ?? 0) - (a.p.releaseDate?.getTime() ?? 0),
+    );
 
   return (
     <>
@@ -51,46 +69,96 @@ export default async function MarketPage() {
         description="Prix constatés hors boutiques. Cardmarket n’est jamais scrapé : saisie manuelle ou API tierces."
       />
 
-      <div className="grid gap-6 xl:grid-cols-[1fr_360px]">
+      <div className="grid gap-6 xl:grid-cols-[1fr_360px] [&>*]:min-w-0">
         <div className="space-y-6">
           <Card className="py-2">
             <CardHeader className="pt-3">
-              <CardTitle>Produits scellés</CardTitle>
+              <div className="space-y-1">
+                <CardTitle>Produits scellés</CardTitle>
+                <CardDescription>
+                  {sealed.length} produits FR avec un prix · prix conseillé (Pokécardex), meilleur
+                  prix achetable chez les revendeurs suivis et prix marché quand il est connu.
+                </CardDescription>
+              </div>
             </CardHeader>
             <CardContent className="px-2">
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Produit</TableHead>
-                    <TableHead className="text-right">Prix marché</TableHead>
+                    <TableHead className="text-right">Prix conseillé</TableHead>
                     <TableHead className="text-right">Meilleur prix boutique</TableHead>
-                    <TableHead className="text-right">Écart</TableHead>
-                    <TableHead>Relevé</TableHead>
+                    <TableHead className="text-right">vs conseillé</TableHead>
+                    <TableHead className="text-right">Prix marché</TableHead>
+                    <TableHead className="text-right">Marché / boutique</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {products.map((p) => {
-                    const m = market.get(p.id);
-                    const best = bestOffer(p.listings);
+                  {sealed.map(({ p, m, best }) => {
+                    const vsMsrp = best && p.msrp ? best.price / p.msrp - 1 : null;
                     const gap = m && best ? m.price / best.price - 1 : null;
                     return (
                       <TableRow key={p.id}>
                         <TableCell>
-                          <Link href={`/produits/${p.id}`} className="font-medium hover:underline">
-                            {p.name}
-                          </Link>
+                          <div className="flex min-w-56 items-center gap-3">
+                            <Thumb src={p.displayImage} />
+                            <div className="min-w-0">
+                              <Link
+                                href={`/produits/${p.id}`}
+                                className="line-clamp-2 font-medium hover:underline"
+                              >
+                                {p.name}
+                              </Link>
+                              <p className="text-xs text-muted-foreground">
+                                {PRODUCT_TYPE_LABELS[p.type as ProductTypeKey] ?? p.type}
+                                {p.releaseDate && ` · ${formatDate(p.releaseDate)}`}
+                              </p>
+                            </div>
+                          </div>
                         </TableCell>
                         <TableCell className="text-right tabular-nums">
-                          {formatPrice(m?.price)}
+                          {formatPrice(p.msrp)}
                         </TableCell>
                         <TableCell className="text-right tabular-nums">
-                          {formatPrice(best?.price)}
+                          {best ? (
+                            <a
+                              href={best.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="hover:underline"
+                            >
+                              {formatPrice(best.price)}
+                              <span className="block text-xs text-muted-foreground">
+                                {best.retailerName}
+                              </span>
+                            </a>
+                          ) : (
+                            '—'
+                          )}
+                        </TableCell>
+                        <TableCell
+                          className={cn(
+                            'text-right tabular-nums',
+                            vsMsrp !== null && vsMsrp > 0.05 && 'text-destructive',
+                            vsMsrp !== null && vsMsrp < -0.02 && 'text-success',
+                          )}
+                        >
+                          {formatPercent(vsMsrp)}
+                        </TableCell>
+                        <TableCell className="text-right tabular-nums">
+                          {m ? (
+                            <>
+                              {formatPrice(m.price)}
+                              <span className="block text-xs text-muted-foreground">
+                                {formatDate(m.date)} · {m.source}
+                              </span>
+                            </>
+                          ) : (
+                            '—'
+                          )}
                         </TableCell>
                         <TableCell className="text-right tabular-nums">
                           {formatPercent(gap)}
-                        </TableCell>
-                        <TableCell className="text-xs text-muted-foreground">
-                          {m ? `${formatDate(m.date)} · ${m.source}` : '—'}
                         </TableCell>
                       </TableRow>
                     );
@@ -105,7 +173,8 @@ export default async function MarketPage() {
               <div className="space-y-1">
                 <CardTitle>Cartes phares</CardTitle>
                 <CardDescription>
-                  Cotations Cardmarket agrégées par TCGdex, relevées chaque jour.
+                  Choisies automatiquement (cartes secrètes les mieux cotées des dernières
+                  extensions) · cotations Cardmarket agrégées par TCGdex, relevées chaque jour.
                 </CardDescription>
               </div>
             </CardHeader>
