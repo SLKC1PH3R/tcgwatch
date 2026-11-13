@@ -5,7 +5,7 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
 import { AdapterError, detectRetailer } from '@tcgwatch/adapters';
-import { prisma, ProductType } from '@tcgwatch/db';
+import { prisma, recordDaily, ProductType } from '@tcgwatch/db';
 import { AVAILABILITIES, guessProductType, normalizeEan } from '@tcgwatch/shared';
 import { requireUser } from '@/lib/auth';
 import { getWebFetcher } from '@/lib/fetcher';
@@ -289,6 +289,12 @@ export async function addListingAction(
     },
   });
   if (tested) {
+    await recordDaily({
+      listingId: listing.id,
+      price: tested.price ?? null,
+      availability: tested.availability,
+      at: now,
+    });
     await prisma.snapshot.create({
       data: {
         listingId: listing.id,

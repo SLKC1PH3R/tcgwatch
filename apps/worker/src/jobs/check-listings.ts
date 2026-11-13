@@ -4,7 +4,7 @@ import {
   type FetchContext,
   type ListingResult,
 } from '@tcgwatch/adapters';
-import { prisma, type Prisma } from '@tcgwatch/db';
+import { prisma, recordDaily, shouldKeepSnapshot, type Prisma } from '@tcgwatch/db';
 import { AVAILABILITY_LABELS, formatPrice, toNumber, type Availability } from '@tcgwatch/shared';
 import { detectAlerts, effectiveTarget, type DetectedAlert } from '../alerts';
 import type { WorkerContext } from '../context';
@@ -97,16 +97,33 @@ async function recordSuccess(
   const isFirstCheck = listing.lastCheckedAt === null;
   const alerts = detectAlerts(listing.id, prev, next, target, isFirstCheck);
 
+  // Historique : relevé détaillé seulement si le prix ou le stock change (et une fois par
+  // jour pour confirmer), résumé du jour mis à jour à chaque passage.
+  const observation = {
+    listingId: listing.id,
+    price: result.price ?? null,
+    availability: result.availability,
+    at: now,
+  };
+  const keepSnapshot = await shouldKeepSnapshot(
+    { ...prev, lastCheckedAt: listing.lastCheckedAt },
+    observation,
+  );
+  await recordDaily(observation);
   await prisma.$transaction([
-    prisma.snapshot.create({
-      data: {
-        listingId: listing.id,
-        price: result.price,
-        currency: result.currency,
-        availability: result.availability,
-        releaseDate: result.releaseDate,
-      },
-    }),
+    ...(keepSnapshot
+      ? [
+          prisma.snapshot.create({
+            data: {
+              listingId: listing.id,
+              price: result.price,
+              currency: result.currency,
+              availability: result.availability,
+              releaseDate: result.releaseDate,
+            },
+          }),
+        ]
+      : []),
     prisma.listing.update({
       where: { id: listing.id },
       data: {

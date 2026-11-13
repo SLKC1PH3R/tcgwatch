@@ -25,3 +25,4 @@ export const prisma: PrismaClient = new Proxy({} as PrismaClient, {
     return typeof value === 'function' ? value.bind(client) : value;
   },
 });
+export * from './history';

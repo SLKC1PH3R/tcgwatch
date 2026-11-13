@@ -2,7 +2,9 @@ import { Bell, ExternalLink, Plus, TriangleAlert } from 'lucide-react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import {
+  boosterCount,
   formatDate,
+  formatPercent,
   formatPrice,
   PRODUCT_TYPE_LABELS,
   type ProductTypeKey,
@@ -20,12 +22,16 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { getLowSinceBadges } from '@/lib/data/history';
 import { getProducts } from '@/lib/data/products';
 
 export const metadata: Metadata = { title: 'Produits suivis' };
 
 export default async function ProductsPage() {
   const products = await getProducts();
+  const lows = await getLowSinceBadges(
+    products.map((p) => ({ id: p.id, best: p.best?.price ?? null })),
+  );
 
   return (
     <>
@@ -107,6 +113,13 @@ export default async function ProductsPage() {
                             {formatPrice(p.best.price)}
                           </p>
                           <p className="text-xs text-muted-foreground">{p.best.retailerName}</p>
+                          <LowSince low={lows.get(p.id)} />
+                          <PerBooster
+                            name={p.name}
+                            type={p.type}
+                            price={p.best.price}
+                            msrp={p.msrp}
+                          />
                           <Button asChild size="sm">
                             <a href={p.best.url} target="_blank" rel="noopener noreferrer">
                               Acheter <ExternalLink />
@@ -168,5 +181,42 @@ export default async function ProductsPage() {
         </CardContent>
       </Card>
     </>
+  );
+}
+
+/** Pastille « plus bas depuis X jours » (meilleur prix achetable). */
+function LowSince({ low }: { low?: { days: number; allTime: boolean } }) {
+  if (!low) return null;
+  return (
+    <Badge
+      variant="outline"
+      className="border-success/40 text-success"
+      title="Meilleur prix achetable, toutes boutiques suivies"
+    >
+      {low.allTime ? `Plus bas jamais vu (${low.days} j)` : `Plus bas depuis ${low.days} j`}
+    </Badge>
+  );
+}
+
+/** Prix par booster et écart avec le prix conseillé ramené au booster. */
+function PerBooster({
+  name,
+  type,
+  price,
+  msrp,
+}: {
+  name: string;
+  type: string;
+  price: number;
+  msrp: number | null;
+}) {
+  const n = boosterCount(name, type);
+  if (!n || n === 1) return null;
+  const gap = msrp ? price / msrp - 1 : null;
+  return (
+    <p className="text-xs text-muted-foreground tabular-nums">
+      {formatPrice(price / n)} / booster
+      {gap !== null && <span> · {formatPercent(gap)} vs conseillé</span>}
+    </p>
   );
 }

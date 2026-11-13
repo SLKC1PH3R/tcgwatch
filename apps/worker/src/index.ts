@@ -1,4 +1,4 @@
-import { prisma } from '@tcgwatch/db';
+import { compactSnapshots, prisma } from '@tcgwatch/db';
 import cron, { type ScheduledTask } from 'node-cron';
 import { createContext, type WorkerContext } from './context';
 import { startHealthServer } from './health';
@@ -39,6 +39,7 @@ async function main() {
       pokecardexCron: env.POKECARDEX_ENABLED ? env.POKECARDEX_CRON : 'désactivé',
       discoveryCron: env.DISCOVERY_ENABLED ? env.DISCOVERY_CRON : 'désactivé',
       marketCron: env.MARKET_CRON,
+      historyCron: env.HISTORY_CRON,
       playwright: env.PLAYWRIGHT_ENABLED,
       notifications: ctx.notifier.enabled,
     },
@@ -53,11 +54,16 @@ async function main() {
   const marketJob = exclusive(ctx, 'market', () => runMarketJob(ctx));
   const pokecardexJob = exclusive(ctx, 'pokecardex', () => importPokecardex(ctx));
   const discoveryJob = exclusive(ctx, 'discovery', () => discoverListings(ctx));
+  const historyJob = exclusive(ctx, 'history', async () => {
+    const removed = await compactSnapshots();
+    logger.info({ removed }, 'Relevés anciens regroupés dans le résumé quotidien');
+  });
 
   const tasks: ScheduledTask[] = [
     cron.schedule(env.LISTINGS_CRON, listingsJob, { timezone, name: 'listings' }),
     cron.schedule(env.TCGDEX_CRON, tcgdexJob, { timezone, name: 'tcgdex' }),
     cron.schedule(env.MARKET_CRON, marketJob, { timezone, name: 'market' }),
+    cron.schedule(env.HISTORY_CRON, historyJob, { timezone, name: 'history' }),
   ];
   if (env.POKECARDEX_ENABLED) {
     tasks.push(cron.schedule(env.POKECARDEX_CRON, pokecardexJob, { timezone, name: 'pokecardex' }));

@@ -47,6 +47,10 @@ const schema = z.object({
   LISTINGS_CRON: z.string().default('* * * * *'),
   TCGDEX_CRON: z.string().default('0 6 * * *'),
   MARKET_CRON: z.string().default('30 6 * * *'),
+  /** Regroupement des relevés anciens dans le résumé quotidien. */
+  HISTORY_CRON: z.string().default('30 3 * * *'),
+  /** Alerte de variation du prix marché sur 7 jours, en % (0 = désactivée). */
+  MARKET_MOVE_ALERT_PCT: z.coerce.number().min(0).default(15),
   TCGDEX_SERIES: z.string().default('me,sv,swsh,sm,xy,bw'),
   /** Calendrier des sorties FR de Pokécardex (pokecardex.com/calendrier). */
   POKECARDEX_ENABLED: bool(true),

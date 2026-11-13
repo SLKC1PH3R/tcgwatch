@@ -23,6 +23,8 @@ const ALERT_LABEL = {
   PREORDER_OPEN: 'Précommande',
   PRICE_TARGET: 'Prix cible',
   RELEASE_DATE: 'Date de sortie',
+  NEW_LOW: 'Plus bas historique',
+  MARKET_MOVE: 'Variation marché',
 } as const;
 
 function Empty({ children }: { children: React.ReactNode }) {

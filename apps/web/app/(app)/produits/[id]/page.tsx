@@ -10,6 +10,7 @@ import {
 } from '@tcgwatch/adapters';
 import { prisma } from '@tcgwatch/db';
 import {
+  boosterCount,
   formatDate,
   formatDateTime,
   formatPercent,
@@ -25,14 +26,19 @@ import { ProductGallery } from '@/components/product-gallery';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { getPriceHistory, getProduct, getReleaseOptions } from '@/lib/data/products';
+import { getPriceHistory, PERIODS, periodOf } from '@/lib/data/history';
+import { cn } from '@/lib/utils';
+import { getProduct, getReleaseOptions } from '@/lib/data/products';
 import { toDateInput } from '@/lib/form';
 import { MarketPriceForm } from '../../marche/market-price-form';
 import { deleteProductAction, updateProductAction } from '../actions';
 import { ProductForm } from '../product-form';
 import { ListingRow } from './listing-row';
 
-type Props = { params: Promise<{ id: string }>; searchParams: Promise<{ erreur?: string }> };
+type Props = {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ erreur?: string; periode?: string }>;
+};
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
@@ -41,12 +47,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function ProductPage({ params, searchParams }: Props) {
-  const [{ id }, { erreur }] = await Promise.all([params, searchParams]);
+  const [{ id }, { erreur, periode }] = await Promise.all([params, searchParams]);
   const product = await getProduct(id);
   if (!product) notFound();
+  const period = periodOf(periode);
 
   const [history, releases, alerts, marketPrices, retailers] = await Promise.all([
-    getPriceHistory(id),
+    getPriceHistory(id, period.days),
     getReleaseOptions(),
     prisma.alertEvent.findMany({
       where: { productId: id },
@@ -74,6 +81,12 @@ export default async function ProductPage({ params, searchParams }: Props) {
     name: s.name,
     href: buildSearchUrl(s.searchUrl, bigStoreTerms)!,
   }));
+  // Prix par booster : compare les formats entre eux et au prix conseillé.
+  const boosters = boosterCount(product.name, product.type);
+  const perBooster = (price: number | null | undefined) =>
+    boosters && price ? price / boosters : null;
+  const bestPerBooster = perBooster(product.best?.price);
+  const msrpPerBooster = perBooster(product.msrp);
   const categories = [
     ...new Set(product.listings.map((l) => l.category).filter((c): c is string => !!c)),
   ];
@@ -110,39 +123,86 @@ export default async function ProductPage({ params, searchParams }: Props) {
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="min-w-0 space-y-6 lg:col-span-2">
           <Card>
-            <CardHeader>
-              <div className="space-y-1">
-                <CardTitle>Prix boutiques vs marché</CardTitle>
-                <CardDescription>90 derniers jours</CardDescription>
+            <CardHeader className="flex-col">
+              <div className="flex w-full flex-wrap items-start justify-between gap-3">
+                <div className="space-y-1">
+                  <CardTitle>Prix boutiques vs marché</CardTitle>
+                  <CardDescription>
+                    {period.days ? `${period.days} derniers jours` : 'Tout l’historique'} · périodes
+                    de rupture grisées
+                  </CardDescription>
+                </div>
+                <nav aria-label="Période" className="flex gap-1">
+                  {PERIODS.map((p) => (
+                    <Link
+                      key={p.key}
+                      href={`/produits/${product.id}?periode=${p.key}`}
+                      scroll={false}
+                      aria-current={p.key === period.key ? 'true' : undefined}
+                      className={cn(
+                        'rounded-full border px-2.5 py-1 text-xs font-medium text-muted-foreground hover:bg-accent',
+                        p.key === period.key &&
+                          'border-foreground bg-foreground text-background hover:bg-foreground',
+                      )}
+                    >
+                      {p.label}
+                    </Link>
+                  ))}
+                </nav>
               </div>
-              <div className="flex gap-4 text-sm">
-                <div>
-                  <p className="text-muted-foreground">Meilleur prix</p>
-                  <p className="font-semibold tabular-nums">{formatPrice(product.best?.price)}</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">Prix marché</p>
-                  <p className="font-semibold tabular-nums">{formatPrice(history.lastMarket)}</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">Marché / achat</p>
-                  <p className="font-semibold tabular-nums">
-                    {history.ratio !== null
-                      ? `×${history.ratio.toFixed(2).replace('.', ',')}`
-                      : '—'}
-                    {history.ratio !== null && (
-                      <span className="ml-1 text-xs text-muted-foreground">
-                        ({formatPercent(history.ratio - 1)})
-                      </span>
-                    )}
-                  </p>
-                </div>
-              </div>
+              <dl className="grid w-full grid-cols-2 gap-x-4 gap-y-3 text-sm sm:grid-cols-4">
+                <Stat label="Meilleur prix" value={formatPrice(product.best?.price)} />
+                <Stat
+                  label="Plus bas historique"
+                  value={formatPrice(history.allTimeLow)}
+                  hint={history.low30 !== null ? `30 j : ${formatPrice(history.low30)}` : undefined}
+                />
+                <Stat
+                  label="Prix par booster"
+                  value={bestPerBooster !== null ? formatPrice(bestPerBooster) : '—'}
+                  hint={
+                    msrpPerBooster !== null
+                      ? `conseillé ${formatPrice(msrpPerBooster)}${
+                          bestPerBooster !== null
+                            ? ` (${formatPercent(bestPerBooster / msrpPerBooster - 1)})`
+                            : ''
+                        }`
+                      : boosters
+                        ? `${boosters} booster${boosters > 1 ? 's' : ''}`
+                        : 'contenu variable'
+                  }
+                />
+                <Stat
+                  label="Prix marché"
+                  value={formatPrice(history.lastMarket)}
+                  hint={
+                    [
+                      history.lastMarketListings !== null
+                        ? `${history.lastMarketListings} annonce${history.lastMarketListings > 1 ? 's' : ''}`
+                        : null,
+                      history.lastMarketMedian !== null
+                        ? `médiane ${formatPrice(history.lastMarketMedian)}`
+                        : null,
+                      history.ratio !== null
+                        ? `${formatPercent(history.ratio - 1)} vs achat`
+                        : null,
+                    ]
+                      .filter(Boolean)
+                      .join(' · ') || undefined
+                  }
+                />
+              </dl>
             </CardHeader>
             <CardContent>
               <PriceChart
                 data={history.data}
-                series={history.series}
+                retailers={history.retailers}
+                hasBest={history.hasBest}
+                hasMarket={history.hasMarket}
+                outOfStock={history.outOfStock}
+                allTimeLow={history.allTimeLow}
+                low30={history.low30}
+                msrp={product.msrp}
                 avgPurchase={history.avgPurchase}
               />
             </CardContent>
@@ -370,5 +430,15 @@ function SearchLink({ href, name, title }: { href: string; name: string; title: 
       <span className="truncate">{name}</span>
       <ExternalLink className="ml-auto size-3.5 shrink-0 text-muted-foreground" />
     </a>
+  );
+}
+
+function Stat({ label, value, hint }: { label: string; value: string; hint?: string }) {
+  return (
+    <div className="min-w-0">
+      <dt className="text-muted-foreground">{label}</dt>
+      <dd className="font-semibold tabular-nums">{value}</dd>
+      {hint && <dd className="truncate text-xs text-muted-foreground">{hint}</dd>}
+    </div>
   );
 }

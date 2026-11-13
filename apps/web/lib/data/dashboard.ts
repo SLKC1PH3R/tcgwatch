@@ -40,24 +40,20 @@ export interface PriceMove {
 }
 
 /**
- * Top variations sur 30 jours : meilleur prix boutique (snapshots) et prix marché,
+ * Top variations sur 30 jours : meilleur prix boutique (résumés quotidiens) et prix marché,
  * en comparant le premier relevé de la fenêtre au plus récent.
  */
 export async function getTopPriceMoves(limit = 6): Promise<PriceMove[]> {
   const since = new Date(Date.now() - 30 * 86_400_000);
   const [snapshots, market] = await Promise.all([
-    prisma.snapshot.findMany({
-      where: {
-        createdAt: { gte: since },
-        price: { not: null },
-        availability: { in: ['IN_STOCK', 'PREORDER'] },
-      },
+    prisma.listingDaily.findMany({
+      where: { date: { gte: since }, minBuyablePrice: { not: null } },
       select: {
-        createdAt: true,
-        price: true,
+        date: true,
+        minBuyablePrice: true,
         listing: { select: { productId: true, product: { select: { name: true } } } },
       },
-      orderBy: { createdAt: 'asc' },
+      orderBy: { date: 'asc' },
     }),
     prisma.marketPrice.findMany({
       where: { date: { gte: since } },
@@ -70,12 +66,12 @@ export async function getTopPriceMoves(limit = 6): Promise<PriceMove[]> {
   const retail = new Map<string, { name: string; days: Map<string, number> }>();
   for (const s of snapshots) {
     const id = s.listing.productId;
-    const day = s.createdAt.toISOString().slice(0, 10);
+    const day = s.date.toISOString().slice(0, 10);
     const entry = retail.get(id) ?? {
       name: s.listing.product.name,
       days: new Map<string, number>(),
     };
-    const p = toNumber(s.price)!;
+    const p = toNumber(s.minBuyablePrice)!;
     entry.days.set(day, Math.min(entry.days.get(day) ?? Infinity, p));
     retail.set(id, entry);
   }

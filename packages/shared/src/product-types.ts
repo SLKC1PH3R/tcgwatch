@@ -55,3 +55,31 @@ export function normalizeEan(value: string | number | null | undefined): string 
   const digits = String(value).replace(/\D/g, '').replace(/^0+/, '');
   return digits.length >= 8 && digits.length <= 14 ? digits : null;
 }
+
+/**
+ * Nombre de boosters d'un produit scellé, pour comparer les formats au prix par booster.
+ * Lu dans l'intitulé (« 9 boosters », « Display 18 boosters ») ou déduit du type ;
+ * null quand le contenu varie trop (coffrets, UPC, decks).
+ */
+export function boosterCount(name: string, type: string): number | null {
+  const t = name.toLowerCase();
+  const explicit = /\b(\d{1,2})\s*boosters?\b/.exec(t);
+  if (explicit) return Number(explicit[1]);
+  switch (type) {
+    case 'BOOSTER':
+      return /\blot\b|\bbundle\b/.test(t) ? 6 : 1;
+    case 'DISPLAY':
+      if (/mini.?(?:tin|bo[iî]te)/.test(t)) return null;
+      return /\bdemi\b/.test(t) ? 18 : 36;
+    case 'ETB':
+      return 9;
+    case 'TRIPACK':
+      return 3;
+    case 'BLISTER':
+      return /duo-?pack|pack 2/.test(t) ? 2 : 1;
+    case 'MINI_TIN':
+      return 2;
+    default:
+      return null;
+  }
+}

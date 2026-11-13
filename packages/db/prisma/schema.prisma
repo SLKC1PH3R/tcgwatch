@@ -59,6 +59,8 @@ enum AlertType {
   PREORDER_OPEN
   PRICE_TARGET
   RELEASE_DATE
+  NEW_LOW /// nouveau plus bas historique du meilleur prix achetable
+  MARKET_MOVE /// variation du prix marché sur 7 jours au-delà du seuil
 }
 
 enum RetailerKind {
@@ -181,34 +183,35 @@ model Retailer {
 }
 
 model Listing {
-  id                String       @id @default(cuid())
+  id                String         @id @default(cuid())
   productId         String
-  product           Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
+  product           Product        @relation(fields: [productId], references: [id], onDelete: Cascade)
   retailerId        String
-  retailer          Retailer     @relation(fields: [retailerId], references: [id])
-  url               String       @unique
+  retailer          Retailer       @relation(fields: [retailerId], references: [id])
+  url               String         @unique
   stockAlertUrl     String?
-  targetPrice       Decimal?     @db.Decimal(10, 2) /// prioritaire sur Product.targetPrice
-  checkIntervalMin  Int          @default(30)
-  state             ListingState @default(ACTIVE)
-  nextCheckAt       DateTime     @default(now())
+  targetPrice       Decimal?       @db.Decimal(10, 2) /// prioritaire sur Product.targetPrice
+  checkIntervalMin  Int            @default(30)
+  state             ListingState   @default(ACTIVE)
+  nextCheckAt       DateTime       @default(now())
   lastCheckedAt     DateTime?
   // État dénormalisé (dernier relevé) pour des tableaux rapides
   lastTitle         String?
   lastImageUrl      String?
-  discovered        Boolean      @default(false) /// fiche trouvée automatiquement (rayons revendeurs)
+  discovered        Boolean        @default(false) /// fiche trouvée automatiquement (rayons revendeurs)
   sku               String? /// référence du revendeur
   category          String? /// rayon du site (fil d'Ariane)
-  lastPrice         Decimal?     @db.Decimal(10, 2)
-  lastCurrency      String       @default("EUR")
-  lastAvailability  Availability @default(UNKNOWN)
+  lastPrice         Decimal?       @db.Decimal(10, 2)
+  lastCurrency      String         @default("EUR")
+  lastAvailability  Availability   @default(UNKNOWN)
   lastInStockAt     DateTime?
-  consecutiveErrors Int          @default(0)
+  consecutiveErrors Int            @default(0)
   lastError         String?
   snapshots         Snapshot[]
+  daily             ListingDaily[]
   alerts            AlertEvent[]
-  createdAt         DateTime     @default(now())
-  updatedAt         DateTime     @updatedAt
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
 
   @@index([state, nextCheckAt])
   @@index([productId])
@@ -226,6 +229,28 @@ model Snapshot {
 
   @@index([listingId, createdAt])
   @@index([createdAt])
+}
+
+/// Résumé quotidien d'une fiche revendeur : alimenté à chaque relevé, il reste après la
+/// purge des relevés détaillés (graphiques rapides sur de longues périodes).
+model ListingDaily {
+  id               String       @id @default(cuid())
+  listingId        String
+  listing          Listing      @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  date             DateTime     @db.Date
+  minPrice         Decimal?     @db.Decimal(10, 2)
+  maxPrice         Decimal?     @db.Decimal(10, 2)
+  lastPrice        Decimal?     @db.Decimal(10, 2)
+  /// Plus bas prix relevé alors que le produit était achetable (en stock ou précommande).
+  minBuyablePrice  Decimal?     @db.Decimal(10, 2)
+  /// Achetable au moins une fois dans la journée.
+  wasBuyable       Boolean      @default(false)
+  lastAvailability Availability
+  checks           Int          @default(0)
+  updatedAt        DateTime     @updatedAt
+
+  @@unique([listingId, date])
+  @@index([date])
 }
 
 model AlertEvent {
@@ -254,15 +279,19 @@ model AlertEvent {
 
 /// Un relevé par jour, par produit et par source : l'historique se construit tout seul.
 model MarketPrice {
-  id        String   @id @default(cuid())
-  productId String
-  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-  source    String /// "manual" | "poketrace" | ...
-  price     Decimal  @db.Decimal(10, 2)
-  currency  String   @default("EUR")
-  date      DateTime @db.Date
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id           String   @id @default(cuid())
+  productId    String
+  product      Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  source       String /// "manual" | "poketrace" | ...
+  price        Decimal  @db.Decimal(10, 2)
+  currency     String   @default("EUR")
+  date         DateTime @db.Date
+  /// Médiane des annonces, si la source la fournit.
+  median       Decimal? @db.Decimal(10, 2)
+  /// Nombre d'annonces prises en compte, si la source le fournit.
+  listingCount Int?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   @@unique([productId, source, date])
   @@index([productId, date])
@@ -277,6 +306,8 @@ model ChaseCard {
   name      String
   rarity    String?
   imageUrl  String?
+  /// Suivie à la demande (recherche) plutôt que choisie automatiquement.
+  manual    Boolean     @default(false)
   prices    CardPrice[]
   createdAt DateTime    @default(now())
 }
@@ -286,7 +317,12 @@ model CardPrice {
   chaseCardId String
   chaseCard   ChaseCard @relation(fields: [chaseCardId], references: [id], onDelete: Cascade)
   source      String /// "tcgdex-cardmarket"
+  /// Valeur affichée : tendance, à défaut moyenne 30 j ou moyenne.
   price       Decimal   @db.Decimal(10, 2)
+  trend       Decimal?  @db.Decimal(10, 2)
+  low         Decimal?  @db.Decimal(10, 2)
+  avg7        Decimal?  @db.Decimal(10, 2)
+  avg30       Decimal?  @db.Decimal(10, 2)
   currency    String    @default("EUR")
   date        DateTime  @db.Date
 
