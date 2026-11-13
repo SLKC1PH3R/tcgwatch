@@ -4,7 +4,8 @@ import { NextResponse, type NextRequest } from 'next/server';
  * Vérification optimiste : sans cookie de session, redirection vers /connexion.
  * La validation réelle (session en base, expiration) est faite côté serveur par requireUser().
  */
-const PUBLIC_PATHS = ['/connexion', '/inscription', '/api/health'];
+// /cards : illustrations de la page de connexion (fichiers statiques de public/).
+const PUBLIC_PATHS = ['/connexion', '/inscription', '/api/health', '/cards'];
 
 export function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
