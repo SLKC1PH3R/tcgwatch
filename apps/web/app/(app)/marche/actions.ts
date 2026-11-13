@@ -77,6 +77,7 @@ export async function addChaseCardAction(
         name: card.name,
         rarity: card.rarity,
         imageUrl: tcgdexAsset(card.image, '/low.webp'),
+        manual: true,
       },
     });
   } catch {

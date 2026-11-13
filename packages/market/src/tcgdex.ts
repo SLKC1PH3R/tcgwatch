@@ -124,21 +124,46 @@ export function setCodeFromId(id: string): string {
   return id.toUpperCase();
 }
 
+/** Cotes Cardmarket d'une carte, gardées séparément pour des courbes cohérentes. */
+export interface CardmarketQuote {
+  /** Valeur affichée : tendance, sinon moyenne 30 j, sinon moyenne. */
+  price: number;
+  trend: number | null;
+  low: number | null;
+  avg7: number | null;
+  avg30: number | null;
+}
+
+const positive = (v: unknown): number | null => (typeof v === 'number' && v > 0 ? v : null);
+
 /**
- * Prix Cardmarket d'une carte : tendance, sinon moyenne 30 j, sinon moyenne.
- * Lit `variants_detailed` (nouvelle API) puis `pricing` (ancienne forme).
+ * Cotes Cardmarket d'une carte : premier jeu de prix renseigné, dans `variants_detailed`
+ * (nouvelle API) puis `pricing` (ancienne forme). Les cotes « holo » servent de repli.
  */
-export function cardmarketPrice(card: TcgdexCard): number | null {
+export function cardmarketQuote(card: TcgdexCard): CardmarketQuote | null {
   const candidates = [
     ...(card.variants_detailed ?? []).map((v) => v.pricing?.cardmarket),
     card.pricing?.cardmarket,
   ];
   for (const p of candidates) {
     if (!p) continue;
-    const value = [p.trend, p.avg30, p.avg, p['trend-holo'], p['avg30-holo']].find(
-      (v): v is number => typeof v === 'number' && v > 0,
-    );
-    if (value !== undefined) return value;
+    const extra = p as Record<string, unknown>;
+    const trend = positive(p.trend) ?? positive(p['trend-holo']);
+    const avg30 = positive(p.avg30) ?? positive(p['avg30-holo']);
+    const price = trend ?? avg30 ?? positive(p.avg);
+    if (price === null) continue;
+    return {
+      price,
+      trend,
+      low: positive(p.low) ?? positive(extra['low-holo']),
+      avg7: positive(p.avg7) ?? positive(extra['avg7-holo']),
+      avg30,
+    };
   }
   return null;
+}
+
+/** Prix Cardmarket d'une carte : tendance, sinon moyenne 30 j, sinon moyenne. */
+export function cardmarketPrice(card: TcgdexCard): number | null {
+  return cardmarketQuote(card)?.price ?? null;
 }

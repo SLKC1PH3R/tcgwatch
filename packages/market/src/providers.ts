@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { CardNexusProvider } from './cardnexus';
-import { cardmarketPrice, TcgdexClient } from './tcgdex';
+import { cardmarketQuote, TcgdexClient, type CardmarketQuote } from './tcgdex';
 
 /**
  * Module 3 — prix du marché secondaire.
@@ -34,6 +34,10 @@ export interface MarketQuote {
   price: number;
   currency: string;
   date: Date;
+  /** Médiane des annonces, si la source la fournit. */
+  median?: number | null;
+  /** Nombre d'annonces prises en compte, si la source le fournit. */
+  listingCount?: number | null;
 }
 
 export interface MarketPriceProvider {
@@ -269,10 +273,9 @@ export interface CardRef {
   tcgdexId: string;
 }
 
-export interface CardQuote {
+export interface CardQuote extends CardmarketQuote {
   chaseCardId: string;
   source: 'tcgdex-cardmarket';
-  price: number;
   currency: 'EUR';
   date: Date;
 }
@@ -290,12 +293,12 @@ export class TcgdexChaseCardProvider {
     const quotes: CardQuote[] = [];
     for (const card of cards) {
       const data = await this.client.getCard(card.tcgdexId);
-      const price = cardmarketPrice(data);
-      if (price !== null) {
+      const quote = cardmarketQuote(data);
+      if (quote) {
         quotes.push({
+          ...quote,
           chaseCardId: card.id,
           source: 'tcgdex-cardmarket',
-          price,
           currency: 'EUR',
           date,
         });

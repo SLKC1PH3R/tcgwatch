@@ -3,6 +3,7 @@ import { createMarketProviders, TcgdexChaseCardProvider } from '@tcgwatch/market
 import { todayUtc } from '@tcgwatch/shared';
 import type { WorkerContext } from '../context';
 import { selectChaseCards } from './chase-cards';
+import { checkMarketMoves } from './price-alerts';
 
 /**
  * Relevé quotidien du marché secondaire :
@@ -33,7 +34,12 @@ export async function runMarketJob(ctx: WorkerContext) {
           where: {
             productId_source_date: { productId: q.productId, source: q.source, date: q.date },
           },
-          update: { price: q.price, currency: q.currency },
+          update: {
+            price: q.price,
+            currency: q.currency,
+            median: q.median ?? null,
+            listingCount: q.listingCount ?? null,
+          },
           create: q,
         });
       }
@@ -42,6 +48,9 @@ export async function runMarketJob(ctx: WorkerContext) {
       ctx.logger.error({ err, provider: provider.key }, 'Échec du provider de prix marché');
     }
   }
+
+  // Alertes de variation du prix marché sur 7 jours (MARKET_MOVE_ALERT_PCT, 0 = désactivées).
+  const moves = await checkMarketMoves(ctx, date, ctx.env.MARKET_MOVE_ALERT_PCT);
 
   await selectChaseCards(ctx);
   const cards = await prisma.chaseCard.findMany({ select: { id: true, tcgdexId: true } });
@@ -54,7 +63,7 @@ export async function runMarketJob(ctx: WorkerContext) {
           where: {
             chaseCardId_source_date: { chaseCardId: q.chaseCardId, source: q.source, date: q.date },
           },
-          update: { price: q.price },
+          update: { price: q.price, trend: q.trend, low: q.low, avg7: q.avg7, avg30: q.avg30 },
           create: q,
         });
       }
@@ -65,5 +74,5 @@ export async function runMarketJob(ctx: WorkerContext) {
   }
 
   ctx.status.lastMarketRun = new Date();
-  ctx.logger.info({ quotes, cardQuotes }, 'Relevé du marché secondaire terminé');
+  ctx.logger.info({ quotes, cardQuotes, moves }, 'Relevé du marché secondaire terminé');
 }

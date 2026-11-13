@@ -1,5 +1,5 @@
 import { prisma } from '@tcgwatch/db';
-import { cardmarketPrice, tcgdexAsset, TcgdexClient } from '@tcgwatch/market';
+import { cardmarketQuote, tcgdexAsset, TcgdexClient, type CardmarketQuote } from '@tcgwatch/market';
 import { todayUtc } from '@tcgwatch/shared';
 import type { WorkerContext } from '../context';
 
@@ -36,12 +36,16 @@ export async function selectChaseCards(
       const set = await client.getSet(release.tcgdexId!);
       const official = set.cardCount?.official ?? 0;
       const secret = (set.cards ?? []).filter((c) => Number(c.localId) > official);
-      const priced: { id: string; name: string; rarity?: string; image?: string; price: number }[] =
-        [];
+      const priced: ({
+        id: string;
+        name: string;
+        rarity?: string;
+        image?: string;
+      } & CardmarketQuote)[] = [];
       for (const brief of secret) {
         const card = await client.getCard(brief.id);
-        const price = cardmarketPrice(card);
-        if (price !== null) priced.push({ ...card, image: card.image ?? brief.image, price });
+        const quote = cardmarketQuote(card);
+        if (quote) priced.push({ ...card, ...quote, image: card.image ?? brief.image });
         await new Promise((r) => setTimeout(r, 200));
       }
       priced.sort((a, b) => b.price - a.price);
@@ -65,11 +69,21 @@ export async function selectChaseCards(
               date: today,
             },
           },
-          update: { price: card.price },
+          update: {
+            price: card.price,
+            trend: card.trend,
+            low: card.low,
+            avg7: card.avg7,
+            avg30: card.avg30,
+          },
           create: {
             chaseCardId: chase.id,
             source: 'tcgdex-cardmarket',
             price: card.price,
+            trend: card.trend,
+            low: card.low,
+            avg7: card.avg7,
+            avg30: card.avg30,
             currency: 'EUR',
             date: today,
           },

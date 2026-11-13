@@ -11,6 +11,7 @@ import type { WorkerContext } from '../context';
 import { enrichReleaseDate } from '../enrich';
 import { productDetailsPatch } from '../product-details';
 import { ERROR_STATE_THRESHOLD, nextCheckAfterError, nextCheckAfterSuccess } from '../scheduling';
+import { checkNewLow } from './price-alerts';
 import { dispatchAlert } from './dispatch';
 
 const BATCH_SIZE = 25;
@@ -175,6 +176,8 @@ async function recordSuccess(
   for (const alert of alerts) {
     await dispatchAlert(ctx, buildAlert(listing, alert, result));
   }
+  // Après le résumé du jour : le prix relevé bat-il tous les prix achetables connus ?
+  await checkNewLow(ctx, listing, result.price ?? null, result.availability, now);
 }
 
 function buildAlert(listing: ListingWithRelations, alert: DetectedAlert, result: ListingResult) {

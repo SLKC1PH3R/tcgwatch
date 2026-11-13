@@ -31,6 +31,7 @@ import { bestOffer, getProducts } from '@/lib/data/products';
 import { cn } from '@/lib/utils';
 import { deleteChaseCardAction } from './actions';
 import { ChaseCardForm } from './chase-card-form';
+import { Sparkline } from '@/components/sparkline';
 import { MarketPriceForm } from './market-price-form';
 
 export const metadata: Metadata = { title: 'Marché secondaire' };
@@ -55,7 +56,8 @@ export default async function MarketPage({
     prisma.chaseCard.findMany({
       include: {
         release: { select: { nameFr: true, setCode: true } },
-        prices: { orderBy: { date: 'desc' }, take: 2 },
+        // 30 derniers relevés : mini-courbe et variation.
+        prices: { orderBy: { date: 'desc' }, take: 30 },
       },
       orderBy: [{ release: { releaseDate: 'desc' } }, { name: 'asc' }],
     }),
@@ -240,6 +242,7 @@ export default async function MarketPage({
                       <TableHead>Extension</TableHead>
                       <TableHead className="text-right">Prix</TableHead>
                       <TableHead className="text-right">Variation</TableHead>
+                      <TableHead className="text-center">30 derniers relevés</TableHead>
                       <TableHead />
                     </TableRow>
                   </TableHeader>
@@ -263,7 +266,12 @@ export default async function MarketPage({
                                 />
                               )}
                               <div>
-                                <p className="font-medium">{c.name}</p>
+                                <Link
+                                  href={`/cartes/${encodeURIComponent(c.tcgdexId)}`}
+                                  className="font-medium hover:underline"
+                                >
+                                  {c.name}
+                                </Link>
                                 <p className="text-xs text-muted-foreground">
                                   {c.tcgdexId} {c.rarity && `· ${c.rarity}`}
                                 </p>
@@ -278,6 +286,14 @@ export default async function MarketPage({
                           </TableCell>
                           <TableCell className="text-right tabular-nums">
                             {lastP !== null && prevP ? formatPercent(lastP / prevP - 1) : '—'}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <Sparkline
+                              values={c.prices
+                                .map((p) => toNumber(p.price))
+                                .filter((v): v is number => v !== null)
+                                .reverse()}
+                            />
                           </TableCell>
                           <TableCell>
                             <form action={deleteChaseCardAction.bind(null, c.id)}>

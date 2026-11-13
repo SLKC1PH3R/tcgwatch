@@ -214,29 +214,35 @@ export default async function SearchPage({
               </CardHeader>
               <CardContent className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8">
                 {results.cards.map((c) => (
-                  <figure key={c.id} className="min-w-0">
-                    {c.image ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={c.image}
-                        alt={c.name}
-                        loading="lazy"
-                        className="aspect-[63/88] w-full rounded-md border bg-muted object-cover"
-                      />
-                    ) : (
-                      <div className="aspect-[63/88] w-full rounded-md border bg-muted" />
-                    )}
-                    <figcaption className="mt-1.5 space-y-0.5 text-xs">
-                      <span className="block truncate font-medium">{c.name}</span>
-                      <span className="block truncate text-muted-foreground">
-                        {[c.setName, c.number].filter(Boolean).join(' · ')}
-                      </span>
-                      <span className="flex items-center justify-between gap-1">
-                        <span className="tabular-nums">{formatPrice(c.price)}</span>
-                        {c.tracked && <Badge variant="info">Suivie</Badge>}
-                      </span>
-                    </figcaption>
-                  </figure>
+                  <Link
+                    key={c.id}
+                    href={`/cartes/${encodeURIComponent(c.id)}`}
+                    className="min-w-0 rounded-md transition-opacity hover:opacity-85"
+                  >
+                    <figure className="min-w-0">
+                      {c.image ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={c.image}
+                          alt={c.name}
+                          loading="lazy"
+                          className="aspect-[63/88] w-full rounded-md border bg-muted object-cover"
+                        />
+                      ) : (
+                        <div className="aspect-[63/88] w-full rounded-md border bg-muted" />
+                      )}
+                      <figcaption className="mt-1.5 space-y-0.5 text-xs">
+                        <span className="block truncate font-medium">{c.name}</span>
+                        <span className="block truncate text-muted-foreground">
+                          {[c.setName, c.number].filter(Boolean).join(' · ')}
+                        </span>
+                        <span className="flex items-center justify-between gap-1">
+                          <span className="tabular-nums">{formatPrice(c.price)}</span>
+                          {c.tracked && <Badge variant="info">Suivie</Badge>}
+                        </span>
+                      </figcaption>
+                    </figure>
+                  </Link>
                 ))}
               </CardContent>
             </Card>

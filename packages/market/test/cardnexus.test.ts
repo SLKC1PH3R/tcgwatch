@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { cardNexusTitle, CardNexusProvider, frenchListingPrice, quotesFromCatalog } from '../src';
 
 // Produits au format de POST /v1/products/search (docs.cardnexus.com, Accept-Language: fr).
-const eu = (byCondition: Record<string, Record<string, { low: number }>>) => ({
+const eu = (
+  byCondition: Record<string, Record<string, { low: number; listingCount?: number }>>,
+) => ({
   cardnexus: {
     regions: {
       eu: {
@@ -20,7 +22,10 @@ const etb = {
   productCategory: 'elite_trainer_box',
   languages: ['en', 'fr'],
   expansion: { name: 'Évolutions Prismatiques' },
-  prices: eu({ NM: { fr: { low: 141.75 }, en: { low: 99 } }, LP: { fr: { low: 150 } } }),
+  prices: eu({
+    NM: { fr: { low: 141.75, listingCount: 4 }, en: { low: 99 } },
+    LP: { fr: { low: 150, listingCount: 2 } },
+  }),
 };
 const display = {
   id: 2,
@@ -59,7 +64,7 @@ describe('CardNexus', () => {
 
   it('cote uniquement les produits rapprochés sans ambiguïté et avec annonce FR', () => {
     expect(quotesFromCatalog([etb, display, caseOfEtb], catalog)).toEqual([
-      { productId: 'etb-pe', price: 141.75 },
+      { productId: 'etb-pe', price: 141.75, listingCount: 6 },
     ]);
     // Deux produits CardNexus pour le même produit local : aucun prix.
     expect(quotesFromCatalog([etb, { ...etb, id: 9 }], catalog)).toEqual([]);

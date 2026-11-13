@@ -123,6 +123,15 @@ export function frenchListingPrice(p: CardNexusSealed): number | null {
   return lows.length ? Math.round(Math.min(...lows) * 100) / 100 : null;
 }
 
+/** Nombre d'annonces FR en Europe, tous états confondus, si CardNexus le fournit. */
+export function frenchListingCount(p: CardNexusSealed): number | null {
+  const conditions = p.prices?.cardnexus?.regions?.eu?.byCondition ?? {};
+  const counts = Object.values(conditions)
+    .map((c) => c.byLanguage?.fr?.listingCount)
+    .filter((n): n is number => typeof n === 'number');
+  return counts.length ? counts.reduce((a, b) => a + b, 0) : null;
+}
+
 /**
  * Rapproche le catalogue CardNexus du catalogue local. Un produit local visé par plusieurs
  * produits CardNexus est écarté (ambiguïté) : pas de prix plutôt qu'un mauvais prix.
@@ -130,8 +139,8 @@ export function frenchListingPrice(p: CardNexusSealed): number | null {
 export function quotesFromCatalog(
   sealed: CardNexusSealed[],
   catalog: CatalogProduct[],
-): { productId: string; price: number }[] {
-  const hits = new Map<string, number[]>();
+): { productId: string; price: number; listingCount: number | null }[] {
+  const hits = new Map<string, { price: number; listingCount: number | null }[]>();
   for (const p of sealed) {
     if (p.languages && p.languages.length > 0 && !p.languages.includes('fr')) continue;
     const title = cardNexusTitle(p);
@@ -140,13 +149,13 @@ export function quotesFromCatalog(
     if (!match) continue;
     const price = frenchListingPrice(p);
     const list = hits.get(match.productId) ?? [];
-    list.push(price ?? NaN);
+    list.push({ price: price ?? NaN, listingCount: frenchListingCount(p) });
     hits.set(match.productId, list);
   }
-  const quotes: { productId: string; price: number }[] = [];
-  for (const [productId, prices] of hits) {
-    if (prices.length === 1 && Number.isFinite(prices[0]))
-      quotes.push({ productId, price: prices[0]! });
+  const quotes: { productId: string; price: number; listingCount: number | null }[] = [];
+  for (const [productId, found] of hits) {
+    if (found.length === 1 && Number.isFinite(found[0]!.price))
+      quotes.push({ productId, ...found[0]! });
   }
   return quotes;
 }

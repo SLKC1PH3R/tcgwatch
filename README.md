@@ -49,11 +49,19 @@ prix du marché secondaire et valorisation de sa collection.
   un clic lance la recherche du produit sur chaque site où il n'est pas encore suivi.
 - **Alertes** [ntfy](https://ntfy.sh), et Telegram en option : retour en stock, prix ≤ prix cible
   (défini **par produit** et **par fiche revendeur**, la fiche est prioritaire), ouverture d'une
-  précommande. Anti-doublon de 6 h.
+  précommande, **nouveau plus bas historique** (toutes boutiques, après 14 jours d'historique) et
+  **variation du prix marché** de ±`MARKET_MOVE_ALERT_PCT` % sur 7 jours. Anti-doublon de 6 h.
+- **Historique des prix** : un relevé détaillé n'est gardé que si le prix ou le stock change (plus un
+  par jour) ; chaque fiche a un résumé quotidien (prix mini, maxi, dernier, achetable ou non). Les
+  relevés de plus de 30 jours sont regroupés chaque nuit (`HISTORY_CRON`). Graphique par fiche produit
+  sur 7 j / 30 j / 90 j / 1 an / tout : meilleur prix achetable, ruptures grisées, plus bas historique,
+  plus bas 30 j, prix conseillé. Prix par booster et écart au prix conseillé ; pastille « plus bas
+  depuis X jours » dans la liste des produits.
 - **Marché secondaire** : meilleur prix boutique comparé au prix conseillé, historique quotidien des
   prix, graphique « prix boutiques vs prix marché », ratio prix marché / prix d'achat. **Cartes phares
-  choisies automatiquement** (cartes secrètes les mieux cotées des 4 dernières extensions) et cotées
-  chaque jour via TCGdex. Le prix marché des produits scellés n'a pas de source automatique autorisée :
+  choisies automatiquement** (cartes secrètes les mieux cotées des 4 dernières extensions), ou
+  **n'importe quelle carte** suivie depuis la recherche : page par carte avec tendance, prix bas,
+  moyennes 7 j et 30 j gardées séparément chaque jour via TCGdex, mini-courbes dans le Marché. Le prix marché des produits scellés n'a pas de source automatique autorisée :
   saisie manuelle ou PokeTrace. Provider PokeTrace prévu (squelette). **Cardmarket n'est jamais scrapé.**
 - **Ma collection** : quantité, prix d'achat, date, magasin, état du scellé, photo ; valeur estimée,
   plus-value latente, export CSV (compatible Excel FR).
