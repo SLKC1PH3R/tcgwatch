@@ -5,6 +5,7 @@ import {
   Legend,
   Line,
   LineChart,
+  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -34,12 +35,17 @@ export function TrendChart({
   series,
   height = 'h-56',
   empty = 'L’historique se construit jour après jour (au moins deux jours).',
+  unit = 'eur',
 }: {
   data: Record<string, number | string | null>[];
   series: TrendSeries[];
   height?: string;
   empty?: string;
+  /** eur = euros ; pct = écart en % (ex. au prix conseillé), ligne 0 % en repère. */
+  unit?: 'eur' | 'pct';
 }) {
+  const fmt = (v: number) =>
+    unit === 'pct' ? `${v > 0 ? '+' : ''}${v.toLocaleString('fr-FR')} %` : eur.format(v);
   if (data.length < 2) {
     return <p className="py-8 text-center text-sm text-muted-foreground">{empty}</p>;
   }
@@ -58,7 +64,7 @@ export function TrendChart({
           />
           <YAxis
             tickFormatter={(v: number) =>
-              `${v.toLocaleString('fr-FR', { maximumFractionDigits: 0 })} €`
+              `${v.toLocaleString('fr-FR', { maximumFractionDigits: 0 })} ${unit === 'pct' ? '%' : '€'}`
             }
             tick={{ fontSize: 12, fill: 'var(--muted-foreground)' }}
             tickLine={false}
@@ -67,7 +73,7 @@ export function TrendChart({
             domain={['auto', 'auto']}
           />
           <Tooltip
-            formatter={(v, name) => [eur.format(Number(v)), name]}
+            formatter={(v, name) => [fmt(Number(v)), name]}
             labelFormatter={(l) => day(String(l))}
             contentStyle={{
               background: 'var(--popover)',
@@ -77,6 +83,9 @@ export function TrendChart({
             }}
           />
           {series.length > 1 && <Legend wrapperStyle={{ fontSize: 12 }} />}
+          {unit === 'pct' && (
+            <ReferenceLine y={0} stroke="var(--muted-foreground)" strokeDasharray="4 4" />
+          )}
           {series.map((s) => (
             <Line
               key={s.key}

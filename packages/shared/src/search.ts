@@ -52,3 +52,28 @@ export function extensionOf<T extends { name: string }>(productName: string, set
   }
   return best?.set ?? null;
 }
+
+/** Fenêtre de dates plausible entre la sortie d'une extension et celle d'un de ses produits. */
+const EXTENSION_BEFORE_PRODUCT_MS = 4 * 365 * 86_400_000;
+const EXTENSION_AFTER_PRODUCT_MS = 90 * 86_400_000;
+
+/**
+ * Extension d'un produit, limitée aux extensions sorties à une date plausible : de 4 ans
+ * avant à 3 mois après le produit (évite qu'un vieux set au nom commun, « Platine »,
+ * « Jungle », soit retenu). Sans date de produit : extensions des 6 dernières années.
+ */
+export function pickExtension<T extends { name: string; releaseDate: Date | null }>(
+  productName: string,
+  productDate: Date | null,
+  sets: T[],
+  now = new Date(),
+): T | null {
+  const ref = productDate?.getTime() ?? null;
+  const candidates = sets.filter((s) => {
+    if (!s.releaseDate) return true;
+    const t = s.releaseDate.getTime();
+    if (ref === null) return t >= now.getTime() - 6 * 365 * 86_400_000;
+    return t >= ref - EXTENSION_BEFORE_PRODUCT_MS && t <= ref + EXTENSION_AFTER_PRODUCT_MS;
+  });
+  return extensionOf(productName, candidates);
+}

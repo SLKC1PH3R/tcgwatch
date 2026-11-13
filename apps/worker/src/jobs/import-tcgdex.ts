@@ -3,8 +3,10 @@ import { setCodeFromId, tcgdexAsset, TcgdexClient } from '@tcgwatch/market';
 import { parseFrenchDate } from '@tcgwatch/shared';
 import type { WorkerContext } from '../context';
 
-/** Sets ignorés : promos et énergies ne sont pas des sorties de produits scellés. */
-const IGNORED_SET = /promo|[ée]nergie/i;
+/** Séries non importées : TCG Pocket n'est pas un jeu de cartes physique. */
+const IGNORED_SERIES = new Set(['tcgp']);
+/** Extensions relues chaque jour (récentes ou à venir) ; les autres seulement le lundi. */
+const RECENT_DAYS = 365;
 
 export interface ImportSummary {
   created: number;
@@ -12,32 +14,68 @@ export interface ImportSummary {
   skipped: number;
 }
 
+/** Séries à importer : TCGDEX_SERIES (liste d'ids) ou toutes (`*` ou vide). */
+export function wantedSeries(setting: string): ((id: string) => boolean) | null {
+  const ids = setting
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (ids.length === 0 || ids.includes('*')) return null;
+  return (id) => ids.includes(id);
+}
+
 /**
- * Import quotidien des extensions FR depuis TCGdex (séries configurées dans TCGDEX_SERIES).
- * Les releases validées à la main ne sont jamais écrasées (seule l'image manquante est complétée).
+ * Import quotidien des séries et extensions FR depuis TCGdex : toutes les générations
+ * (Wizards, EX… jusqu'à Méga-Évolution), promos et kits compris. Les extensions anciennes
+ * ne sont relues que le lundi. Les releases validées à la main ne sont jamais écrasées
+ * (seuls l'image, la série et les nombres de cartes manquants sont complétés).
  */
 export async function importTcgdex(
   ctx: WorkerContext,
   client = new TcgdexClient(),
 ): Promise<ImportSummary> {
   const summary: ImportSummary = { created: 0, updated: 0, skipped: 0 };
-  const series = ctx.env.TCGDEX_SERIES.split(',')
-    .map((s) => s.trim())
-    .filter(Boolean);
+  const wanted = wantedSeries(ctx.env.TCGDEX_SERIES);
+  const weekly = new Date().getUTCDay() === 1;
+  const recent = new Date(Date.now() - RECENT_DAYS * 86_400_000);
 
-  for (const serieId of series) {
-    const serie = await client.getSerie(serieId);
-    for (const brief of serie.sets) {
-      if (IGNORED_SET.test(brief.name)) {
+  const all = await client.listSeries();
+  for (const [order, brief] of all.entries()) {
+    if (IGNORED_SERIES.has(brief.id) || (wanted && !wanted(brief.id))) continue;
+    const serie = await client.getSerie(brief.id);
+    await prisma.serie.upsert({
+      where: { id: serie.id },
+      update: { name: serie.name, logoUrl: tcgdexAsset(brief.logo, '.png') ?? null, order },
+      create: {
+        id: serie.id,
+        name: serie.name,
+        logoUrl: tcgdexAsset(brief.logo, '.png') ?? null,
+        order,
+      },
+    });
+
+    for (const setBrief of serie.sets) {
+      const existing = await prisma.release.findUnique({ where: { tcgdexId: setBrief.id } });
+      const stale =
+        !existing ||
+        existing.cardCountTotal === null ||
+        !existing.releaseDate ||
+        existing.releaseDate >= recent;
+      if (!stale && !weekly) {
         summary.skipped++;
         continue;
       }
-      const set = await client.getSet(brief.id);
+      const set = await client.getSet(setBrief.id);
       await new Promise((r) => setTimeout(r, 200));
 
       const releaseDate = set.releaseDate ? parseFrenchDate(set.releaseDate) : null;
-      const imageUrl = tcgdexAsset(set.logo ?? brief.logo, '.png');
-      const existing = await prisma.release.findUnique({ where: { tcgdexId: set.id } });
+      const imageUrl = tcgdexAsset(set.logo ?? setBrief.logo, '.png') ?? null;
+      const details = {
+        serieId: serie.id,
+        symbolUrl: tcgdexAsset(set.symbol, '.png') ?? null,
+        cardCountOfficial: set.cardCount?.official ?? null,
+        cardCountTotal: set.cardCount?.total ?? null,
+      };
 
       if (!existing) {
         await prisma.release.create({
@@ -51,6 +89,7 @@ export async function importTcgdex(
             source: 'TCGDEX',
             sourceUrl: `https://api.tcgdex.net/v2/fr/sets/${set.id}`,
             status: 'AUTO',
+            ...details,
           },
         });
         summary.created++;
@@ -67,13 +106,15 @@ export async function importTcgdex(
                 ? existing.releaseDate
                 : (releaseDate ?? existing.releaseDate),
             source: existing.source === 'RETAILER' ? 'RETAILER' : 'TCGDEX',
+            ...details,
           },
         });
         summary.updated++;
       } else {
-        if (!existing.imageUrl && imageUrl) {
-          await prisma.release.update({ where: { id: existing.id }, data: { imageUrl } });
-        }
+        await prisma.release.update({
+          where: { id: existing.id },
+          data: { imageUrl: existing.imageUrl ?? imageUrl, ...details },
+        });
         summary.skipped++;
       }
     }

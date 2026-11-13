@@ -4,8 +4,10 @@ import { createContext, type WorkerContext } from './context';
 import { startHealthServer } from './health';
 import { checkDueListings } from './jobs/check-listings';
 import { discoverListings } from './jobs/discover-listings';
+import { importCards } from './jobs/import-cards';
 import { importPokecardex } from './jobs/import-pokecardex';
 import { importTcgdex } from './jobs/import-tcgdex';
+import { linkProductExtensions } from './jobs/link-extensions';
 import { runMarketJob } from './jobs/market';
 import { syncRetailers } from './jobs/sync-retailers';
 
@@ -50,9 +52,18 @@ async function main() {
   const timezone = process.env.TZ ?? 'Europe/Paris';
 
   const listingsJob = exclusive(ctx, 'listings', () => checkDueListings(ctx));
-  const tcgdexJob = exclusive(ctx, 'tcgdex', () => importTcgdex(ctx));
+  // Extensions, puis leurs cartes (première passe : toutes ; ensuite les récentes), puis
+  // rattachement des produits à leur extension.
+  const tcgdexJob = exclusive(ctx, 'tcgdex', async () => {
+    await importTcgdex(ctx);
+    await importCards(ctx);
+    await linkProductExtensions(ctx);
+  });
   const marketJob = exclusive(ctx, 'market', () => runMarketJob(ctx));
-  const pokecardexJob = exclusive(ctx, 'pokecardex', () => importPokecardex(ctx));
+  const pokecardexJob = exclusive(ctx, 'pokecardex', async () => {
+    await importPokecardex(ctx);
+    await linkProductExtensions(ctx);
+  });
   const discoveryJob = exclusive(ctx, 'discovery', () => discoverListings(ctx));
   const historyJob = exclusive(ctx, 'history', async () => {
     const removed = await compactSnapshots(new Date(), env.SNAPSHOT_RETENTION_DAYS);
@@ -79,9 +90,13 @@ async function main() {
   // Annuaire des revendeurs : nouveaux sites et métadonnées à jour à chaque démarrage.
   await exclusive(ctx, 'retailers', () => syncRetailers(ctx))();
 
-  // Premier démarrage : calendrier vide → import TCGdex immédiat.
-  const imported = await prisma.release.count({ where: { source: 'TCGDEX' } });
-  if (imported === 0) void tcgdexJob();
+  // Premier démarrage (ou encyclopédie pas encore importée) → import TCGdex immédiat.
+  const [imported, series, cards] = await Promise.all([
+    prisma.release.count({ where: { source: 'TCGDEX' } }),
+    prisma.serie.count(),
+    prisma.card.count(),
+  ]);
+  if (imported === 0 || series === 0 || cards === 0) void tcgdexJob();
   // Premier démarrage du catalogue : produits Pokécardex, puis découverte de leurs fiches.
   const catalogProducts = await prisma.product.count({ where: { externalId: { not: null } } });
   const discovered = await prisma.listing.count({ where: { discovered: true } });

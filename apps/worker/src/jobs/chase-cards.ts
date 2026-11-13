@@ -22,6 +22,8 @@ export async function selectChaseCards(
   const releases = await prisma.release.findMany({
     where: {
       tcgdexId: { not: null },
+      // Les promos ne sont pas des extensions vendues en boosters.
+      NOT: { nameFr: { contains: 'promo', mode: 'insensitive' } },
       releaseDate: { lte: today, gte: new Date(today.getTime() - 365 * 86_400_000) },
     },
     include: { _count: { select: { chaseCards: true } } },

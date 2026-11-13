@@ -55,7 +55,8 @@ const schema = z.object({
   ALERT_RETENTION_DAYS: z.coerce.number().int().min(7).default(180),
   /** Alerte de variation du prix marché sur 7 jours, en % (0 = désactivée). */
   MARKET_MOVE_ALERT_PCT: z.coerce.number().min(0).default(15),
-  TCGDEX_SERIES: z.string().default('me,sv,swsh,sm,xy,bw'),
+  /** Séries TCGdex importées (ids séparés par des virgules), `*` = toutes. */
+  TCGDEX_SERIES: z.string().default('*'),
   /** Calendrier des sorties FR de Pokécardex (pokecardex.com/calendrier). */
   POKECARDEX_ENABLED: bool(true),
   POKECARDEX_CRON: z.string().default('15 6 * * *'),

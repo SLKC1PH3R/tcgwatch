@@ -60,6 +60,46 @@ export async function followCardAction(tcgdexId: string) {
   redirect(cardPath(tcgdexId));
 }
 
+/**
+ * Suit une carte de l'encyclopédie depuis la page d'une extension (fiche déjà en base :
+ * pas d'appel à TCGdex) ; le worker relève ensuite ses cotes chaque jour.
+ */
+export async function trackCardAction(cardId: string, returnTo: string) {
+  await requireUser();
+  const card = await prisma.card.findUnique({ where: { id: cardId } });
+  if (card && !(await prisma.chaseCard.findUnique({ where: { tcgdexId: card.id } }))) {
+    const chase = await prisma.chaseCard.create({
+      data: {
+        tcgdexId: card.id,
+        releaseId: card.releaseId,
+        name: card.name,
+        rarity: card.rarity,
+        imageUrl: tcgdexAsset(card.imageUrl ?? undefined, '/low.webp') ?? null,
+        manual: true,
+      },
+    });
+    const price = card.priceTrend ?? card.priceAvg30;
+    if (price !== null && card.priceAt && Date.now() - card.priceAt.getTime() < 86_400_000) {
+      await prisma.cardPrice.create({
+        data: {
+          chaseCardId: chase.id,
+          source: 'tcgdex-cardmarket',
+          currency: 'EUR',
+          date: todayUtc(),
+          price,
+          trend: card.priceTrend,
+          low: card.priceLow,
+          avg30: card.priceAvg30,
+        },
+      });
+    }
+  }
+  revalidatePath('/marche');
+  revalidatePath(returnTo.split('?')[0]!);
+  // Chemin interne seulement (pas de redirection vers un autre site).
+  redirect(/^\/(?!\/)/.test(returnTo) ? returnTo : '/');
+}
+
 /** Arrête le suivi d'une carte (son historique de cotes est supprimé). */
 export async function unfollowCardAction(tcgdexId: string) {
   await requireUser();

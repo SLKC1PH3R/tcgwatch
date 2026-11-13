@@ -1,38 +1,28 @@
 import 'server-only';
 import { prisma } from '@tcgwatch/db';
-import { boosterCount, extensionOf, toNumber } from '@tcgwatch/shared';
+import { boosterCount, toNumber } from '@tcgwatch/shared';
 import { periodStart } from './history';
 import { getProductsByIds } from './products';
 
-/**
- * Extension (fiche TCGdex du calendrier, celle qui porte les cartes phares) d'un produit.
- * Le catalogue Pokécardex crée une entrée de calendrier par produit : le lien se fait donc
- * par le nom de l'extension cité dans le nom du produit.
- */
-export async function getExtension(productName: string) {
-  const sets = await prisma.release.findMany({
-    where: { tcgdexId: { not: null } },
-    select: { id: true, nameFr: true, setCode: true },
+/** Extension TCGdex d'un produit (Product.extensionId, rempli par le worker à l'import). */
+export async function getProductExtension(productId: string) {
+  const p = await prisma.product.findUnique({
+    where: { id: productId },
+    select: {
+      extension: { select: { id: true, nameFr: true, setCode: true, tcgdexId: true } },
+    },
   });
-  return extensionOf(
-    productName,
-    sets.map((s) => ({ ...s, name: s.nameFr })),
-  );
+  const e = p?.extension;
+  return e ? { id: e.id, name: e.nameFr, setCode: e.setCode, code: e.tcgdexId! } : null;
 }
 
-/** Produits de la même extension (même extension résolue par le nom). */
-async function productsOfExtension(ext: { id: string; name: string }) {
-  // Noms seulement (quelques centaines de lignes) : le rapprochement se fait sans accents.
-  const [candidates, sets] = await Promise.all([
-    prisma.product.findMany({ select: { id: true, name: true } }),
-    prisma.release.findMany({
-      where: { tcgdexId: { not: null } },
-      select: { id: true, nameFr: true },
-    }),
-  ]);
-  const named = sets.map((s) => ({ id: s.id, name: s.nameFr }));
-  const ids = candidates.filter((p) => extensionOf(p.name, named)?.id === ext.id).map((p) => p.id);
-  return getProductsByIds(ids);
+/** Produits de la même extension. */
+async function productsOfExtension(ext: { id: string }) {
+  const ids = await prisma.product.findMany({
+    where: { extensionId: ext.id },
+    select: { id: true },
+  });
+  return getProductsByIds(ids.map((p) => p.id));
 }
 
 export interface FormatOffer {

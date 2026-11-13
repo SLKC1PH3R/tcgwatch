@@ -43,6 +43,7 @@ export async function getCalendarEvents(
     prisma.release.findMany({
       where: { releaseDate: { gte: from, lt: to }, ...releaseWhere(filter) },
       orderBy: [{ releaseDate: 'asc' }, { nameFr: 'asc' }],
+      include: { products: { select: { id: true }, take: 1, orderBy: { createdAt: 'asc' } } },
     }),
     prisma.product.findMany({
       where: {
@@ -63,7 +64,7 @@ export async function getCalendarEvents(
     status: r.status,
     source: r.source,
     imageUrl: r.imageUrl,
-    href: `/calendrier?edit=${r.id}#release-${r.id}`,
+    href: releaseHref(r),
     productType: r.productType,
     msrp: toNumber(r.msrp),
     sourceUrl: r.sourceUrl,
@@ -87,7 +88,23 @@ export async function getCalendarEvents(
       sourceUrl: null,
     });
   }
-  return events.sort((a, b) => a.date.getTime() - b.date.getTime());
+  // Dans une même journée, l'extension passe avant ses produits (cases limitées à 3 lignes).
+  const rank = (e: CalendarEvent) => (e.href.startsWith('/extensions/') ? 0 : 1);
+  return events.sort((a, b) => a.date.getTime() - b.date.getTime() || rank(a) - rank(b));
+}
+
+/**
+ * Lien d'une sortie du calendrier : page de l'extension (TCGdex), sinon fiche du produit
+ * (sortie Pokécardex d'un produit scellé), sinon sa fiche d'édition.
+ */
+export function releaseHref(r: {
+  id: string;
+  tcgdexId: string | null;
+  products: { id: string }[];
+}) {
+  if (r.tcgdexId) return `/extensions/${encodeURIComponent(r.tcgdexId)}`;
+  if (r.products[0]) return `/produits/${r.products[0].id}`;
+  return `/calendrier?edit=${r.id}#release-${r.id}`;
 }
 
 export async function getUpcomingEvents(limit = 20, filter?: CalendarFilter) {

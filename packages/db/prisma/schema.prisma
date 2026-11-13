@@ -113,27 +113,50 @@ model Session {
 
 // ─── Module 1 — Calendrier des sorties ───────────────────
 
+/// Série (génération) TCGdex : Méga-Évolution, Écarlate et Violet… L'ordre suit TCGdex
+/// (0 = la plus ancienne).
+model Serie {
+  id        String    @id /// id TCGdex (ex. "me")
+  name      String
+  logoUrl   String?
+  order     Int
+  releases  Release[]
+  updatedAt DateTime  @updatedAt
+}
+
 model Release {
-  id          String        @id @default(cuid())
-  nameFr      String
-  setCode     String? /// ex. "ME06"
-  tcgdexId    String?       @unique /// id du set TCGdex (ex. "me06")
-  externalId  String?       @unique /// id dans une autre source (ex. "pokecardex:3382")
-  msrp        Decimal?      @db.Decimal(10, 2) /// prix public conseillé annoncé
-  serie       String? /// ex. "Méga-Évolution"
-  releaseDate DateTime?     @db.Date
-  productType ProductType? /// null = l'extension elle-même
-  imageUrl    String?
-  source      ReleaseSource @default(MANUAL)
-  sourceUrl   String?
-  status      ReleaseStatus @default(AUTO)
-  notes       String?
-  products    Product[]
-  chaseCards  ChaseCard[]
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
+  id                String        @id @default(cuid())
+  nameFr            String
+  setCode           String? /// ex. "ME06"
+  tcgdexId          String?       @unique /// id du set TCGdex (ex. "me06")
+  externalId        String?       @unique /// id dans une autre source (ex. "pokecardex:3382")
+  msrp              Decimal?      @db.Decimal(10, 2) /// prix public conseillé annoncé
+  serie             String? /// ex. "Méga-Évolution"
+  releaseDate       DateTime?     @db.Date
+  productType       ProductType? /// null = l'extension elle-même
+  imageUrl          String?
+  source            ReleaseSource @default(MANUAL)
+  sourceUrl         String?
+  status            ReleaseStatus @default(AUTO)
+  notes             String?
+  /// Extension TCGdex : série, symbole, nombre de cartes (officielles / total avec secrètes).
+  serieId           String?
+  serieRef          Serie?        @relation(fields: [serieId], references: [id], onDelete: SetNull)
+  symbolUrl         String?
+  cardCountOfficial Int?
+  cardCountTotal    Int?
+  /// Dernier import de la liste des cartes.
+  cardsSyncedAt     DateTime?
+  products          Product[]     @relation("ProductRelease")
+  /// Produits scellés de cette extension (Product.extensionId).
+  extensionProducts Product[]     @relation("ProductExtension")
+  cards             Card[]
+  chaseCards        ChaseCard[]
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
 
   @@index([releaseDate])
+  @@index([serieId])
 }
 
 // ─── Module 2 — Produits, revendeurs, relevés ────────────
@@ -155,7 +178,10 @@ model Product {
   releaseDateSource ReleaseSource?
   notes             String?
   releaseId         String?
-  release           Release?         @relation(fields: [releaseId], references: [id], onDelete: SetNull)
+  release           Release?         @relation("ProductRelease", fields: [releaseId], references: [id], onDelete: SetNull)
+  /// Extension TCGdex du produit (calculée à l'import d'après le nom et la date).
+  extensionId       String?
+  extension         Release?         @relation("ProductExtension", fields: [extensionId], references: [id], onDelete: SetNull)
   listings          Listing[]
   marketPrices      MarketPrice[]
   collection        CollectionItem[]
@@ -164,6 +190,7 @@ model Product {
   updatedAt         DateTime         @updatedAt
 
   @@index([releaseId])
+  @@index([extensionId])
 }
 
 model Retailer {
@@ -310,6 +337,37 @@ model MarketPrice {
 }
 
 /// Cartes phares d'une extension, suivies via le provider TCGdex.
+/// Carte d'une extension (toutes les cartes, import TCGdex). La cote Cardmarket est un cache
+/// d'environ 24 h lu à l'ouverture d'une page ; l'historique quotidien est réservé aux
+/// cartes suivies (ChaseCard, même id TCGdex).
+model Card {
+  id          String    @id /// id TCGdex (ex. "me06-130")
+  releaseId   String
+  release     Release   @relation(fields: [releaseId], references: [id], onDelete: Cascade)
+  localId     String /// numéro dans l'extension (ex. "130", "TG05")
+  number      Int? /// partie numérique du numéro, pour le tri
+  name        String
+  /// Pas de nom français dans TCGdex : `name` est le nom anglais.
+  nameMissing Boolean   @default(false)
+  /// Image TCGdex sans suffixe (/low.webp, /high.webp) ; anglaise si la française manque.
+  imageUrl    String?
+  rarity      String?
+  illustrator String?
+  category    String? /// Pokémon, Dresseur, Énergie
+  types       String[]  @default([])
+  dexIds      Int[]     @default([])
+  /// Variantes existantes : normal, reverse, holo, firstEdition.
+  variants    String[]  @default([])
+  priceTrend  Decimal?  @db.Decimal(10, 2)
+  priceLow    Decimal?  @db.Decimal(10, 2)
+  priceAvg30  Decimal?  @db.Decimal(10, 2)
+  priceAt     DateTime?
+  updatedAt   DateTime  @updatedAt
+
+  @@index([releaseId, number])
+  @@index([name])
+}
+
 model ChaseCard {
   id         String       @id @default(cuid())
   releaseId  String

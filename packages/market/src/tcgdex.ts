@@ -2,6 +2,11 @@ import { z } from 'zod';
 
 /** Client minimal de l'API TCGdex (gratuite, sans clé) — https://tcgdex.dev */
 export const TCGDEX_BASE_URL = 'https://api.tcgdex.net/v2/fr';
+/** API GraphQL : fiches détaillées de toutes les cartes d'une extension par pages de 100. */
+export const TCGDEX_GRAPHQL_URL = 'https://api.tcgdex.net/v2/graphql';
+const GRAPHQL_PAGE = 100;
+
+const serieBrief = z.object({ id: z.string(), name: z.string(), logo: z.string().optional() });
 
 const setBrief = z.object({ id: z.string(), name: z.string(), logo: z.string().optional() });
 
@@ -17,6 +22,7 @@ const setSchema = z.object({
   logo: z.string().optional(),
   symbol: z.string().optional(),
   releaseDate: z.string().optional(),
+  /** Absent des petites extensions spéciales : la série vient alors de /series/{id}. */
   serie: z.object({ id: z.string(), name: z.string() }).optional(),
   abbreviation: z.object({ official: z.string().optional() }).optional(),
   cardCount: z.object({ total: z.number().optional(), official: z.number().optional() }).optional(),
@@ -73,6 +79,30 @@ const cardSchema = z.object({
     .optional(),
 });
 
+/** Carte détaillée de la liste d'une extension (GraphQL, sans cotes). */
+const setCardSchema = z.object({
+  id: z.string(),
+  localId: z.string(),
+  name: z.string(),
+  image: z.string().nullable().optional(),
+  rarity: z.string().nullable().optional(),
+  illustrator: z.string().nullable().optional(),
+  category: z.string().nullable().optional(),
+  types: z.array(z.string()).nullable().optional(),
+  dexId: z.array(z.number()).nullable().optional(),
+  set: z.object({ id: z.string() }),
+  variants: z.record(z.string(), z.boolean().nullable()).nullable().optional(),
+});
+export type TcgdexSetCard = z.infer<typeof setCardSchema>;
+const graphqlCards = z.object({
+  data: z
+    .object({ cards: z.array(setCardSchema) })
+    .nullable()
+    .optional(),
+  errors: z.array(z.object({ message: z.string() })).optional(),
+});
+
+export type TcgdexSerieBrief = z.infer<typeof serieBrief>;
 export type TcgdexSerie = z.infer<typeof serieSchema>;
 export type TcgdexSet = z.infer<typeof setSchema>;
 export type TcgdexCard = z.infer<typeof cardSchema>;
@@ -90,6 +120,11 @@ export class TcgdexClient {
     });
     if (!res.ok) throw new Error(`TCGdex ${path} : HTTP ${res.status}`);
     return schema.parse(await res.json());
+  }
+
+  /** Toutes les séries, de la plus ancienne à la plus récente. */
+  listSeries() {
+    return this.get('/series', z.array(serieBrief));
   }
 
   getSerie(id: string) {
@@ -111,6 +146,46 @@ export class TcgdexClient {
   searchCardsByRarity(rarity: string, limit = 250) {
     const q = new URLSearchParams({ rarity, 'pagination:itemsPerPage': String(limit) });
     return this.get(`/cards?${q}`, z.array(cardBrief));
+  }
+
+  /**
+   * Toutes les cartes d'une extension avec rareté, illustrateur, types et variantes, dans la
+   * langue demandée (GraphQL, pages de 100). Une carte absente dans cette langue n'y est pas.
+   */
+  async setCards(setId: string, lang: 'fr' | 'en' = 'fr'): Promise<TcgdexSetCard[]> {
+    const query = `query($id: ID, $page: Int!) { cards(filters: {id: $id}, pagination: {page: $page, count: ${GRAPHQL_PAGE}}) @locale(lang: "${lang}") { id localId name image rarity illustrator category types dexId set { id } variants { normal reverse holo firstEdition } } }`;
+    const out: TcgdexSetCard[] = [];
+    for (let page = 1; page < 50; page++) {
+      const res = await this.graphql(query, { id: `${setId}-`, page });
+      if (!res.ok) throw new Error(`TCGdex GraphQL ${setId} : HTTP ${res.status}`);
+      const body = graphqlCards.parse(await res.json());
+      const cards = body.data?.cards ?? [];
+      if (!body.data && body.errors?.length) {
+        throw new Error(`TCGdex GraphQL ${setId} : ${body.errors[0]!.message}`);
+      }
+      // Le filtre `id` cherche une sous-chaîne : seules les cartes de cette extension restent.
+      out.push(...cards.filter((c) => c.set.id === setId));
+      if (cards.length < GRAPHQL_PAGE) break;
+    }
+    return out;
+  }
+
+  /** Requête GraphQL, retentée (2 s, 6 s, 18 s) si TCGdex est saturé (429 / 503). */
+  private async graphql(query: string, variables: Record<string, unknown>, retries = 3) {
+    for (let attempt = 0; ; attempt++) {
+      const res = await this.fetchImpl(TCGDEX_GRAPHQL_URL, {
+        method: 'POST',
+        headers: {
+          accept: 'application/json',
+          'content-type': 'application/json',
+          'user-agent': 'TCGWatch (self-hosted)',
+        },
+        body: JSON.stringify({ query, variables }),
+        signal: AbortSignal.timeout(30_000),
+      });
+      if ((res.status !== 429 && res.status !== 503) || attempt >= retries) return res;
+      await new Promise((r) => setTimeout(r, 2_000 * 3 ** attempt));
+    }
   }
 
   /** Cartes dont le nom contient `name` (fiches courtes : id, numéro, nom, image). */
@@ -176,3 +251,41 @@ export function cardmarketQuote(card: TcgdexCard): CardmarketQuote | null {
 export function cardmarketPrice(card: TcgdexCard): number | null {
   return cardmarketQuote(card)?.price ?? null;
 }
+
+/** Partie numérique d'un numéro de carte, pour le tri ("130" → 130, "TG05" → 5). */
+export function cardNumber(localId: string): number | null {
+  const m = localId.match(/\d+/);
+  return m ? Number(m[0]) : null;
+}
+
+/**
+ * Fusion des listes française et anglaise d'une extension : nom et image français quand ils
+ * existent, sinon anglais (`nameMissing` signale un nom français absent).
+ */
+export function mergeSetCards(fr: TcgdexSetCard[], en: TcgdexSetCard[]) {
+  const english = new Map(en.map((c) => [c.id, c]));
+  const ids = [...new Set([...fr.map((c) => c.id), ...en.map((c) => c.id)])];
+  const french = new Map(fr.map((c) => [c.id, c]));
+  return ids.map((id) => {
+    const f = french.get(id);
+    const e = english.get(id);
+    const c = (f ?? e)!;
+    return {
+      id,
+      localId: c.localId,
+      number: cardNumber(c.localId),
+      name: f?.name ?? e!.name,
+      nameMissing: !f,
+      imageUrl: f?.image ?? e?.image ?? null,
+      rarity: f?.rarity ?? e?.rarity ?? null,
+      illustrator: c.illustrator ?? e?.illustrator ?? null,
+      category: f?.category ?? e?.category ?? null,
+      types: f?.types ?? e?.types ?? [],
+      dexIds: c.dexId ?? e?.dexId ?? [],
+      variants: Object.entries(c.variants ?? {})
+        .filter(([, v]) => v)
+        .map(([k]) => k),
+    };
+  });
+}
+export type MergedCard = ReturnType<typeof mergeSetCards>[number];

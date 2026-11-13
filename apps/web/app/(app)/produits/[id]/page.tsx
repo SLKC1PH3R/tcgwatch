@@ -30,7 +30,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { getPriceHistory, PERIODS, periodOf } from '@/lib/data/history';
 import { cn } from '@/lib/utils';
 import { getProduct, getReleaseOptions } from '@/lib/data/products';
-import { getChaseIndicator, getExtension, getFormatComparison } from '@/lib/data/release';
+import { getChaseIndicator, getFormatComparison, getProductExtension } from '@/lib/data/release';
 import { toDateInput } from '@/lib/form';
 import { MarketPriceForm } from '../../marche/market-price-form';
 import { deleteProductAction, updateProductAction } from '../actions';
@@ -54,7 +54,7 @@ export default async function ProductPage({ params, searchParams }: Props) {
   if (!product) notFound();
   const period = periodOf(periode);
 
-  const extension = await getExtension(product.name);
+  const extension = await getProductExtension(product.id);
   const showChase = product.type === 'DISPLAY' || product.type === 'ETB';
   const [history, releases, alerts, marketPrices, retailers, formats, chase] = await Promise.all([
     getPriceHistory(id, period.days),
@@ -106,8 +106,17 @@ export default async function ProductPage({ params, searchParams }: Props) {
             <Badge variant="outline">
               {PRODUCT_TYPE_LABELS[product.type as ProductTypeKey] ?? product.type}
             </Badge>
-            {product.release && product.release.nameFr !== product.name && (
-              <span>{product.release.nameFr}</span>
+            {extension ? (
+              <Link
+                href={`/extensions/${encodeURIComponent(extension.code)}`}
+                className="font-medium text-primary hover:underline"
+              >
+                Extension {extension.name}
+                {extension.setCode ? ` (${extension.setCode})` : ''}
+              </Link>
+            ) : (
+              product.release &&
+              product.release.nameFr !== product.name && <span>{product.release.nameFr}</span>
             )}
             {(product.releaseDate ?? product.release?.releaseDate) && (
               <span>
