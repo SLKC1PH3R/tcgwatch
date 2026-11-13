@@ -378,6 +378,16 @@ export function adapterKeyFor(info: RetailerInfo): string {
 }
 
 /** URL de recherche d'un produit sur un site ; undefined si le site n'a pas de modèle connu. */
+/**
+ * Grandes enseignes jamais relevées (CGU et anti-bot, voir BLOCKED_DOMAINS) : un simple lien
+ * vers leur recherche, ouvert par l'utilisateur. Aucune page n'est lue par TCGWatch.
+ */
+export const LINK_ONLY_SEARCHES = [
+  { name: 'Amazon', searchUrl: 'https://www.amazon.fr/s?k={q}' },
+  { name: 'Fnac', searchUrl: 'https://www.fnac.com/SearchResult/ResultList.aspx?Search={q}' },
+  { name: 'Cdiscount', searchUrl: 'https://www.cdiscount.com/search/10/{q}.html' },
+] as const;
+
 export function buildSearchUrl(
   template: string | null | undefined,
   query: string,

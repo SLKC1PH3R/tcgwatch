@@ -24,10 +24,10 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         <div className="flex justify-center" aria-hidden>
           <div className="relative h-96 w-[22rem]">
             <div className="absolute top-10 left-0 h-72 w-52 -rotate-12 rounded-2xl bg-border p-1.5">
-              <CardImage src="/cards/30e-anniversaire-r.webp" />
+              <CardImage src="/cards/30e-anniversaire-b.webp" />
             </div>
             <div className="absolute top-10 right-0 h-72 w-52 rotate-12 rounded-2xl bg-border p-1.5">
-              <CardImage src="/cards/30e-anniversaire-b.webp" />
+              <CardImage src="/cards/30e-anniversaire-r.webp" />
             </div>
             <div className="holo-fill absolute top-2 left-[4.5rem] h-72 w-52 rounded-2xl p-1.5 shadow-[0_30px_80px_rgba(139,124,255,0.4)]">
               <CardImage src="/cards/30e-anniversaire-g.webp" priority />

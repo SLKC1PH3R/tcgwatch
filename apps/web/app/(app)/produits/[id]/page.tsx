@@ -2,7 +2,12 @@ import { ExternalLink, Plus, Search, Trash2 } from 'lucide-react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { buildSearchUrl, RETAILER_ACCESS_LABELS, searchTermsFor } from '@tcgwatch/adapters';
+import {
+  buildSearchUrl,
+  LINK_ONLY_SEARCHES,
+  RETAILER_ACCESS_LABELS,
+  searchTermsFor,
+} from '@tcgwatch/adapters';
 import { prisma } from '@tcgwatch/db';
 import {
   formatDate,
@@ -63,6 +68,12 @@ export default async function ProductPage({ params, searchParams }: Props) {
     .filter((r) => !followed.has(r.id))
     .map((r) => ({ ...r, href: buildSearchUrl(r.searchUrl, terms) }))
     .filter((r): r is typeof r & { href: string } => !!r.href);
+  // Grandes enseignes : liens de recherche seulement, jamais relevées.
+  const bigStoreTerms = /pok[ée]mon/i.test(terms) ? terms : `Pokémon ${terms}`;
+  const bigStores = LINK_ONLY_SEARCHES.map((s) => ({
+    name: s.name,
+    href: buildSearchUrl(s.searchUrl, bigStoreTerms)!,
+  }));
   const categories = [
     ...new Set(product.listings.map((l) => l.category).filter((c): c is string => !!c)),
   ];
@@ -237,36 +248,46 @@ export default async function ProductPage({ params, searchParams }: Props) {
             </CardContent>
           </Card>
 
-          {searches.length > 0 && (
-            <Card>
-              <CardHeader className="flex-col">
-                <CardTitle>Chercher chez d’autres revendeurs</CardTitle>
-                <CardDescription>
-                  Recherche « {terms} » sur les sites de l’annuaire. Copiez l’URL de la fiche
-                  trouvée dans « Ajouter une fiche revendeur ».
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
+          <Card>
+            <CardHeader className="flex-col">
+              <CardTitle>Chercher chez d’autres revendeurs</CardTitle>
+              <CardDescription>
+                Recherche « {terms} ». Copiez l’URL de la fiche trouvée dans « Ajouter une fiche
+                revendeur » pour la suivre.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {searches.length > 0 && (
                 <ul className="grid gap-1.5 text-sm sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
                   {searches.map((r) => (
                     <li key={r.id}>
-                      <a
+                      <SearchLink
                         href={r.href}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-accent"
+                        name={r.name}
                         title={RETAILER_ACCESS_LABELS[r.access]}
-                      >
-                        <Search className="size-3.5 shrink-0 text-muted-foreground" />
-                        <span className="truncate">{r.name}</span>
-                        <ExternalLink className="ml-auto size-3.5 shrink-0 text-muted-foreground" />
-                      </a>
+                      />
                     </li>
                   ))}
                 </ul>
-              </CardContent>
-            </Card>
-          )}
+              )}
+              <div className="space-y-1.5">
+                <p className="text-xs font-medium text-muted-foreground">
+                  Grandes enseignes — liens seulement, prix et stock non suivis
+                </p>
+                <ul className="grid gap-1.5 text-sm sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
+                  {bigStores.map((r) => (
+                    <li key={r.name}>
+                      <SearchLink
+                        href={r.href}
+                        name={r.name}
+                        title={`Rechercher « ${bigStoreTerms} » sur ${r.name}`}
+                      />
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </CardContent>
+          </Card>
 
           <Card>
             <CardHeader className="flex-col">
@@ -333,5 +354,21 @@ export default async function ProductPage({ params, searchParams }: Props) {
         </div>
       </div>
     </>
+  );
+}
+
+function SearchLink({ href, name, title }: { href: string; name: string; title: string }) {
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-accent"
+      title={title}
+    >
+      <Search className="size-3.5 shrink-0 text-muted-foreground" />
+      <span className="truncate">{name}</span>
+      <ExternalLink className="ml-auto size-3.5 shrink-0 text-muted-foreground" />
+    </a>
   );
 }
