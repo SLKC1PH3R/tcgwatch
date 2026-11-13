@@ -20,6 +20,8 @@ services:
     build:
       context: .
       dockerfile: docker/worker.Dockerfile
+      # Build : 64 Mo de /dev/shm par défaut, trop peu (SIGBUS pendant le build).
+      shm_size: 1gb
     restart: unless-stopped
     # Chromium a besoin d'un /dev/shm plus grand que les 64 Mo par défaut.
     shm_size: 512mb
@@ -53,6 +55,8 @@ services:
     build:
       context: .
       dockerfile: docker/web.Dockerfile
+      # Turbopack/PostCSS plantent en SIGBUS avec les 64 Mo de /dev/shm par défaut.
+      shm_size: 1gb
     restart: unless-stopped
     depends_on:
       # Le worker applique les migrations : le web démarre une fois le worker lancé.

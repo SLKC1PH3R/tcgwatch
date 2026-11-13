@@ -19,7 +19,7 @@ export function MainNav() {
   return (
     <nav
       aria-label="Navigation principale"
-      className="flex w-fit max-w-full gap-1 overflow-x-auto rounded-full [scrollbar-width:none] [&::-webkit-scrollbar]:hidden border bg-popover p-1"
+      className="flex w-fit max-w-full [scrollbar-width:none] gap-1 overflow-x-auto rounded-full border bg-popover p-1 [&::-webkit-scrollbar]:hidden"
     >
       {LINKS.map(({ href, label, icon: Icon }) => {
         const active = href === '/' ? pathname === '/' : pathname.startsWith(href);
