@@ -29,6 +29,8 @@ ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 PORT=3000 HOSTNAME=0.0.0.0 UPL
 WORKDIR /app
 COPY --from=build --chown=node:node /app/apps/web/.next/standalone ./
 COPY --from=build --chown=node:node /app/apps/web/.next/static ./apps/web/.next/static
+# Fichiers statiques (cartes de la page de connexion…) : non inclus dans « standalone ».
+COPY --from=build --chown=node:node /app/apps/web/public ./apps/web/public
 RUN mkdir -p /data/uploads && chown -R node:node /data
 USER node
 EXPOSE 3000
