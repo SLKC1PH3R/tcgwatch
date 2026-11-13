@@ -1,7 +1,13 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { matchProduct, parsePokecardexCalendar, productTokens, searchQueryFor } from '../src';
+import {
+  matchProduct,
+  parsePokecardexCalendar,
+  productTokens,
+  randomIllustrationBoosters,
+  searchQueryFor,
+} from '../src';
 
 // Catalogue FR réel (extrait Pokécardex) et intitulés relevés chez les revendeurs.
 const catalog = parsePokecardexCalendar(
@@ -63,6 +69,19 @@ describe('matchProduct (intitulés réels)', () => {
       "[PRECOMMANDE] [LIMITE2] ETB (Coffret dresseur d'élite) - ME06 Règne Delta [FR]-MASTERSET",
       'Coffret Dresseur d’élite Méga-Évolution - Règne Delta',
     ],
+    // Destock TCG : code d'extension entre crochets, « Bundle » = lot de 6.
+    [
+      "ETB Règne Delta [ME06] - Coffret Dresseur d'Élite - FR [ME6]",
+      'Coffret Dresseur d’élite Méga-Évolution - Règne Delta',
+    ],
+    [
+      'Display [ME06] - 36 Boosters Règne Delta - Pokémon FR [ME6]',
+      'Boite de boosters Règne Delta',
+    ],
+    [
+      'Bundle [ME06] - 6 Boosters Règne Delta - Pokémon - FR [ME6]',
+      'Lot de boosters Méga-Évolution - Règne Delta',
+    ],
   ])('%s → %s', (title, expected) => {
     expect(nameOf(title)).toBe(expected);
   });
@@ -75,6 +94,16 @@ describe('matchProduct (intitulés réels)', () => {
     'MTG - Decks Commander - Marvel Super Heroes',
     // Plusieurs exemplaires d'un même produit.
     'Lot 2 Tripacks - ME06 Règne Delta-MASTERSET',
+    // Destock TCG : lots de boîtes, versions chinoises, artsets de 4 boosters.
+    'Lot Scellé de 10 Mini Tin - Illumis - Q2 26 - [ME04] [ME03] - Pokémon',
+    'Pokébox - Lot de 3 - Méga Puissances Q3 26 - FR - Pokémon',
+    '30e Anniversaire - Lot de 2 Pokébox - Pokémon - FR',
+    'Display Gem Pack Vol.6 - Boite de 18 Boosters - CHINOIS - [CBB6C] - Pokémon',
+    'Artset [ME06] - 4 Boosters Règne Delta - Pokémon - FR [ME6]',
+    "1 Protection Plastique pour Coffret Dresseur d'Elite - Anti-UV, Rayures",
+    'Lot de Tripack Farfuret et Dimoret - Flammes Fantasmagoriques - FR - [ME02] [ME2] - Pokémon',
+    'Mini Tin - Fable Nébuleuse - Lot des 5 illustrations - FR - [SV6.5][EV6.5] - Pokémon',
+    'Héros Transcendants - Display Scellée de 10 Bundles 6 Boosters [ME2.5] - Pokémon - FR',
     // Accessoires dont l'intitulé ressemble à un produit scellé.
     'Phoenix Shield – Crystal Box Display Pokémon 36 Boosters – Protection transparente – FR/NL/EN/DE',
     'Phoenix Shield – Acrylic Case Magnetic – Pokémon ETB – Protection UV 98 % – FR/NL/EN/DE',
@@ -132,5 +161,48 @@ describe('searchQueryFor', () => {
     expect(searchQueryFor('Collection Ultra-Premium 30ᵉ Anniversaire – Soirée')).toBe(
       '30 ans Soirée',
     );
+  });
+});
+
+describe('matchProduct (bundle et booster seul)', () => {
+  const lots = [
+    { id: 'bundle', name: 'Lot de boosters Écarlate et Violet Fable Nébuleuse', type: 'BOOSTER' },
+  ];
+  it('ne prend pas un booster seul pour le lot de 6', () => {
+    expect(
+      matchProduct('Booster [EV6.5] - Fable Nébuleuse - Pokémon Ecarlate et Violet - FR', lots),
+    ).toBeNull();
+    expect(matchProduct('Bundle 6 boosters Fable Nébuleuse - FR', lots)?.productId).toBe('bundle');
+  });
+});
+
+describe('randomIllustrationBoosters', () => {
+  const generics = randomIllustrationBoosters(
+    parsePokecardexCalendar(
+      readFileSync(
+        path.join(import.meta.dirname, 'fixtures', 'pokecardex-calendrier.html'),
+        'utf8',
+      ),
+    ),
+  );
+  const withGeneric = [
+    ...catalog,
+    ...generics.map((r) => ({ id: r.externalId, name: r.name, type: r.productType })),
+  ];
+
+  it('ajoute un booster sans illustration par extension', () => {
+    expect(generics.map((g) => g.name)).toContain('Booster Règne Delta');
+    expect(generics.every((g) => g.productType === 'BOOSTER')).toBe(true);
+  });
+
+  it('rattache le booster sans illustration des boutiques', () => {
+    const id = (t: string) => matchProduct(t, withGeneric)?.productId;
+    const generic = generics.find((g) => g.name === 'Booster Règne Delta')!.externalId;
+    expect(id('Booster Pokémon : Règne Delta [ME06] - FR')).toBe(generic);
+    expect(id('POKÉMON ME06 : BOOSTER RÈGNE DELTA')).toBe(generic);
+    // Une illustration précise garde son produit.
+    expect(
+      withGeneric.find((p) => p.id === id('Booster Pokémon : Règne Delta - Méga-Rayquaza'))?.name,
+    ).toBe('Booster Règne Delta - Méga-Rayquaza');
   });
 });

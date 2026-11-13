@@ -198,6 +198,24 @@ export const RETAILER_DIRECTORY: RetailerInfo[] = [
     },
   },
   {
+    slug: 'destock-tcg',
+    name: 'Destock TCG',
+    domain: 'destocktcg.fr',
+    kind: 'SPECIALIST',
+    access: 'OK',
+    websiteUrl: 'https://www.destocktcg.fr/',
+    pokemonUrl: 'https://www.destocktcg.fr/jeux-de-cartes-a-collectionner/pokemon/',
+    // Pas de searchUrl : /search est interdit par le robots.txt.
+    minDelayMs: 4000,
+    notes:
+      'JSON-LD complet (prix, stock, EAN) et alerte de retour en stock sur la fiche. Rayon mêlant FR, imports chinois/japonais et accessoires : seuls les produits FR du catalogue sont suivis.',
+    discovery: {
+      productUrl: /^https:\/\/www\.destocktcg\.fr\/product\/[a-z0-9-]+$/,
+      pages: ['https://www.destocktcg.fr/jeux-de-cartes-a-collectionner/pokemon/?page={page}'],
+      maxPages: 12,
+    },
+  },
+  {
     slug: 'esprit-jeu',
     name: 'Esprit Jeu',
     domain: 'espritjeu.com',

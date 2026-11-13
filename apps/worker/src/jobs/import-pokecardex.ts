@@ -1,12 +1,15 @@
 import { prisma, type ProductType } from '@tcgwatch/db';
 import {
+  matchProduct,
   parsePokecardexCalendar,
   parsePokecardexForumCalendar,
   POKECARDEX_CALENDAR_URL,
   POKECARDEX_FORUM_TOPICS,
   pokecardexForumUrl,
+  randomIllustrationBoosters,
   type PokecardexRelease,
 } from '@tcgwatch/market';
+import { normalizeEan } from '@tcgwatch/shared';
 import type { WorkerContext } from '../context';
 import type { ImportSummary } from './import-tcgdex';
 
@@ -35,6 +38,8 @@ export interface PokecardexImportSummary extends ImportSummary {
   productsCreated: number;
   productsUpdated: number;
   examplesRemoved: number;
+  /** Produits ajoutés à la main fusionnés dans leur fiche du catalogue. */
+  duplicatesMerged: number;
 }
 
 /**
@@ -65,12 +70,28 @@ export async function importPokecardex(
     productsCreated: 0,
     productsUpdated: 0,
     examplesRemoved: 0,
+    duplicatesMerged: 0,
   };
   const past = await forumReleases(ctx, summary);
-  for (const r of [...past, ...releases]) {
+  const all = [...past, ...releases];
+  const releaseIds = new Map<string, string>();
+  for (const r of all) {
     const releaseId = await upsertRelease(r, summary);
+    releaseIds.set(r.externalId, releaseId);
     await upsertProduct(r, releaseId, summary);
   }
+  // Booster sans choix d'illustration : rattaché à la sortie du premier booster illustré,
+  // sans entrée supplémentaire au calendrier.
+  for (const r of randomIllustrationBoosters(all)) {
+    const variantId = `pokecardex:${r.externalId.split(':').pop()}`;
+    const releaseId =
+      releaseIds.get(variantId) ??
+      [...releaseIds.entries()].find(([id]) =>
+        id.endsWith(`:${r.externalId.split(':').pop()}`),
+      )?.[1];
+    if (releaseId) await upsertProduct(r, releaseId, summary);
+  }
+  summary.duplicatesMerged = await mergeManualDuplicates(ctx);
   summary.examplesRemoved = await removeSeedExamples();
 
   ctx.status.lastPokecardexImport = new Date();
@@ -210,4 +231,75 @@ async function removeSeedExamples(): Promise<number> {
     where: { source: 'SEED', releaseDate: null, products: { none: {} } },
   });
   return count;
+}
+
+/**
+ * Produits ajoutés à la main (« Suivre une URL », anciens exemples) qui existent aussi dans le
+ * catalogue Pokécardex : même EAN, ou même produit selon le rapprochement des intitulés.
+ * Fiches revendeurs, collection, alertes et prix marché passent sur la fiche du catalogue,
+ * puis le doublon est supprimé. Sans correspondance sûre, le produit est laissé tel quel.
+ */
+async function mergeManualDuplicates(ctx: Pick<WorkerContext, 'logger'>): Promise<number> {
+  const manual = await prisma.product.findMany({ where: { externalId: null } });
+  if (manual.length === 0) return 0;
+  const catalog = await prisma.product.findMany({
+    where: { externalId: { not: null } },
+    select: { id: true, name: true, type: true, ean: true, images: true },
+  });
+  let merged = 0;
+  for (const dup of manual) {
+    const ean = normalizeEan(dup.ean);
+    const byEan = ean ? catalog.filter((p) => normalizeEan(p.ean) === ean) : [];
+    const match =
+      byEan.length === 1 ? { productId: byEan[0]!.id } : matchProduct(dup.name, catalog);
+    const target = match && catalog.find((p) => p.id === match.productId);
+    if (!target || target.type !== dup.type) continue;
+    try {
+      await prisma.$transaction(async (tx) => {
+        // Prix marché : un relevé par jour et par source, celui du catalogue est gardé.
+        const kept = await tx.marketPrice.findMany({
+          where: { productId: target.id },
+          select: { source: true, date: true },
+        });
+        for (const k of kept) {
+          await tx.marketPrice.deleteMany({
+            where: { productId: dup.id, source: k.source, date: k.date },
+          });
+        }
+        await tx.marketPrice.updateMany({
+          where: { productId: dup.id },
+          data: { productId: target.id },
+        });
+        await tx.listing.updateMany({
+          where: { productId: dup.id },
+          data: { productId: target.id },
+        });
+        await tx.collectionItem.updateMany({
+          where: { productId: dup.id },
+          data: { productId: target.id },
+        });
+        await tx.alertEvent.updateMany({
+          where: { productId: dup.id },
+          data: { productId: target.id },
+        });
+        // Le doublon d’abord : l’EAN est unique.
+        await tx.product.delete({ where: { id: dup.id } });
+        await tx.product.update({
+          where: { id: target.id },
+          data: {
+            ean: target.ean ?? dup.ean,
+            images: [...new Set([...target.images, ...dup.images])].slice(0, 12),
+            targetPrice: dup.targetPrice ?? undefined,
+            notes: dup.notes ?? undefined,
+          },
+        });
+      });
+    } catch (err) {
+      ctx.logger.warn({ err, product: dup.name }, 'Fusion du doublon impossible');
+      continue;
+    }
+    ctx.logger.info({ from: dup.name, to: target.name }, 'Doublon fusionné dans le catalogue');
+    merged++;
+  }
+  return merged;
 }

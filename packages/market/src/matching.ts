@@ -39,7 +39,7 @@ const OTHER_GAME =
   /\b(?:mtg|magic|palworld|one piece|lorcana|yu-?gi-?oh|dragon ball|digimon|riftbound|star wars unlimited)\b/i;
 
 /** Lots de boîtes (cases, cartons) : un prix sans rapport avec le produit à l'unité. */
-const BULK = /\b(?:case|caisse|carton)\b(?! ?(?:de )?rangement)/i;
+const BULK = /\b(?:case|caisse|carton)\b(?! ?(?:de )?rangement)|\b\d+\s+bundles\b/i;
 
 /** Accessoires et produits dérivés : jamais des produits scellés de cartes. */
 const ACCESSORY =
@@ -115,8 +115,20 @@ export function matchProduct(title: string, catalog: CatalogProduct[]): CatalogM
     /\b(?:[2-9]|\d{2,})\s*boosters?\b/.test(normalize(title))
   )
     return null;
-  // « Lot 2 Tripacks », « Lot de 3 ETB » : plusieurs exemplaires, prix sans rapport.
-  if (/\blot\s+(?:de\s+)?(?:[2-9]|\d{2,})\s+(?!boosters?\b)[a-z]/.test(normalize(title)))
+  // « Lot 2 Tripacks », « Lot de 3 ETB », « Lot Scellé de 10 Mini Tin », « Pokébox - Lot de 3 - … » :
+  // plusieurs exemplaires, prix sans rapport (« Lot de 6 boosters » reste un bundle).
+  if (
+    /\blot\s+(?:scellee?\s+)?(?:des?\s+)?(?:[2-9]|\d{2,})\b(?!\s*boosters?\b)/.test(
+      normalize(title),
+    )
+  )
+    return null;
+  // « Lot de Tripack Farfuret et Dimoret » : les deux illustrations ensemble, sans nombre.
+  if (
+    /\blot\s+de\s+(?:tri-?packs?|etb|displays?|coffrets?|mini\s*tins?|pokebox)\b/.test(
+      normalize(title),
+    )
+  )
     return null;
 
   const sameType = catalog.filter((p) => p.type === type);
@@ -126,6 +138,8 @@ export function matchProduct(title: string, catalog: CatalogProduct[]): CatalogM
     const pt = productTokens(p.name);
     if (pt.length === 0) continue;
     const ps = new Set(pt);
+    // Booster seul ≠ lot de 6, display ≠ demi-display : ces marqueurs doivent concorder.
+    if (ps.has('bundle') !== set.has('bundle') || ps.has('demi') !== set.has('demi')) continue;
     if (pt.length === tokens.length && isSubset(pt, set)) exact.push(p);
     else {
       const common = pt.filter((x) => set.has(x)).length;

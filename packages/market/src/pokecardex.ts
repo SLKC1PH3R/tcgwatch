@@ -102,3 +102,37 @@ export function parsePokecardexCalendar(html: string): PokecardexRelease[] {
   }
   return [...out.values()].sort((a, b) => a.releaseDate.getTime() - b.releaseDate.getTime());
 }
+
+/**
+ * Boosters « illustration aléatoire » : Pokécardex liste un booster par illustration
+ * (« Booster Règne Delta - Méga-Rayquaza », « … - Méga-Golemastoc »…), alors que la plupart
+ * des boutiques vendent le booster sans choix d'illustration (« Booster Règne Delta »).
+ * Pour chaque extension ayant au moins deux boosters illustrés sortis le même jour, on ajoute
+ * un produit « Booster <extension> » auquel ces fiches sont rattachées.
+ */
+export function randomIllustrationBoosters(releases: PokecardexRelease[]): PokecardexRelease[] {
+  const groups = new Map<string, PokecardexRelease[]>();
+  for (const r of releases) {
+    if (r.productType !== 'BOOSTER') continue;
+    const m = /^(Booster .+?) - .+$/.exec(r.name.trim());
+    if (!m) continue;
+    const key = `${m[1]}|${r.releaseDate.toISOString().slice(0, 10)}`;
+    groups.set(key, [...(groups.get(key) ?? []), r]);
+  }
+  const out: PokecardexRelease[] = [];
+  for (const [key, variants] of groups) {
+    if (variants.length < 2) continue;
+    const sorted = [...variants].sort((a, b) => a.externalId.localeCompare(b.externalId));
+    const first = sorted[0]!;
+    out.push({
+      externalId: `pokecardex-random:${first.externalId.split(':').pop()}`,
+      name: key.split('|')[0]!,
+      releaseDate: first.releaseDate,
+      productType: 'BOOSTER',
+      imageUrl: first.imageUrl,
+      msrp: sorted.find((v) => v.msrp !== null)?.msrp ?? null,
+      sourceUrl: first.sourceUrl,
+    });
+  }
+  return out;
+}

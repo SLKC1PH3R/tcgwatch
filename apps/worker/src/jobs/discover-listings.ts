@@ -12,6 +12,11 @@ import type { WorkerContext } from '../context';
 
 /** Recherches Chromium par passage et par site (chacune prend plusieurs secondes). */
 const MAX_SEARCHES_PER_RETAILER = 25;
+/** Recherches réservées chaque jour aux nouveautés (sorties récentes ou à venir). */
+const RECENT_SEARCHES = 10;
+const RECENT_WINDOW_MS = 90 * 86_400_000;
+
+type DatedProduct = CatalogProduct & { releaseDate: Date | null };
 
 export interface DiscoverySummary {
   pages: number;
@@ -45,9 +50,20 @@ export async function discoverListings(
 ): Promise<DiscoverySummary> {
   // Tout le catalogue, y compris les produits des années passées (prix actuel en boutique).
   const products = await prisma.product.findMany({
-    select: { id: true, name: true, type: true, listings: { select: { retailerId: true } } },
+    select: {
+      id: true,
+      name: true,
+      type: true,
+      releaseDate: true,
+      listings: { select: { retailerId: true } },
+    },
   });
-  const catalog: CatalogProduct[] = products.map((p) => ({ id: p.id, name: p.name, type: p.type }));
+  const catalog: DatedProduct[] = products.map((p) => ({
+    id: p.id,
+    name: p.name,
+    type: p.type,
+    releaseDate: p.releaseDate,
+  }));
   const retailers = await prisma.retailer.findMany({
     where: { enabled: true, ...(only ? { slug: only } : {}) },
   });
@@ -79,7 +95,7 @@ export async function discoverListings(
 async function collectCandidates(
   ctx: Pick<WorkerContext, 'fetcher' | 'logger' | 'browser'>,
   info: RetailerInfo,
-  catalog: CatalogProduct[],
+  catalog: DatedProduct[],
   followed: Set<string>,
   summary: DiscoverySummary,
 ): Promise<Map<string, Candidate>> {
@@ -136,21 +152,31 @@ async function collectCandidates(
 
   // 2. Recherche du site pour les produits encore introuvables (si autorisée et possible).
   if (discovery.search && (!discovery.searchNeedsBrowser || ctx.browser)) {
-    const pending = [
+    const missing = catalog.filter((p) => !followed.has(p.id) && !best.has(p.id));
+    const queryOf = (p: DatedProduct) => searchQueryFor(p.name);
+    // Nouveautés d'abord (sorties des 90 derniers jours et à venir, les plus récentes en tête) :
+    // un produit qui vient de sortir est cherché dès le lendemain, sans attendre la rotation.
+    const now = Date.now();
+    const recent = [
       ...new Set(
-        catalog
-          .filter((p) => !followed.has(p.id) && !best.has(p.id))
-          .map((p) => searchQueryFor(p.name))
+        missing
+          .filter((p) => p.releaseDate && p.releaseDate.getTime() > now - RECENT_WINDOW_MS)
+          .sort((a, b) => b.releaseDate!.getTime() - a.releaseDate!.getTime())
+          .map(queryOf)
           .filter((q) => q.length >= 4),
       ),
+    ].slice(0, RECENT_SEARCHES);
+    const pending = [
+      ...new Set(missing.map(queryOf).filter((q) => q.length >= 4 && !recent.includes(q))),
     ].sort();
     // Rotation quotidienne : chaque jour une autre tranche du catalogue est recherchée.
+    const slots = MAX_SEARCHES_PER_RETAILER - recent.length;
     const day = Math.floor(todayUtc().getTime() / 86_400_000);
-    const start = pending.length ? (day * MAX_SEARCHES_PER_RETAILER) % pending.length : 0;
-    const queries = [...pending.slice(start), ...pending.slice(0, start)].slice(
-      0,
-      MAX_SEARCHES_PER_RETAILER,
-    );
+    const start = pending.length ? (day * slots) % pending.length : 0;
+    const queries = [
+      ...recent,
+      ...[...pending.slice(start), ...pending.slice(0, start)].slice(0, slots),
+    ];
     for (const q of queries) {
       try {
         const url = discovery.search.replace('{q}', encodeURIComponent(q));
