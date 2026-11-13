@@ -2,6 +2,7 @@ import 'server-only';
 import { prisma } from '@tcgwatch/db';
 import { cardmarketQuote, tcgdexAsset, TcgdexClient, type CardmarketQuote } from '@tcgwatch/market';
 import { toNumber } from '@tcgwatch/shared';
+import { getLocalCard } from './encyclopedia';
 
 export interface CardPoint {
   day: string;
@@ -16,7 +17,7 @@ export interface CardPoint {
  * TCGdex du jour (image haute définition, extension, cotes actuelles).
  */
 export async function getCardPage(tcgdexId: string) {
-  const [tracked, live] = await Promise.all([
+  const [tracked, live, local] = await Promise.all([
     prisma.chaseCard.findUnique({
       where: { tcgdexId },
       include: {
@@ -25,8 +26,22 @@ export async function getCardPage(tcgdexId: string) {
       },
     }),
     new TcgdexClient().getCard(tcgdexId).catch(() => null),
+    getLocalCard(tcgdexId),
   ]);
-  if (!tracked && !live) return null;
+  if (!tracked && !live && !local) return null;
+  // La cote du jour lue sur TCGdex sert aussi de cache à la grille de l'extension.
+  const liveQuote = live ? cardmarketQuote(live) : null;
+  if (local && live) {
+    await prisma.card.update({
+      where: { id: local.id },
+      data: {
+        priceTrend: liveQuote?.trend ?? liveQuote?.price ?? null,
+        priceLow: liveQuote?.low ?? null,
+        priceAvg30: liveQuote?.avg30 ?? null,
+        priceAt: new Date(),
+      },
+    });
+  }
 
   const history: CardPoint[] = (tracked?.prices ?? []).map((p) => ({
     day: p.date.toISOString().slice(0, 10),
@@ -38,18 +53,22 @@ export async function getCardPage(tcgdexId: string) {
   }));
   const last = history.at(-1);
   const current: CardmarketQuote | null = live
-    ? cardmarketQuote(live)
+    ? liveQuote
     : last && last.trend !== null
       ? { price: last.trend, trend: last.trend, low: last.low, avg7: last.avg7, avg30: last.avg30 }
       : null;
 
   return {
     tcgdexId,
-    name: live?.name ?? tracked!.name,
-    rarity: live?.rarity ?? tracked?.rarity ?? null,
-    image: tcgdexAsset(live?.image, '/high.webp') ?? tracked?.imageUrl ?? null,
-    setId: live?.set?.id ?? null,
-    setName: live?.set?.name ?? tracked?.release.nameFr ?? null,
+    name: live?.name ?? local?.name ?? tracked!.name,
+    rarity: live?.rarity ?? local?.rarity ?? tracked?.rarity ?? null,
+    image:
+      tcgdexAsset(live?.image ?? local?.imageUrl ?? undefined, '/high.webp') ??
+      tracked?.imageUrl ??
+      null,
+    setId: live?.set?.id ?? local?.release.tcgdexId ?? null,
+    setName: live?.set?.name ?? local?.release.nameFr ?? tracked?.release.nameFr ?? null,
+    local,
     tracked: tracked
       ? {
           id: tracked.id,

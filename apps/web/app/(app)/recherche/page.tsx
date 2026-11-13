@@ -86,7 +86,11 @@ export default async function SearchPage({
                 {results.releases.map((r) => (
                   <Link
                     key={r.id}
-                    href={`/recherche?q=${encodeURIComponent(r.name)}`}
+                    href={
+                      r.tcgdexId
+                        ? `/extensions/${encodeURIComponent(r.tcgdexId)}`
+                        : `/recherche?q=${encodeURIComponent(r.name)}`
+                    }
                     className="flex min-w-0 items-center gap-3 rounded-md border p-2 transition-colors hover:bg-accent"
                   >
                     <Thumb src={r.imageUrl} className="w-14 bg-transparent" />
@@ -211,6 +215,14 @@ export default async function SearchPage({
                     prix Cardmarket (tendance) via TCGdex
                   </span>
                 </CardTitle>
+                {results.cardTotal > results.cards.length && (
+                  <Link
+                    href={`/cartes?q=${encodeURIComponent(q)}`}
+                    className="text-sm text-primary hover:underline"
+                  >
+                    Voir les {results.cardTotal} cartes
+                  </Link>
+                )}
               </CardHeader>
               <CardContent className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8">
                 {results.cards.map((c) => (

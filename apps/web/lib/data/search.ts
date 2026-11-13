@@ -9,6 +9,7 @@ import {
   type ProductTypeKey,
 } from '@tcgwatch/shared';
 import { latestMarketPrices } from './collection';
+import { searchCards as searchLocalCards } from './encyclopedia';
 import { getProducts, type ProductDTO } from './products';
 
 export interface ProductHit {
@@ -30,6 +31,8 @@ export interface CardHit {
 
 export interface ReleaseHit {
   id: string;
+  /** Code TCGdex : la recherche mène à la page de l'extension. */
+  tcgdexId: string | null;
   name: string;
   setCode: string | null;
   serie: string | null;
@@ -44,7 +47,7 @@ const MAX_CARDS = 16;
 /** Recherche dans le catalogue local (produits, extensions) et les cartes TCGdex. */
 export async function search(q: string, type?: ProductTypeKey) {
   const words = queryWords(q);
-  if (words.length === 0) return { products: [], releases: [], cards: [], total: 0 };
+  if (words.length === 0) return { products: [], releases: [], cards: [], total: 0, cardTotal: 0 };
 
   const [products, market, releases, cards] = await Promise.all([
     getProducts(),
@@ -53,16 +56,18 @@ export async function search(q: string, type?: ProductTypeKey) {
       where: { productType: null },
       select: {
         id: true,
+        tcgdexId: true,
         nameFr: true,
         setCode: true,
         serie: true,
         releaseDate: true,
         imageUrl: true,
-        _count: { select: { products: true } },
+        _count: { select: { products: true, extensionProducts: true } },
       },
     }),
     searchCards(q, words),
   ]);
+  const cardTotal = cards.total;
 
   const productHits = products
     .filter((p) => !type || p.type === type)
@@ -87,12 +92,13 @@ export async function search(q: string, type?: ProductTypeKey) {
     .slice(0, 8)
     .map(({ r }): ReleaseHit => ({
       id: r.id,
+      tcgdexId: r.tcgdexId,
       name: r.nameFr,
       setCode: r.setCode,
       serie: r.serie,
       releaseDate: r.releaseDate,
       imageUrl: r.imageUrl,
-      productCount: r._count.products,
+      productCount: Math.max(r._count.products, r._count.extensionProducts),
     }));
 
   return {
@@ -101,15 +107,42 @@ export async function search(q: string, type?: ProductTypeKey) {
       .map(({ p }): ProductHit => ({ product: p, resale: market.get(p.id) ?? null })),
     total: productHits.length,
     releases: type ? [] : releaseHits,
-    cards: type ? [] : cards,
+    cards: type ? [] : cards.hits,
+    /** Nombre total de cartes trouvées dans l'encyclopédie (lien « toutes les cartes »). */
+    cardTotal: type ? 0 : cardTotal,
   };
 }
 
 /**
- * Cartes Pokémon : d'abord les cartes phares suivies (prix en base), puis TCGdex (FR, gratuit,
- * prix Cardmarket du jour). Une panne TCGdex ne casse pas la recherche.
+ * Cartes Pokémon : encyclopédie locale (toutes générations, cotes en cache) quand elle est
+ * importée, sinon cartes suivies puis TCGdex en direct.
  */
-async function searchCards(q: string, words: string[]): Promise<CardHit[]> {
+async function searchCards(
+  q: string,
+  words: string[],
+): Promise<{ hits: CardHit[]; total: number }> {
+  const local = await searchLocalCards(q, MAX_CARDS);
+  if (local.total > 0) {
+    return {
+      total: local.total,
+      hits: local.cards.map((c) => ({
+        id: c.id,
+        name: c.name,
+        setName: c.setName,
+        number: c.localId,
+        rarity: c.rarity,
+        image: c.image,
+        price: c.price,
+        tracked: c.tracked,
+      })),
+    };
+  }
+  const hits = await searchRemoteCards(q, words);
+  return { hits, total: hits.length };
+}
+
+/** Repli avant l'import de l'encyclopédie : cartes suivies, puis TCGdex en direct. */
+async function searchRemoteCards(q: string, words: string[]): Promise<CardHit[]> {
   const tracked = await prisma.chaseCard.findMany({
     include: {
       release: { select: { nameFr: true } },

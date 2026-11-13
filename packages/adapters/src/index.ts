@@ -9,5 +9,6 @@ export { playInAdapter, parsePlayIn } from './adapters/playin';
 export { philibertAdapter, parsePhilibert } from './adapters/philibert';
 export { culturaAdapter, parseCultura } from './adapters/cultura';
 export { smythsAdapter, parseSmyths } from './adapters/smyths';
+export { fantasySphereAdapter, parseFantasySphere } from './adapters/fantasysphere';
 export * from './directory';
 export * from './catalog';

@@ -1,4 +1,5 @@
-import { Bell, ExternalLink, Plus, Trash2 } from 'lucide-react';
+import { Bell, ChevronLeft, ChevronRight, ExternalLink, Plus, Trash2 } from 'lucide-react';
+import { Fragment } from 'react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
@@ -12,6 +13,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { getCardPage } from '@/lib/data/cards';
+import type { LocalCard } from '@/lib/data/encyclopedia';
 import { PERIODS, periodOf, periodStart } from '@/lib/data/history';
 import { cn } from '@/lib/utils';
 import { followCardAction, setCardAlertAction, unfollowCardAction } from '../actions';
@@ -51,8 +53,23 @@ export default async function CardPage({ params, searchParams }: Props) {
         title={card.name}
         description={
           <span className="flex flex-wrap items-center gap-2">
-            {card.setName && <span>{card.setName}</span>}
-            <span className="text-muted-foreground">· {card.tcgdexId}</span>
+            {card.setName &&
+              (card.setId ? (
+                <Link
+                  href={`/extensions/${encodeURIComponent(card.setId)}?onglet=cartes`}
+                  className="font-medium text-primary hover:underline"
+                >
+                  {card.setName}
+                </Link>
+              ) : (
+                <span>{card.setName}</span>
+              ))}
+            <span className="text-muted-foreground">
+              ·{' '}
+              {card.local
+                ? `n° ${card.local.localId}${card.local.release.cardCountOfficial ? `/${card.local.release.cardCountOfficial}` : ''}`
+                : card.tcgdexId}
+            </span>
             {card.rarity && <Badge variant="outline">{card.rarity}</Badge>}
             {card.tracked && (
               <Badge variant="info">
@@ -91,6 +108,7 @@ export default async function CardPage({ params, searchParams }: Props) {
           ) : (
             <div className="aspect-[63/88] w-full rounded-xl border bg-muted" />
           )}
+          {card.local && <CardFacts card={card.local} />}
           <a
             href={`https://www.tcgdex.dev/cards/${encodeURIComponent(card.tcgdexId)}`}
             target="_blank"
@@ -188,5 +206,69 @@ export default async function CardPage({ params, searchParams }: Props) {
         </Card>
       )}
     </>
+  );
+}
+
+const VARIANT_LABELS: Record<string, string> = {
+  normal: 'Normale',
+  reverse: 'Reverse',
+  holo: 'Holo',
+  firstEdition: '1re édition',
+};
+
+/** Fiche de l'encyclopédie : illustrateur, types, variantes, cartes voisines. */
+function CardFacts({ card }: { card: LocalCard }) {
+  const rows = [
+    { label: 'Série', value: card.release.serieRef?.name ?? null },
+    { label: 'Catégorie', value: card.category },
+    { label: 'Types', value: card.types.join(', ') || null },
+    { label: 'Illustrateur', value: card.illustrator },
+    {
+      label: 'Variantes',
+      value: card.variants.map((v) => VARIANT_LABELS[v] ?? v).join(', ') || null,
+    },
+  ].filter((r) => r.value);
+  return (
+    <div className="space-y-3 text-sm">
+      {card.nameMissing && (
+        <p className="text-xs text-muted-foreground">
+          Nom FR manquant dans TCGdex : nom anglais affiché.
+        </p>
+      )}
+      <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1">
+        {rows.map((r) => (
+          <Fragment key={r.label}>
+            <dt className="text-muted-foreground">{r.label}</dt>
+            <dd>{r.value}</dd>
+          </Fragment>
+        ))}
+      </dl>
+      <nav aria-label="Cartes voisines" className="flex justify-between gap-2 text-xs">
+        {card.prev ? (
+          <Link
+            href={`/cartes/${encodeURIComponent(card.prev.id)}`}
+            className="flex min-w-0 items-center gap-1 hover:underline"
+          >
+            <ChevronLeft className="size-3 shrink-0" />
+            <span className="truncate">
+              {card.prev.localId} · {card.prev.name}
+            </span>
+          </Link>
+        ) : (
+          <span />
+        )}
+        {card.next && (
+          <Link
+            href={`/cartes/${encodeURIComponent(card.next.id)}`}
+            className="flex min-w-0 items-center gap-1 text-right hover:underline"
+          >
+            <span className="truncate">
+              {card.next.localId} · {card.next.name}
+            </span>
+            <ChevronRight className="size-3 shrink-0" />
+          </Link>
+        )}
+      </nav>
+    </div>
   );
 }

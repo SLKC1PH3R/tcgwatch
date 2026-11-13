@@ -1,4 +1,5 @@
 import { culturaAdapter } from './adapters/cultura';
+import { fantasySphereAdapter } from './adapters/fantasysphere';
 import { genericAdapter } from './adapters/generic';
 import { philibertAdapter } from './adapters/philibert';
 import { playInAdapter } from './adapters/playin';
@@ -11,6 +12,7 @@ export const ADAPTERS: RetailerAdapter[] = [
   philibertAdapter,
   culturaAdapter,
   smythsAdapter,
+  fantasySphereAdapter,
 ];
 
 /** Sites exclus en V1 (protections anti-bot agressives / CGU). */

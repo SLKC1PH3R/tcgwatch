@@ -13,6 +13,7 @@ import {
   getAdapterForUrl,
   mapSchemaAvailability,
   parseCultura,
+  parseFantasySphere,
   parseGeneric,
   parsePhilibert,
   parsePlayIn,
@@ -252,5 +253,27 @@ describe('Annuaire des revendeurs', () => {
       'https://www.play-in.com/fr/recherche?q=Booster+Blister+Pok%C3%A9mon+R%C3%A8gne+Delta',
     );
     expect(buildSearchUrl(null, terms)).toBeUndefined();
+  });
+});
+
+describe('Fantasy Sphere', () => {
+  const url =
+    'https://www.fantasysphere.net/product/tri-pack-3-boosters-opermine-mega-evolution-nuit-noire-me05-pbl-pokemon-fr-10045234';
+
+  it('lit prix et stock affiché (l’état masqué par d-none est ignoré)', () => {
+    const r = parseFantasySphere(fixture('fantasysphere-in-stock'), url);
+    expect(r.price).toBe(19.9);
+    expect(r.availability).toBe('IN_STOCK');
+    expect(r.title).toBe(
+      'Tri-Pack - 3 Boosters - Opermine - Méga-Évolution : Nuit Noire [ME05][PBL] - Pokémon - FR',
+    );
+    expect(getAdapterForUrl(url).key).toBe('fantasysphere');
+  });
+
+  it('rupture : « Indisponible » affiché, « En stock » masqué', () => {
+    const html = fixture('fantasysphere-in-stock')
+      .replaceAll('in-stock "', 'in-stock d-none"')
+      .replaceAll('out-stock d-none', 'out-stock');
+    expect(parseFantasySphere(html, url).availability).toBe('OUT_OF_STOCK');
   });
 });

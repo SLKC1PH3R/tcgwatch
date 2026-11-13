@@ -244,13 +244,19 @@ export const RETAILER_DIRECTORY: RetailerInfo[] = [
     name: 'Fantasy Sphere',
     domain: 'fantasysphere.net',
     kind: 'SPECIALIST',
-    access: 'UNTESTED',
+    access: 'OK',
     websiteUrl: 'https://www.fantasysphere.net/',
     pokemonUrl: 'https://www.fantasysphere.net/jeux-de-cartes-a-collectionner/pokemon/',
-    searchUrl: 'https://www.fantasysphere.net/search?q={q}',
-    minDelayMs: 3000,
+    // Pas de searchUrl : /search est interdit par le robots.txt.
+    minDelayMs: 4000,
     shipping: { cost: null, freeFrom: 100 },
-    notes: 'Large rayon Pokémon (dont produits japonais).',
+    notes:
+      'Boutique de Toulouse. Pas de JSON-LD produit : prix (balise product:price) et stock (bloc « Livraison à domicile ») lus par un adaptateur dédié. Rayon mêlant FR, japonais et accessoires : seuls les produits FR du catalogue sont suivis.',
+    discovery: {
+      productUrl: /^https:\/\/www\.fantasysphere\.net\/product\/[a-z0-9-]+$/,
+      pages: ['https://www.fantasysphere.net/jeux-de-cartes-a-collectionner/pokemon/?page={page}'],
+      maxPages: 8,
+    },
   },
   {
     slug: 'le-coin-des-barons',
