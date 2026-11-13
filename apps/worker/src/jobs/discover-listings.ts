@@ -112,7 +112,10 @@ async function collectCandidates(
   };
 
   const fetchLinks = async (url: string, browser = false) => {
-    const html = await ctx.fetcher.fetchHtml(url, { browser, minDelayMs: info.minDelayMs });
+    const html = await ctx.fetcher.fetchHtml(url, {
+      browser: browser || info.access === 'BROWSER',
+      minDelayMs: info.minDelayMs,
+    });
     summary.pages++;
     return extractCatalogLinks(html, url, discovery.productUrl);
   };

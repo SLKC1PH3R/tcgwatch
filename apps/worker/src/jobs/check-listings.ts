@@ -50,9 +50,15 @@ export async function checkListing(ctx: WorkerContext, listing: ListingWithRelat
   const log = ctx.logger.child({ listingId: listing.id, retailer: listing.retailer.slug });
   try {
     const adapter = getAdapterByKey(listing.retailer.adapterKey);
+    // Sites qui refusent les requêtes HTTP simples : Chromium d'emblée, sans requête refusée avant.
+    const browserFirst = listing.retailer.access === 'BROWSER';
     const scoped: FetchContext = {
       fetchHtml: (url, options) =>
-        ctx.fetcher.fetchHtml(url, { ...options, minDelayMs: listing.retailer.minDelayMs }),
+        ctx.fetcher.fetchHtml(url, {
+          ...options,
+          browser: options?.browser || browserFirst,
+          minDelayMs: listing.retailer.minDelayMs,
+        }),
     };
     let result: ListingResult;
     try {

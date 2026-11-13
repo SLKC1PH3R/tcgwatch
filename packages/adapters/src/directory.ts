@@ -179,6 +179,25 @@ export const RETAILER_DIRECTORY: RetailerInfo[] = [
     },
   },
   {
+    slug: 'tradingcardsxxx',
+    name: 'Trading Cards XXX',
+    domain: 'tradingcardsxxx.fr',
+    kind: 'SPECIALIST',
+    // Shopify répond 429 à toute requête HTTP simple sur les rayons et fiches : Chromium seulement.
+    access: 'BROWSER',
+    websiteUrl: 'https://tradingcardsxxx.fr/',
+    pokemonUrl: 'https://tradingcardsxxx.fr/collections/pokemon',
+    searchUrl: 'https://tradingcardsxxx.fr/search?q={q}&type=product',
+    minDelayMs: 10000,
+    notes:
+      'Shopify, relevé via Chromium (les requêtes HTTP simples sont refusées). JSON-LD complet : prix, stock, EAN, date de sortie.',
+    discovery: {
+      productUrl: /^https:\/\/tradingcardsxxx\.fr\/(?:collections\/[^/]+\/)?products\/[^/?#]+$/,
+      pages: ['https://tradingcardsxxx.fr/collections/pokemon?page={page}'],
+      maxPages: 10,
+    },
+  },
+  {
     slug: 'esprit-jeu',
     name: 'Esprit Jeu',
     domain: 'espritjeu.com',
