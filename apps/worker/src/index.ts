@@ -1,4 +1,4 @@
-import { compactSnapshots, prisma } from '@tcgwatch/db';
+import { compactSnapshots, prisma, purgeStale } from '@tcgwatch/db';
 import cron, { type ScheduledTask } from 'node-cron';
 import { createContext, type WorkerContext } from './context';
 import { startHealthServer } from './health';
@@ -55,8 +55,12 @@ async function main() {
   const pokecardexJob = exclusive(ctx, 'pokecardex', () => importPokecardex(ctx));
   const discoveryJob = exclusive(ctx, 'discovery', () => discoverListings(ctx));
   const historyJob = exclusive(ctx, 'history', async () => {
-    const removed = await compactSnapshots();
-    logger.info({ removed }, 'Relevés anciens regroupés dans le résumé quotidien');
+    const removed = await compactSnapshots(new Date(), env.SNAPSHOT_RETENTION_DAYS);
+    const purged = await purgeStale(new Date(), env.ALERT_RETENTION_DAYS);
+    logger.info(
+      { removed, ...purged },
+      'Relevés anciens regroupés dans le résumé quotidien, alertes et sessions périmées supprimées',
+    );
   });
 
   const tasks: ScheduledTask[] = [

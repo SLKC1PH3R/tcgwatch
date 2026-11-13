@@ -23,8 +23,10 @@ function parisDayStart(at: Date): Date {
 /** Une disponibilité « achetable » (en stock ou précommande ouverte). */
 const BUYABLE: Availability[] = ['IN_STOCK', 'PREORDER'];
 
-/** Rétention des relevés détaillés : au-delà, seul le résumé quotidien est conservé. */
-export const SNAPSHOT_RETENTION_DAYS = 30;
+/** Rétention par défaut des relevés détaillés : au-delà, seul le résumé quotidien reste. */
+export const SNAPSHOT_RETENTION_DAYS = 14;
+/** Rétention par défaut des alertes (l'anti-doublon ne remonte qu'à un jour). */
+export const ALERT_RETENTION_DAYS = 180;
 
 /**
  * Un prix est mis de côté s'il est inférieur à cette part du prix de référence (médiane des
@@ -126,10 +128,13 @@ export async function recordDaily(o: Observation): Promise<void> {
 /**
  * Regroupement quotidien : complète les résumés à partir des relevés détaillés (au cas où un
  * relevé aurait été enregistré sans résumé), puis supprime les relevés de plus de
- * SNAPSHOT_RETENTION_DAYS jours. Renvoie le nombre de relevés supprimés.
+ * `retentionDays` jours. Renvoie le nombre de relevés supprimés.
  */
-export async function compactSnapshots(now = new Date()): Promise<number> {
-  const cutoff = parisDayStart(new Date(now.getTime() - SNAPSHOT_RETENTION_DAYS * 86_400_000));
+export async function compactSnapshots(
+  now = new Date(),
+  retentionDays = SNAPSHOT_RETENTION_DAYS,
+): Promise<number> {
+  const cutoff = parisDayStart(new Date(now.getTime() - retentionDays * 86_400_000));
   // createdAt est un horodatage UTC sans fuseau : conversion explicite vers l'heure de Paris.
   await prisma.$executeRaw`
     INSERT INTO "ListingDaily" ("id", "listingId", "date", "minPrice", "maxPrice", "lastPrice",
@@ -146,4 +151,19 @@ export async function compactSnapshots(now = new Date()): Promise<number> {
     ON CONFLICT ("listingId", "date") DO NOTHING`;
   const { count } = await prisma.snapshot.deleteMany({ where: { createdAt: { lt: cutoff } } });
   return count;
+}
+
+/**
+ * Ménage quotidien hors historique des prix : alertes de plus de `alertDays` jours et
+ * sessions expirées. Les résumés quotidiens (prix, cartes, marché) sont gardés sans limite :
+ * une ligne par fiche et par jour.
+ */
+export async function purgeStale(now = new Date(), alertDays = ALERT_RETENTION_DAYS) {
+  const [alerts, sessions] = await Promise.all([
+    prisma.alertEvent.deleteMany({
+      where: { createdAt: { lt: new Date(now.getTime() - alertDays * 86_400_000) } },
+    }),
+    prisma.session.deleteMany({ where: { expiresAt: { lt: now } } }),
+  ]);
+  return { alerts: alerts.count, sessions: sessions.count };
 }

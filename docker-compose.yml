@@ -15,6 +15,13 @@ x-common-env: &common-env
   DATABASE_URL: ${DATABASE_URL:?DATABASE_URL est obligatoire (Internal Connection URL de la base Dokploy)}
   APP_URL: ${APP_URL:-https://tcg.digitalstack.cloud}
 
+# Journaux Docker : 3 fichiers de 10 Mo au plus par service (sans limite par défaut).
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: 10m
+    max-file: '3'
+
 services:
   worker:
     build:
@@ -23,6 +30,7 @@ services:
       # Build : 64 Mo de /dev/shm par défaut, trop peu (SIGBUS pendant le build).
       shm_size: 1gb
     restart: unless-stopped
+    logging: *logging
     # Chromium a besoin d'un /dev/shm plus grand que les 64 Mo par défaut.
     shm_size: 512mb
     environment:
@@ -43,6 +51,8 @@ services:
       TCGDEX_CRON: ${TCGDEX_CRON:-0 6 * * *}
       MARKET_CRON: ${MARKET_CRON:-30 6 * * *}
       HISTORY_CRON: ${HISTORY_CRON:-30 3 * * *}
+      SNAPSHOT_RETENTION_DAYS: ${SNAPSHOT_RETENTION_DAYS:-14}
+      ALERT_RETENTION_DAYS: ${ALERT_RETENTION_DAYS:-180}
       MARKET_MOVE_ALERT_PCT: ${MARKET_MOVE_ALERT_PCT:-15}
       TCGDEX_SERIES: ${TCGDEX_SERIES:-me,sv,swsh,sm,xy,bw}
       POKECARDEX_ENABLED: ${POKECARDEX_ENABLED:-true}
@@ -60,6 +70,7 @@ services:
       # Turbopack/PostCSS plantent en SIGBUS avec les 64 Mo de /dev/shm par défaut.
       shm_size: 1gb
     restart: unless-stopped
+    logging: *logging
     depends_on:
       # Le worker applique les migrations : le web démarre une fois le worker lancé.
       worker:

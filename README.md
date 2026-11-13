@@ -55,7 +55,10 @@ prix du marché secondaire et valorisation de sa collection.
   référence) et **seuils par carte** (tendance sous / au-dessus de X €). Anti-doublon de 6 h.
 - **Historique des prix** : un relevé détaillé n'est gardé que si le prix ou le stock change (plus un
   par jour) ; chaque fiche a un résumé quotidien (prix mini, maxi, dernier, achetable ou non). Les
-  relevés de plus de 30 jours sont regroupés chaque nuit (`HISTORY_CRON`). Graphique par fiche produit
+  relevés détaillés de plus de `SNAPSHOT_RETENTION_DAYS` jours (14 par défaut) sont supprimés chaque
+  nuit (`HISTORY_CRON`), seul le résumé quotidien reste ; les alertes de plus de
+  `ALERT_RETENTION_DAYS` jours (180) et les sessions expirées aussi. Journaux Docker limités à
+  3 × 10 Mo par service. Graphique par fiche produit
   sur 7 j / 30 j / 90 j / 1 an / tout : meilleur prix achetable, ruptures grisées, plus bas historique,
   plus bas 30 j, prix conseillé. Un prix inférieur à 50 % de la médiane sur 30 jours (à défaut du
   prix conseillé) est mis de côté ; un clic sur un jour du graphique permet d'exclure ou de rétablir
