@@ -19,7 +19,7 @@ export function MainNav() {
   return (
     <nav
       aria-label="Navigation principale"
-      className="flex w-fit max-w-full gap-1 overflow-x-auto rounded-full border bg-popover p-1"
+      className="flex w-fit max-w-full gap-1 overflow-x-auto rounded-full [scrollbar-width:none] [&::-webkit-scrollbar]:hidden border bg-popover p-1"
     >
       {LINKS.map(({ href, label, icon: Icon }) => {
         const active = href === '/' ? pathname === '/' : pathname.startsWith(href);
@@ -29,11 +29,11 @@ export function MainNav() {
             href={href}
             aria-current={active ? 'page' : undefined}
             className={cn(
-              'flex h-9 shrink-0 items-center gap-2 rounded-full px-4 text-sm font-semibold text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground',
+              'flex h-9 shrink-0 items-center gap-2 rounded-full px-3.5 text-sm font-semibold text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground',
               active && 'bg-foreground text-background hover:bg-foreground hover:text-background',
             )}
           >
-            <Icon className="size-4 lg:hidden" aria-hidden />
+            <Icon className="size-4 xl:hidden" aria-hidden />
             {label}
           </Link>
         );
