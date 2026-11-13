@@ -104,6 +104,15 @@ export class TcgdexClient {
     return this.get(`/cards/${encodeURIComponent(id)}`, cardSchema);
   }
 
+  /**
+   * Cartes dont la rareté contient `rarity` (filtre souple de TCGdex : « Illustration »
+   * couvre « Illustration rare » et « Illustration spéciale rare »).
+   */
+  searchCardsByRarity(rarity: string, limit = 250) {
+    const q = new URLSearchParams({ rarity, 'pagination:itemsPerPage': String(limit) });
+    return this.get(`/cards?${q}`, z.array(cardBrief));
+  }
+
   /** Cartes dont le nom contient `name` (fiches courtes : id, numéro, nom, image). */
   searchCards(name: string, limit = 40) {
     const q = new URLSearchParams({ name, 'pagination:itemsPerPage': String(limit) });

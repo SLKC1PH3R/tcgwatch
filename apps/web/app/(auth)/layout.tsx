@@ -1,4 +1,6 @@
 import Image from 'next/image';
+import { Suspense } from 'react';
+import { CardRain } from './card-rain';
 
 /** Cartes 30ᵉ Anniversaire (images Poképédia), décoratives. */
 function CardImage({ src, priority = false }: { src: string; priority?: boolean }) {
@@ -18,10 +20,13 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
   return (
     <main className="grid min-h-dvh lg:grid-cols-2">
       <section className="relative hidden flex-col justify-between gap-10 overflow-hidden bg-[radial-gradient(circle_at_70%_45%,#1e1f3a,var(--background)_65%)] p-12 lg:flex">
-        <span className="font-display text-xl font-extrabold tracking-tight">
+        <Suspense>
+          <CardRain />
+        </Suspense>
+        <span className="relative font-display text-xl font-extrabold tracking-tight">
           TCG<span className="text-primary">Watch</span>
         </span>
-        <div className="flex justify-center" aria-hidden>
+        <div className="relative flex justify-center" aria-hidden>
           <div className="relative h-96 w-[22rem]">
             <div className="absolute top-10 left-0 h-72 w-52 -rotate-12 rounded-2xl bg-border p-1.5">
               <CardImage src="/cards/30e-anniversaire-b.webp" />
@@ -34,7 +39,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
             </div>
           </div>
         </div>
-        <div className="max-w-md space-y-3">
+        <div className="relative max-w-md space-y-3">
           <p className="font-display text-2xl leading-tight font-bold">
             Suivi des produits scellés Pokémon TCG
           </p>
