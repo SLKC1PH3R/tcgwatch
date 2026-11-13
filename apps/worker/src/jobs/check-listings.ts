@@ -4,7 +4,14 @@ import {
   type FetchContext,
   type ListingResult,
 } from '@tcgwatch/adapters';
-import { prisma, recordDaily, shouldKeepSnapshot, type Prisma } from '@tcgwatch/db';
+import {
+  isSuspectPrice,
+  prisma,
+  recordDaily,
+  referencePrice,
+  shouldKeepSnapshot,
+  type Prisma,
+} from '@tcgwatch/db';
 import { AVAILABILITY_LABELS, formatPrice, toNumber, type Availability } from '@tcgwatch/shared';
 import { detectAlerts, effectiveTarget, type DetectedAlert } from '../alerts';
 import type { WorkerContext } from '../context';
@@ -99,12 +106,22 @@ async function recordSuccess(
   const alerts = detectAlerts(listing.id, prev, next, target, isFirstCheck);
 
   // Historique : relevé détaillé seulement si le prix ou le stock change (et une fois par
-  // jour pour confirmer), résumé du jour mis à jour à chaque passage.
+  // jour pour confirmer), résumé du jour mis à jour à chaque passage. Un prix aberrant
+  // (moitié de la médiane 30 j ou du prix conseillé) est mis de côté dans le résumé.
+  const price = result.price ?? null;
+  const suspect =
+    price !== null &&
+    isSuspectPrice(
+      price,
+      await referencePrice(listing.productId, toNumber(listing.product.msrp), now),
+    );
+  if (suspect) log(ctx, listing).warn({ price }, 'Prix aberrant mis de côté dans l’historique');
   const observation = {
     listingId: listing.id,
-    price: result.price ?? null,
+    price,
     availability: result.availability,
     at: now,
+    suspect,
   };
   const keepSnapshot = await shouldKeepSnapshot(
     { ...prev, lastCheckedAt: listing.lastCheckedAt },
@@ -177,8 +194,18 @@ async function recordSuccess(
     await dispatchAlert(ctx, buildAlert(listing, alert, result));
   }
   // Après le résumé du jour : le prix relevé bat-il tous les prix achetables connus ?
-  await checkNewLow(ctx, listing, result.price ?? null, result.availability, now);
+  // Le prix doit avoir été lu au même niveau au relevé précédent (confirmation).
+  await checkNewLow(
+    ctx,
+    listing,
+    { price, availability: result.availability, suspect },
+    { ...prev, lastCheckedAt: listing.lastCheckedAt },
+    now,
+  );
 }
+
+const log = (ctx: WorkerContext, listing: ListingWithRelations) =>
+  ctx.logger.child({ listingId: listing.id, retailer: listing.retailer.slug });
 
 function buildAlert(listing: ListingWithRelations, alert: DetectedAlert, result: ListingResult) {
   const price =

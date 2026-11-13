@@ -26,3 +26,29 @@ export function matchScore(haystack: string, words: string[]): number {
   }
   return score + 1 / (1 + text.length / 40);
 }
+
+const words = (text: string) =>
+  ` ${fold(text)
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim()} `;
+
+/**
+ * Extension d'un produit d'après son nom : parmi les extensions dont le nom apparaît en mots
+ * entiers, celle citée le plus loin dans le nom (« Coffret … Méga-Évolution - Règne Delta »
+ * → Règne Delta : la série vient avant l'extension), la plus longue à égalité.
+ */
+export function extensionOf<T extends { name: string }>(productName: string, sets: T[]): T | null {
+  const haystack = words(productName);
+  let best: { set: T; at: number; len: number } | null = null;
+  for (const set of sets) {
+    const needle = words(set.name);
+    if (needle.trim().length < 3) continue;
+    const at = haystack.lastIndexOf(needle);
+    if (at < 0) continue;
+    const end = at + needle.length;
+    if (!best || end > best.at || (end === best.at && needle.length > best.len)) {
+      best = { set, at: end, len: needle.length };
+    }
+  }
+  return best?.set ?? null;
+}

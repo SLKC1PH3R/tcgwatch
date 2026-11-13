@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { fold, matchScore, queryWords } from '../src';
+import { extensionOf, fold, matchScore, queryWords } from '../src';
 
 describe('recherche', () => {
   it('ignore accents, casse et apostrophes', () => {
@@ -21,5 +21,30 @@ describe('recherche', () => {
     expect(matchScore('ETB Rivalités', w)).toBeGreaterThan(
       matchScore('ETB Rivalités Destinées Pokémon Center édition spéciale', w),
     );
+  });
+});
+
+describe('extensionOf', () => {
+  const sets = [
+    { name: 'Méga-Évolution' },
+    { name: 'Règne Delta' },
+    { name: 'Écarlate et Violet' },
+    { name: 'Flammes Obsidiennes' },
+    { name: '151' },
+  ];
+  it('retient l’extension citée en dernier (la série vient avant)', () => {
+    expect(extensionOf('Coffret Dresseur d’élite Méga-Évolution - Règne Delta', sets)?.name).toBe(
+      'Règne Delta',
+    );
+    expect(extensionOf('Booster Règne Delta - Méga-Rayquaza', sets)?.name).toBe('Règne Delta');
+    expect(extensionOf('ETB Écarlate et Violet - Flammes Obsidiennes', sets)?.name).toBe(
+      'Flammes Obsidiennes',
+    );
+    expect(extensionOf('Display Méga-Évolution', sets)?.name).toBe('Méga-Évolution');
+    expect(extensionOf('Coffret Ultra Premium 151', sets)?.name).toBe('151');
+  });
+  it('demande des mots entiers', () => {
+    expect(extensionOf('Pokébox Dracaufeu', sets)).toBeNull();
+    expect(extensionOf('Booster 1510', sets)).toBeNull();
   });
 });

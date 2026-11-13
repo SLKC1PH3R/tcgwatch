@@ -5,7 +5,9 @@ import { redirect } from 'next/navigation';
 import { prisma } from '@tcgwatch/db';
 import { cardmarketQuote, tcgdexAsset, TcgdexClient } from '@tcgwatch/market';
 import { todayUtc } from '@tcgwatch/shared';
+import { z } from 'zod';
 import { requireUser } from '@/lib/auth';
+import { firstIssue, formToObject, optionalPrice } from '@/lib/form';
 
 const cardPath = (tcgdexId: string) => `/cartes/${encodeURIComponent(tcgdexId)}`;
 
@@ -63,5 +65,24 @@ export async function unfollowCardAction(tcgdexId: string) {
   await requireUser();
   await prisma.chaseCard.deleteMany({ where: { tcgdexId } });
   revalidatePath('/marche');
+  revalidatePath(cardPath(tcgdexId));
+}
+
+const thresholdsSchema = z.object({ alertBelow: optionalPrice, alertAbove: optionalPrice });
+
+/** Seuils d'alerte d'une carte suivie (tendance sous / au-dessus de X €), vides = aucun. */
+export async function setCardAlertAction(tcgdexId: string, formData: FormData) {
+  await requireUser();
+  const parsed = thresholdsSchema.safeParse(formToObject(formData));
+  if (!parsed.success) {
+    redirect(`${cardPath(tcgdexId)}?erreur=${encodeURIComponent(firstIssue(parsed.error))}`);
+  }
+  const { alertBelow, alertAbove } = parsed.data;
+  if (alertBelow !== null && alertAbove !== null && alertBelow >= alertAbove) {
+    redirect(
+      `${cardPath(tcgdexId)}?erreur=${encodeURIComponent('Le seuil bas doit être inférieur au seuil haut.')}`,
+    );
+  }
+  await prisma.chaseCard.update({ where: { tcgdexId }, data: { alertBelow, alertAbove } });
   revalidatePath(cardPath(tcgdexId));
 }

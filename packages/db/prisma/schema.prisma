@@ -61,6 +61,7 @@ enum AlertType {
   RELEASE_DATE
   NEW_LOW /// nouveau plus bas historique du meilleur prix achetable
   MARKET_MOVE /// variation du prix marché sur 7 jours au-delà du seuil
+  CARD_PRICE /// cote d'une carte suivie passée sous / au-dessus de son seuil
 }
 
 enum RetailerKind {
@@ -166,20 +167,24 @@ model Product {
 }
 
 model Retailer {
-  id         String         @id @default(cuid())
-  name       String
-  slug       String         @unique
-  domain     String         @unique /// domaine sans "www." (ex. "play-in.com")
-  adapterKey String /// "playin" | "philibert" | "cultura" | "smyths" | "jsonld"
-  minDelayMs Int            @default(3000)
-  enabled    Boolean        @default(true)
-  kind       RetailerKind   @default(OTHER)
-  access     RetailerAccess @default(UNTESTED)
-  websiteUrl String?
-  pokemonUrl String? /// page « Pokémon » ou recherche du site
-  searchUrl  String? /// modèle de recherche, « {q} » = termes recherchés
-  notes      String?
-  listings   Listing[]
+  id               String         @id @default(cuid())
+  name             String
+  slug             String         @unique
+  domain           String         @unique /// domaine sans "www." (ex. "play-in.com")
+  adapterKey       String /// "playin" | "philibert" | "cultura" | "smyths" | "jsonld"
+  minDelayMs       Int            @default(3000)
+  enabled          Boolean        @default(true)
+  kind             RetailerKind   @default(OTHER)
+  access           RetailerAccess @default(UNTESTED)
+  websiteUrl       String?
+  pokemonUrl       String? /// page « Pokémon » ou recherche du site
+  searchUrl        String? /// modèle de recherche, « {q} » = termes recherchés
+  notes            String?
+  /// Frais de port d'un colis standard en France (null = inconnu, 0 = toujours offert).
+  shippingCost     Decimal?       @db.Decimal(10, 2)
+  /// Montant de commande à partir duquel le port est offert (null = jamais / inconnu).
+  freeShippingFrom Decimal?       @db.Decimal(10, 2)
+  listings         Listing[]
 }
 
 model Listing {
@@ -247,6 +252,10 @@ model ListingDaily {
   wasBuyable       Boolean      @default(false)
   lastAvailability Availability
   checks           Int          @default(0)
+  /// Prix écarté automatiquement (< 50 % de la médiane 30 j ou du prix conseillé).
+  suspect          Boolean      @default(false)
+  /// Choix manuel sur le graphique (true = exclu, false = gardé), prioritaire sur `suspect`.
+  excluded         Boolean?
   updatedAt        DateTime     @updatedAt
 
   @@unique([listingId, date])
@@ -254,21 +263,24 @@ model ListingDaily {
 }
 
 model AlertEvent {
-  id           String    @id @default(cuid())
+  id           String     @id @default(cuid())
   type         AlertType
-  productId    String
-  product      Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  /// Produit concerné (null pour une alerte de carte).
+  productId    String?
+  product      Product?   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  chaseCardId  String?
+  chaseCard    ChaseCard? @relation(fields: [chaseCardId], references: [id], onDelete: Cascade)
   listingId    String?
-  listing      Listing?  @relation(fields: [listingId], references: [id], onDelete: SetNull)
+  listing      Listing?   @relation(fields: [listingId], references: [id], onDelete: SetNull)
   title        String
   message      String
   url          String?
-  price        Decimal?  @db.Decimal(10, 2)
+  price        Decimal?   @db.Decimal(10, 2)
   dedupeKey    String
-  sentNtfy     Boolean   @default(false)
-  sentTelegram Boolean   @default(false)
-  acknowledged Boolean   @default(false)
-  createdAt    DateTime  @default(now())
+  sentNtfy     Boolean    @default(false)
+  sentTelegram Boolean    @default(false)
+  acknowledged Boolean    @default(false)
+  createdAt    DateTime   @default(now())
 
   @@index([acknowledged, createdAt])
   @@index([dedupeKey, createdAt])
@@ -299,17 +311,21 @@ model MarketPrice {
 
 /// Cartes phares d'une extension, suivies via le provider TCGdex.
 model ChaseCard {
-  id        String      @id @default(cuid())
-  releaseId String
-  release   Release     @relation(fields: [releaseId], references: [id], onDelete: Cascade)
-  tcgdexId  String      @unique /// ex. "me06-130"
-  name      String
-  rarity    String?
-  imageUrl  String?
+  id         String       @id @default(cuid())
+  releaseId  String
+  release    Release      @relation(fields: [releaseId], references: [id], onDelete: Cascade)
+  tcgdexId   String       @unique /// ex. "me06-130"
+  name       String
+  rarity     String?
+  imageUrl   String?
   /// Suivie à la demande (recherche) plutôt que choisie automatiquement.
-  manual    Boolean     @default(false)
-  prices    CardPrice[]
-  createdAt DateTime    @default(now())
+  manual     Boolean      @default(false)
+  /// Seuils d'alerte sur la tendance Cardmarket (en euros).
+  alertBelow Decimal?     @db.Decimal(10, 2)
+  alertAbove Decimal?     @db.Decimal(10, 2)
+  prices     CardPrice[]
+  alerts     AlertEvent[]
+  createdAt  DateTime     @default(now())
 }
 
 model CardPrice {

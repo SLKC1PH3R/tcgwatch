@@ -112,7 +112,11 @@ export default async function ProductsPage() {
                           <p className="text-lg font-semibold tabular-nums">
                             {formatPrice(p.best.price)}
                           </p>
-                          <p className="text-xs text-muted-foreground">{p.best.retailerName}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {p.best.retailerName}
+                            {p.best.delivered !== null &&
+                              ` · livré ${formatPrice(p.best.delivered)}`}
+                          </p>
                           <LowSince low={lows.get(p.id)} />
                           <PerBooster
                             name={p.name}

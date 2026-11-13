@@ -17,6 +17,8 @@ export async function syncRetailers(ctx: Pick<WorkerContext, 'logger'>): Promise
       pokemonUrl: info.pokemonUrl,
       searchUrl: info.searchUrl ?? null,
       notes: info.notes ?? null,
+      shippingCost: info.shipping?.cost ?? null,
+      freeShippingFrom: info.shipping?.freeFrom ?? null,
       adapterKey: adapterKeyFor(info),
     };
     const existing = await prisma.retailer.findFirst({

@@ -25,6 +25,12 @@ export interface RetailerInfo {
   notes?: string;
   /** Découverte automatique des fiches (pages autorisées par le robots.txt du site). */
   discovery?: RetailerDiscovery;
+  /**
+   * Port affiché par le site (relevé le 13/11/2026 sur sa page d'accueil) : `cost` = tarif
+   * le moins cher annoncé (« dès X € »), `freeFrom` = port offert à partir de ce montant.
+   * Absent ou null = inconnu (le prix livré n'est alors pas calculé).
+   */
+  shipping?: { cost: number | null; freeFrom: number | null };
 }
 
 export interface RetailerDiscovery {
@@ -56,6 +62,7 @@ export const RETAILER_DIRECTORY: RetailerInfo[] = [
     pokemonUrl: 'https://www.play-in.com/fr/gamme/3/pokemon/catalogue',
     searchUrl: 'https://www.play-in.com/fr/recherche?q={q}',
     minDelayMs: 3000,
+    shipping: { cost: 1.9, freeFrom: 50 },
     notes:
       'Date « Sortie prévue le » sur la fiche, alerte de retour en stock. A repris Magic Bazar (magicbazar.fr redirige ici).',
     discovery: {
@@ -82,6 +89,7 @@ export const RETAILER_DIRECTORY: RetailerInfo[] = [
     pokemonUrl: 'https://www.philibertnet.com/fr/212-pokemon',
     searchUrl: 'https://www.philibertnet.com/fr/recherche?controller=search&search_query={q}',
     minDelayMs: 3000,
+    shipping: { cost: 1.95, freeFrom: 60 },
     notes: 'Précommandes ouvertes tôt ; « À venir » sans bouton = pas encore commandable.',
     discovery: {
       productUrl: /^https:\/\/www\.philibertnet\.com\/fr\/[a-z0-9-]+\/\d+-[^/]+\.html$/,
@@ -117,6 +125,7 @@ export const RETAILER_DIRECTORY: RetailerInfo[] = [
     pokemonUrl: 'https://www.ludifolie.com/recherche?controller=search&s=pokemon',
     searchUrl: 'https://www.ludifolie.com/recherche?controller=search&s={q}',
     minDelayMs: 3000,
+    shipping: { cost: null, freeFrom: 60 },
     notes: 'PrestaShop. Rubrique précommandes dédiée.',
     discovery: {
       productUrl: /^https:\/\/www\.ludifolie\.com\/\d+-[^/]+\.html$/,
@@ -134,6 +143,7 @@ export const RETAILER_DIRECTORY: RetailerInfo[] = [
     pokemonUrl: 'https://www.bcd-jeux.fr/recherche?controller=search&s=pokemon',
     searchUrl: 'https://www.bcd-jeux.fr/recherche?controller=search&s={q}',
     minDelayMs: 3000,
+    shipping: { cost: null, freeFrom: 49 },
     notes: 'PrestaShop : « En Stock, Expédié sous 24h » affiché sur la fiche.',
     discovery: {
       productUrl: /^https:\/\/www\.bcd-jeux\.fr\/pokemon-tcg\/\d+-[^/]+\.html$/,
@@ -170,6 +180,7 @@ export const RETAILER_DIRECTORY: RetailerInfo[] = [
     searchUrl: 'https://masterset.store/search?q={q}&type=product',
     // Shopify répond 429 au-delà de quelques requêtes rapprochées.
     minDelayMs: 8000,
+    shipping: { cost: null, freeFrom: 150 },
     notes:
       'Shopify. Rayon mêlant FR, japonais, chinois, coréen, figurines et autres jeux : seuls les produits FR du catalogue sont suivis. Limites d’achat par client fréquentes.',
     discovery: {
@@ -225,6 +236,7 @@ export const RETAILER_DIRECTORY: RetailerInfo[] = [
     pokemonUrl: 'https://www.espritjeu.com/dhtml/resultat_recherche.php?keywords=pokemon',
     searchUrl: 'https://www.espritjeu.com/dhtml/resultat_recherche.php?keywords={q}',
     minDelayMs: 3000,
+    shipping: { cost: 2.9, freeFrom: 49 },
     notes: 'JSON-LD complet (prix, stock, EAN).',
   },
   {
@@ -237,6 +249,7 @@ export const RETAILER_DIRECTORY: RetailerInfo[] = [
     pokemonUrl: 'https://www.fantasysphere.net/jeux-de-cartes-a-collectionner/pokemon/',
     searchUrl: 'https://www.fantasysphere.net/search?q={q}',
     minDelayMs: 3000,
+    shipping: { cost: null, freeFrom: 100 },
     notes: 'Large rayon Pokémon (dont produits japonais).',
   },
   {
@@ -248,6 +261,7 @@ export const RETAILER_DIRECTORY: RetailerInfo[] = [
     websiteUrl: 'https://lecoindesbarons.com/',
     pokemonUrl: 'https://lecoindesbarons.com/',
     minDelayMs: 5000,
+    shipping: { cost: null, freeFrom: 70 },
     notes: 'Protégé par Cloudflare : relevés automatiques généralement bloqués.',
   },
   // ── Grandes enseignes culturelles ─────────────────────────

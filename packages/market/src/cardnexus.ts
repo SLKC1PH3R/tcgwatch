@@ -1,4 +1,4 @@
-import { guessProductType } from '@tcgwatch/shared';
+import { guessProductType, todayUtc } from '@tcgwatch/shared';
 import { z } from 'zod';
 import { matchProduct, type CatalogProduct } from './matching';
 import type { MarketPriceProvider, MarketQuote, ProductRef } from './providers';
@@ -21,12 +21,20 @@ export class CardNexusProvider implements MarketPriceProvider {
   readonly label = 'CardNexus (annonces FR)';
   /** Limite globale CardNexus : 60 requêtes/minute ; on reste large. */
   static readonly MAX_PAGES = 40;
+  /**
+   * Médiane : une recherche d'annonces par produit (quota « listing-search » de 600/heure).
+   * Seulement pour les produits avec assez d'annonces FR, dans la limite de ce plafond.
+   */
+  static readonly MEDIAN_MAX_PRODUCTS = 150;
+  static readonly MEDIAN_MIN_LISTINGS = 3;
 
   constructor(
     private readonly apiKey: string | undefined,
     private readonly baseUrl = 'https://public-api.cardnexus.com',
     private readonly fetchImpl: typeof fetch = fetch,
     private readonly pauseMs = 1_100,
+    /** 600 recherches d'annonces par heure : une toutes les 6,1 s. */
+    private readonly listingPauseMs = 6_100,
   ) {}
 
   isEnabled() {
@@ -67,14 +75,73 @@ export class CardNexusProvider implements MarketPriceProvider {
     const catalog = products
       .filter((p) => p.type)
       .map((p) => ({ id: p.id, name: p.name, type: p.type! }));
-    const date = new Date(`${new Date().toISOString().slice(0, 10)}T00:00:00Z`);
-    return quotesFromCatalog(await this.sealedCatalog(), catalog).map((q) => ({
+    const date = todayUtc();
+    const matched = quotesFromCatalog(await this.sealedCatalog(), catalog);
+
+    // Médiane des annonces FR, pour les produits les plus fournis d'abord.
+    const medians = new Map<number, number | null>();
+    const eligible = matched
+      .filter((q) => (q.listingCount ?? 0) >= CardNexusProvider.MEDIAN_MIN_LISTINGS)
+      .sort((a, b) => (b.listingCount ?? 0) - (a.listingCount ?? 0))
+      .slice(0, CardNexusProvider.MEDIAN_MAX_PRODUCTS);
+    for (const [i, q] of eligible.entries()) {
+      if (i > 0) await new Promise((r) => setTimeout(r, this.listingPauseMs));
+      try {
+        medians.set(q.cardnexusId, medianPrice(await this.frenchListings(q.cardnexusId)));
+      } catch {
+        // Quota atteint ou recherche indisponible : la médiane reste vide pour la suite.
+        break;
+      }
+    }
+
+    return matched.map(({ cardnexusId, ...q }) => ({
       ...q,
+      median: medians.get(cardnexusId) ?? null,
       source: this.key,
       currency: 'EUR',
       date,
     }));
   }
+
+  /** Annonces scellées en français d'un produit, livrables en France (100 premières, par prix). */
+  async frenchListings(cardnexusId: number): Promise<CardNexusListing[]> {
+    const res = await this.fetchImpl(`${this.baseUrl.replace(/\/$/, '')}/v1/listings/search`, {
+      method: 'POST',
+      headers: {
+        authorization: `Bearer ${this.apiKey}`,
+        'content-type': 'application/json',
+        accept: 'application/json',
+      },
+      body: JSON.stringify({
+        productIds: [cardnexusId],
+        language: ['fr'],
+        graded: false,
+        deliveryCountry: 'FR',
+        sortBy: 'price',
+        limit: 100,
+      }),
+      signal: AbortSignal.timeout(30_000),
+    });
+    if (!res.ok) throw new Error(`CardNexus /listings/search : HTTP ${res.status}`);
+    return listingsSchema.parse(await res.json()).data;
+  }
+}
+
+/**
+ * Médiane des prix unitaires des annonces FR en euros (hors port), ou null s'il y en a
+ * moins de MEDIAN_MIN_LISTINGS.
+ */
+export function medianPrice(listings: CardNexusListing[]): number | null {
+  const prices = listings
+    .filter(
+      (l) => l.price.currency === 'EUR' && l.price.amount > 0 && (l.language ?? 'fr') === 'fr',
+    )
+    .map((l) => l.price.amount)
+    .sort((a, b) => a - b);
+  if (prices.length < CardNexusProvider.MEDIAN_MIN_LISTINGS) return null;
+  const mid = Math.floor(prices.length / 2);
+  const m = prices.length % 2 ? prices[mid]! : (prices[mid - 1]! + prices[mid]!) / 2;
+  return Math.round(m * 100) / 100;
 }
 
 /** Catégorie CardNexus → libellé FR, quand le nom seul ne dit pas le type de produit. */
@@ -132,6 +199,13 @@ export function frenchListingCount(p: CardNexusSealed): number | null {
   return counts.length ? counts.reduce((a, b) => a + b, 0) : null;
 }
 
+export interface CatalogQuote {
+  productId: string;
+  cardnexusId: number;
+  price: number;
+  listingCount: number | null;
+}
+
 /**
  * Rapproche le catalogue CardNexus du catalogue local. Un produit local visé par plusieurs
  * produits CardNexus est écarté (ambiguïté) : pas de prix plutôt qu'un mauvais prix.
@@ -139,8 +213,8 @@ export function frenchListingCount(p: CardNexusSealed): number | null {
 export function quotesFromCatalog(
   sealed: CardNexusSealed[],
   catalog: CatalogProduct[],
-): { productId: string; price: number; listingCount: number | null }[] {
-  const hits = new Map<string, { price: number; listingCount: number | null }[]>();
+): CatalogQuote[] {
+  const hits = new Map<string, Omit<CatalogQuote, 'productId'>[]>();
   for (const p of sealed) {
     if (p.languages && p.languages.length > 0 && !p.languages.includes('fr')) continue;
     const title = cardNexusTitle(p);
@@ -149,10 +223,10 @@ export function quotesFromCatalog(
     if (!match) continue;
     const price = frenchListingPrice(p);
     const list = hits.get(match.productId) ?? [];
-    list.push({ price: price ?? NaN, listingCount: frenchListingCount(p) });
+    list.push({ cardnexusId: p.id, price: price ?? NaN, listingCount: frenchListingCount(p) });
     hits.set(match.productId, list);
   }
-  const quotes: { productId: string; price: number; listingCount: number | null }[] = [];
+  const quotes: CatalogQuote[] = [];
   for (const [productId, found] of hits) {
     if (found.length === 1 && Number.isFinite(found[0]!.price))
       quotes.push({ productId, ...found[0]! });
@@ -201,4 +275,20 @@ const searchSchema = z.object({
     }),
   ),
   pagination: z.object({ hasMore: z.boolean() }),
+});
+
+const listingSchema = z.object({
+  listingId: z.string(),
+  price: z.object({ amount: z.number(), currency: z.string() }),
+  language: z.string().nullish(),
+});
+export type CardNexusListing = z.infer<typeof listingSchema>;
+
+const listingsSchema = z.object({
+  data: z.array(z.unknown()).transform((items) =>
+    items.flatMap((i) => {
+      const r = listingSchema.safeParse(i);
+      return r.success ? [r.data] : [];
+    }),
+  ),
 });

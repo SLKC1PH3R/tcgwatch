@@ -1,8 +1,8 @@
 import 'server-only';
-import { prisma } from '@tcgwatch/db';
+import { KEPT_DAILY, prisma } from '@tcgwatch/db';
 import { priceChange } from '@tcgwatch/market';
 import { toNumber } from '@tcgwatch/shared';
-import { getCollection } from './collection';
+import { getCollection, getCollectionHistory } from './collection';
 import { getUpcomingEvents } from './releases';
 
 export async function getRecentRestocks(limit = 6) {
@@ -21,7 +21,10 @@ export async function getActiveAlerts(limit = 8) {
   const [items, count] = await Promise.all([
     prisma.alertEvent.findMany({
       where: { acknowledged: false },
-      include: { product: { select: { id: true, name: true } } },
+      include: {
+        product: { select: { id: true, name: true } },
+        chaseCard: { select: { tcgdexId: true, name: true } },
+      },
       orderBy: { createdAt: 'desc' },
       take: limit,
     }),
@@ -47,7 +50,7 @@ export async function getTopPriceMoves(limit = 6): Promise<PriceMove[]> {
   const since = new Date(Date.now() - 30 * 86_400_000);
   const [snapshots, market] = await Promise.all([
     prisma.listingDaily.findMany({
-      where: { date: { gte: since }, minBuyablePrice: { not: null } },
+      where: { AND: [KEPT_DAILY, { date: { gte: since }, minBuyablePrice: { not: null } }] },
       select: {
         date: true,
         minBuyablePrice: true,
@@ -102,20 +105,23 @@ export async function getTopPriceMoves(limit = 6): Promise<PriceMove[]> {
 }
 
 export async function getDashboard() {
-  const [upcoming, restocks, alerts, collection, moves, trackedCount] = await Promise.all([
-    getUpcomingEvents(6),
-    getRecentRestocks(),
-    getActiveAlerts(),
-    getCollection(),
-    getTopPriceMoves(),
-    prisma.listing.count({ where: { state: { not: 'PAUSED' } } }),
-  ]);
+  const [upcoming, restocks, alerts, collection, moves, trackedCount, collectionHistory] =
+    await Promise.all([
+      getUpcomingEvents(6),
+      getRecentRestocks(),
+      getActiveAlerts(),
+      getCollection(),
+      getTopPriceMoves(),
+      prisma.listing.count({ where: { state: { not: 'PAUSED' } } }),
+      getCollectionHistory(365),
+    ]);
   return {
     upcoming,
     restocks,
     alerts,
     valuation: collection.valuation,
     itemCount: collection.rows.length,
+    collectionHistory,
     moves,
     trackedCount,
   };

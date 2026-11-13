@@ -3,7 +3,7 @@ import { createMarketProviders, TcgdexChaseCardProvider } from '@tcgwatch/market
 import { todayUtc } from '@tcgwatch/shared';
 import type { WorkerContext } from '../context';
 import { selectChaseCards } from './chase-cards';
-import { checkMarketMoves } from './price-alerts';
+import { checkCardThresholds, checkMarketMoves } from './price-alerts';
 
 /**
  * Relevé quotidien du marché secondaire :
@@ -73,6 +73,9 @@ export async function runMarketJob(ctx: WorkerContext) {
     }
   }
 
+  // Seuils réglés sur les pages des cartes (prévenir si la tendance passe sous X €…).
+  const cardAlerts = await checkCardThresholds(ctx, date);
+
   ctx.status.lastMarketRun = new Date();
-  ctx.logger.info({ quotes, cardQuotes, moves }, 'Relevé du marché secondaire terminé');
+  ctx.logger.info({ quotes, cardQuotes, moves, cardAlerts }, 'Relevé du marché secondaire terminé');
 }

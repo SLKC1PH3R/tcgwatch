@@ -1,12 +1,29 @@
 import 'server-only';
 import { dedupeImages } from '@tcgwatch/adapters';
 import { prisma, type Prisma } from '@tcgwatch/db';
-import { isBuyable, toNumber, type Availability } from '@tcgwatch/shared';
+import {
+  deliveredPrice,
+  isBuyable,
+  shippingFor,
+  toNumber,
+  type Availability,
+} from '@tcgwatch/shared';
 
 const productInclude = {
   release: { select: { id: true, nameFr: true, setCode: true, releaseDate: true } },
   listings: {
-    include: { retailer: { select: { id: true, name: true, slug: true, websiteUrl: true } } },
+    include: {
+      retailer: {
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          websiteUrl: true,
+          shippingCost: true,
+          freeShippingFrom: true,
+        },
+      },
+    },
     orderBy: { createdAt: 'asc' },
   },
 } satisfies Prisma.ProductInclude;
@@ -21,6 +38,10 @@ export interface ListingDTO {
   retailerSlug: string;
   availability: Availability;
   price: number | null;
+  /** Frais de port pour ce seul article (0 = offerts), null si inconnus. */
+  shipping: number | null;
+  /** Prix livré (article + port), null si le port est inconnu. */
+  delivered: number | null;
   targetPrice: number | null;
   checkIntervalMin: number;
   state: string;
@@ -55,9 +76,14 @@ export interface ProductDTO {
   notes: string | null;
   release: { id: string; nameFr: string; setCode: string | null; releaseDate: Date | null } | null;
   listings: ListingDTO[];
-  /** Meilleur prix parmi les offres achetables (en stock / précommande). */
+  /**
+   * Meilleure offre achetable (en stock / précommande), classée au prix livré quand le port
+   * de la boutique est connu (sinon au prix de l'article).
+   */
   best: {
     price: number;
+    delivered: number | null;
+    shipping: number | null;
     listingId: string;
     retailerName: string;
     url: string;
@@ -66,6 +92,11 @@ export interface ProductDTO {
 }
 
 function toListingDTO(l: ProductRow['listings'][number]): ListingDTO {
+  const price = toNumber(l.lastPrice);
+  const ship = {
+    cost: toNumber(l.retailer.shippingCost),
+    freeFrom: toNumber(l.retailer.freeShippingFrom),
+  };
   return {
     id: l.id,
     url: l.url,
@@ -73,7 +104,9 @@ function toListingDTO(l: ProductRow['listings'][number]): ListingDTO {
     retailerName: l.retailer.name,
     retailerSlug: l.retailer.slug,
     availability: l.lastAvailability,
-    price: toNumber(l.lastPrice),
+    price,
+    shipping: price !== null ? shippingFor(price, ship) : null,
+    delivered: deliveredPrice(price, ship),
     targetPrice: toNumber(l.targetPrice),
     checkIntervalMin: l.checkIntervalMin,
     state: l.state,
@@ -94,9 +127,12 @@ export function bestOffer(listings: ListingDTO[]): ProductDTO['best'] {
   let best: ProductDTO['best'] = null;
   for (const l of listings) {
     if (l.price === null || !isBuyable(l.availability) || l.state === 'PAUSED') continue;
-    if (!best || l.price < best.price) {
+    const cost = l.delivered ?? l.price;
+    if (!best || cost < (best.delivered ?? best.price)) {
       best = {
         price: l.price,
+        delivered: l.delivered,
+        shipping: l.shipping,
         listingId: l.id,
         retailerName: l.retailerName,
         url: l.url,
@@ -158,4 +194,15 @@ export async function getReleaseOptions() {
     select: { id: true, nameFr: true, setCode: true, productType: true },
     orderBy: [{ releaseDate: { sort: 'desc', nulls: 'first' } }],
   });
+}
+
+/** Produits par identifiants (comparateur des formats d'une extension). */
+export async function getProductsByIds(ids: string[]): Promise<ProductDTO[]> {
+  if (ids.length === 0) return [];
+  const rows = await prisma.product.findMany({
+    where: { id: { in: ids } },
+    include: productInclude,
+    orderBy: { name: 'asc' },
+  });
+  return rows.map(toProductDTO);
 }

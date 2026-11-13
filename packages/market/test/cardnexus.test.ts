@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { cardNexusTitle, CardNexusProvider, frenchListingPrice, quotesFromCatalog } from '../src';
+import {
+  cardNexusTitle,
+  CardNexusProvider,
+  frenchListingPrice,
+  medianPrice,
+  quotesFromCatalog,
+} from '../src';
 
 // Produits au format de POST /v1/products/search (docs.cardnexus.com, Accept-Language: fr).
 const eu = (
@@ -64,7 +70,7 @@ describe('CardNexus', () => {
 
   it('cote uniquement les produits rapprochés sans ambiguïté et avec annonce FR', () => {
     expect(quotesFromCatalog([etb, display, caseOfEtb], catalog)).toEqual([
-      { productId: 'etb-pe', price: 141.75, listingCount: 6 },
+      { productId: 'etb-pe', cardnexusId: etb.id, price: 141.75, listingCount: 6 },
     ]);
     // Deux produits CardNexus pour le même produit local : aucun prix.
     expect(quotesFromCatalog([etb, { ...etb, id: 9 }], catalog)).toEqual([]);
@@ -72,22 +78,46 @@ describe('CardNexus', () => {
 
   it('pagine la recherche avec la clé et les noms en français', async () => {
     const calls: { body: { offset: number }; auth: string | null; lang: string | null }[] = [];
-    const impl = (async (_url: string | URL, init?: RequestInit) => {
+    const listingCalls: unknown[] = [];
+    const impl = (async (url: string | URL, init?: RequestInit) => {
       const h = new Headers(init?.headers);
       const body = JSON.parse(String(init?.body));
+      if (String(url).endsWith('/v1/listings/search')) {
+        listingCalls.push(body);
+        const data = [140, 150, 160, 170].map((amount, i) => ({
+          listingId: `l${i}`,
+          price: { amount, currency: 'EUR' },
+          language: 'fr',
+        }));
+        return new Response(JSON.stringify({ data, pagination: { nextCursor: null } }));
+      }
       calls.push({ body, auth: h.get('authorization'), lang: h.get('accept-language') });
       const page = body.offset === 0 ? [etb] : [display];
       return new Response(
         JSON.stringify({ data: page, pagination: { hasMore: body.offset === 0 } }),
       );
     }) as typeof fetch;
-    const provider = new CardNexusProvider('cnk_test', 'https://api.test', impl, 0);
+    const provider = new CardNexusProvider('cnk_test', 'https://api.test', impl, 0, 0);
     const quotes = await provider.fetchQuotes(catalog);
-    expect(quotes.map((q) => [q.productId, q.price, q.source, q.currency])).toEqual([
-      ['etb-pe', 141.75, 'cardnexus', 'EUR'],
+    expect(quotes.map((q) => [q.productId, q.price, q.median, q.source, q.currency])).toEqual([
+      ['etb-pe', 141.75, 155, 'cardnexus', 'EUR'],
+    ]);
+    expect(listingCalls).toEqual([
+      expect.objectContaining({ productIds: [etb.id], language: ['fr'], deliveryCountry: 'FR' }),
     ]);
     expect(calls.map((c) => c.body.offset)).toEqual([0, 200]);
     expect(calls.every((c) => c.auth === 'Bearer cnk_test' && c.lang === 'fr')).toBe(true);
+  });
+
+  it('calcule la médiane des annonces FR en euros', () => {
+    const l = (amount: number, currency = 'EUR', language = 'fr') => ({
+      listingId: String(amount),
+      price: { amount, currency },
+      language,
+    });
+    expect(medianPrice([l(10), l(30), l(20)])).toBe(20);
+    expect(medianPrice([l(10), l(20), l(30), l(41)])).toBe(25);
+    expect(medianPrice([l(10), l(20), l(30, 'USD'), l(40, 'EUR', 'en')])).toBeNull();
   });
 
   it('est désactivé sans clé', () => {

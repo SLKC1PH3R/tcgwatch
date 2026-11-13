@@ -50,7 +50,14 @@ export async function getCardPage(tcgdexId: string) {
     image: tcgdexAsset(live?.image, '/high.webp') ?? tracked?.imageUrl ?? null,
     setId: live?.set?.id ?? null,
     setName: live?.set?.name ?? tracked?.release.nameFr ?? null,
-    tracked: tracked ? { id: tracked.id, manual: tracked.manual } : null,
+    tracked: tracked
+      ? {
+          id: tracked.id,
+          manual: tracked.manual,
+          alertBelow: toNumber(tracked.alertBelow),
+          alertAbove: toNumber(tracked.alertAbove),
+        }
+      : null,
     current,
     history,
   };

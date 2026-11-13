@@ -1,5 +1,6 @@
-import { ExternalLink, Plus, Trash2 } from 'lucide-react';
+import { Bell, ExternalLink, Plus, Trash2 } from 'lucide-react';
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { formatPercent, formatPrice } from '@tcgwatch/shared';
 import { CardChart } from '@/components/card-chart';
@@ -8,12 +9,16 @@ import { PageHeader } from '@/components/page-header';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { getCardPage } from '@/lib/data/cards';
-import { followCardAction, unfollowCardAction } from '../actions';
+import { PERIODS, periodOf, periodStart } from '@/lib/data/history';
+import { cn } from '@/lib/utils';
+import { followCardAction, setCardAlertAction, unfollowCardAction } from '../actions';
 
 type Props = {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ erreur?: string }>;
+  searchParams: Promise<{ erreur?: string; periode?: string }>;
 };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -22,12 +27,16 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function CardPage({ params, searchParams }: Props) {
-  const [{ id }, { erreur }] = await Promise.all([params, searchParams]);
+  const [{ id }, { erreur, periode }] = await Promise.all([params, searchParams]);
   const tcgdexId = decodeURIComponent(id);
   const card = await getCardPage(tcgdexId);
   if (!card) notFound();
+  const period = periodOf(periode);
+  const since = periodStart(period.days);
+  const history = card.history.filter((h) => h.day >= since);
+  const fmt = (v: number | null | undefined) => (v != null ? String(v).replace('.', ',') : '');
 
-  const first = card.history.find((h) => h.trend !== null)?.trend ?? null;
+  const first = history.find((h) => h.trend !== null)?.trend ?? null;
   const change = first && card.current?.trend ? card.current.trend / first - 1 : null;
   const stats = [
     { label: 'Tendance', value: card.current?.trend ?? null },
@@ -100,8 +109,26 @@ export default async function CardPage({ params, searchParams }: Props) {
               {card.tracked
                 ? ', relevées chaque jour.'
                 : ' — suivez la carte pour garder son historique.'}
-              {change !== null && ` Depuis le premier relevé : ${formatPercent(change)}.`}
+              {change !== null &&
+                ` ${period.days ? `Sur ${period.label}` : 'Depuis le premier relevé'} : ${formatPercent(change)}.`}
             </CardDescription>
+            <nav aria-label="Période" className="flex flex-wrap gap-1">
+              {PERIODS.map((p) => (
+                <Link
+                  key={p.key}
+                  href={`/cartes/${encodeURIComponent(card.tcgdexId)}?periode=${p.key}`}
+                  scroll={false}
+                  aria-current={p.key === period.key ? 'true' : undefined}
+                  className={cn(
+                    'rounded-full border px-2.5 py-1 text-xs font-medium text-muted-foreground hover:bg-accent',
+                    p.key === period.key &&
+                      'border-foreground bg-foreground text-background hover:bg-foreground',
+                  )}
+                >
+                  {p.label}
+                </Link>
+              ))}
+            </nav>
             <dl className="grid w-full grid-cols-2 gap-3 pt-2 text-sm sm:grid-cols-4">
               {stats.map((s) => (
                 <div key={s.label}>
@@ -112,10 +139,54 @@ export default async function CardPage({ params, searchParams }: Props) {
             </dl>
           </CardHeader>
           <CardContent>
-            <CardChart data={card.history} />
+            <CardChart data={history} />
           </CardContent>
         </Card>
       </div>
+
+      {card.tracked && (
+        <Card className="mt-6">
+          <CardHeader className="flex-col">
+            <CardTitle className="flex items-center gap-2">
+              <Bell className="size-4" /> Alertes de prix
+            </CardTitle>
+            <CardDescription>
+              Prévenir quand la tendance Cardmarket du relevé quotidien passe sous ou au-dessus d’un
+              seuil (une alerte par jour au plus). Laisser vide pour ne pas être prévenu.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form
+              action={setCardAlertAction.bind(null, card.tcgdexId)}
+              className="flex flex-wrap items-end gap-3"
+            >
+              <div className="space-y-1.5">
+                <Label htmlFor="alertBelow">Sous (€)</Label>
+                <Input
+                  id="alertBelow"
+                  name="alertBelow"
+                  inputMode="decimal"
+                  placeholder="ex. 80"
+                  defaultValue={fmt(card.tracked.alertBelow)}
+                  className="w-32"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="alertAbove">Au-dessus de (€)</Label>
+                <Input
+                  id="alertAbove"
+                  name="alertAbove"
+                  inputMode="decimal"
+                  placeholder="ex. 150"
+                  defaultValue={fmt(card.tracked.alertAbove)}
+                  className="w-32"
+                />
+              </div>
+              <Button type="submit">Enregistrer</Button>
+            </form>
+          </CardContent>
+        </Card>
+      )}
     </>
   );
 }

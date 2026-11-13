@@ -8,7 +8,9 @@ export const DEDUPE_WINDOW_MS = 6 * 60 * 60 * 1000;
 export interface AlertToDispatch extends Notification {
   type: AlertType;
   dedupeKey: string;
-  productId: string;
+  /** Produit concerné ; une alerte de carte porte `chaseCardId` à la place. */
+  productId?: string;
+  chaseCardId?: string;
   listingId?: string;
   price?: number | null;
 }
@@ -33,7 +35,8 @@ export async function dispatchAlert(ctx: WorkerContext, alert: AlertToDispatch):
   const event = await prisma.alertEvent.create({
     data: {
       type: alert.type,
-      productId: alert.productId,
+      productId: alert.productId ?? null,
+      chaseCardId: alert.chaseCardId ?? null,
       listingId: alert.listingId,
       title: alert.title,
       message: alert.message,
@@ -50,6 +53,9 @@ export async function dispatchAlert(ctx: WorkerContext, alert: AlertToDispatch):
     where: { id: event.id },
     data: { sentNtfy: delivery.ntfy, sentTelegram: delivery.telegram },
   });
-  ctx.logger.info({ type: alert.type, productId: alert.productId, ...delivery }, 'Alerte émise');
+  ctx.logger.info(
+    { type: alert.type, productId: alert.productId, chaseCardId: alert.chaseCardId, ...delivery },
+    'Alerte émise',
+  );
   return true;
 }

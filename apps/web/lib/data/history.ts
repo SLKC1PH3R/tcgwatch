@@ -1,8 +1,8 @@
 import 'server-only';
-import { prisma } from '@tcgwatch/db';
-import { lowestBest, lowSince, outOfStockRanges, toNumber, type DailyBest } from '@tcgwatch/shared';
+import { Prisma, prisma } from '@tcgwatch/db';
+import { lowestBest, outOfStockRanges, todayUtc, toNumber, type DailyBest } from '@tcgwatch/shared';
 
-/** Périodes proposées sur le graphique d'une fiche produit (null = tout l'historique). */
+/** Périodes proposées sur les graphiques (null = tout l'historique). */
 export const PERIODS = [
   { key: '7', label: '7 j', days: 7 },
   { key: '30', label: '30 j', days: 30 },
@@ -16,15 +16,44 @@ export function periodOf(key: string | undefined) {
   return PERIODS.find((p) => p.key === key) ?? PERIODS[2];
 }
 
+/** Premier jour (AAAA-MM-JJ, jour de Paris) d'une période, '' pour tout l'historique. */
+export function periodStart(days: number | null): string {
+  return days ? dayOf(new Date(todayUtc().getTime() - days * 86_400_000)) : '';
+}
+
 export const BEST_SERIES = 'Meilleur prix achetable';
 export const MARKET_SERIES = 'Marché';
 
 const dayOf = (d: Date) => d.toISOString().slice(0, 10);
 
+/** Point du résumé quotidien d'une fiche, pour l'exclure ou le rétablir sur le graphique. */
+export interface DayPoint {
+  listingId: string;
+  retailer: string;
+  price: number | null;
+  /** kept = compté ; suspect = mis de côté automatiquement ; excluded = exclu à la main. */
+  state: 'kept' | 'suspect' | 'excluded';
+}
+
+/** Jours en stock d'une boutique (résumés quotidiens où le produit était achetable). */
+export interface StockStat {
+  listingId: string;
+  retailer: string;
+  in30: number;
+  checked30: number;
+  in90: number;
+  checked90: number;
+  lastBuyable: string | null;
+}
+
+const isKept = (d: { excluded: boolean | null; suspect: boolean }) =>
+  d.excluded === null ? !d.suspect : !d.excluded;
+
 /**
  * Historique d'un produit pour le graphique, à partir des résumés quotidiens des fiches :
  * dernier prix de chaque revendeur, meilleur prix achetable du jour (toutes boutiques),
  * prix marché, périodes de rupture et repères (plus bas historique, plus bas 30 j).
+ * Les jours mis de côté (prix aberrant) ou exclus à la main ne comptent pas.
  */
 export async function getPriceHistory(productId: string, days: number | null) {
   const [daily, market, purchases] = await Promise.all([
@@ -34,6 +63,10 @@ export async function getPriceHistory(productId: string, days: number | null) {
         date: true,
         lastPrice: true,
         minBuyablePrice: true,
+        wasBuyable: true,
+        suspect: true,
+        excluded: true,
+        listingId: true,
         listing: { select: { retailer: { select: { name: true } } } },
       },
       orderBy: { date: 'asc' },
@@ -48,10 +81,11 @@ export async function getPriceHistory(productId: string, days: number | null) {
       select: { quantity: true, purchasePrice: true },
     }),
   ]);
+  const kept = daily.filter(isKept);
 
   // Meilleur prix achetable par jour, sur tout l'historique (repères).
   const bestByDay = new Map<string, number | null>();
-  for (const d of daily) {
+  for (const d of kept) {
     const day = dayOf(d.date);
     const p = toNumber(d.minBuyablePrice);
     const cur = bestByDay.get(day);
@@ -62,7 +96,7 @@ export async function getPriceHistory(productId: string, days: number | null) {
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([day, best]) => ({ day, best }));
 
-  const since = days ? dayOf(new Date(Date.now() - days * 86_400_000)) : '';
+  const since = periodStart(days);
   const rows = new Map<string, Record<string, number | string>>();
   const row = (day: string) => {
     const r = rows.get(day) ?? { day };
@@ -70,10 +104,19 @@ export async function getPriceHistory(productId: string, days: number | null) {
     return r;
   };
   const retailers = new Set<string>();
+  const points: Record<string, DayPoint[]> = {};
   for (const d of daily) {
     const day = dayOf(d.date);
-    const price = toNumber(d.lastPrice);
-    if (day < since || price === null) continue;
+    if (day < since) continue;
+    const price = toNumber(d.lastPrice) ?? toNumber(d.minBuyablePrice);
+    const state = d.excluded === true ? 'excluded' : isKept(d) ? 'kept' : 'suspect';
+    (points[day] ??= []).push({
+      listingId: d.listingId,
+      retailer: d.listing.retailer.name,
+      price,
+      state,
+    });
+    if (state !== 'kept' || price === null) continue;
     retailers.add(d.listing.retailer.name);
     row(day)[d.listing.retailer.name] = price;
   }
@@ -98,57 +141,101 @@ export async function getPriceHistory(productId: string, days: number | null) {
   return {
     data: [...rows.values()].sort((a, b) => String(a.day).localeCompare(String(b.day))),
     retailers: [...retailers].sort(),
+    points,
+    setAside: Object.values(points)
+      .flat()
+      .filter((p) => p.state !== 'kept').length,
     hasBest: bestSeries.some((b) => b.best !== null && b.day >= since),
     hasMarket,
     outOfStock: outOfStockRanges(bestSeries.filter((b) => b.day >= since)),
     allTimeLow: lowestBest(bestSeries),
-    low30: lowestBest(bestSeries, 30),
+    low30: lowestBest(bestSeries, 30, todayUtc()),
     avgPurchase,
     lastMarket,
     lastMarketMedian: lastQuote ? toNumber(lastQuote.median) : null,
     lastMarketListings: lastQuote?.listingCount ?? null,
     ratio: avgPurchase && lastMarket ? lastMarket / avgPurchase : null,
+    stock: stockStats(daily),
   };
 }
 
-/** Meilleur prix achetable par jour et par produit (tout l'historique). */
-async function dailyBestByProduct(productIds?: string[]): Promise<Map<string, DailyBest[]>> {
-  const rows = await prisma.listingDaily.findMany({
-    where: productIds ? { listing: { productId: { in: productIds } } } : {},
-    select: { date: true, minBuyablePrice: true, listing: { select: { productId: true } } },
-    orderBy: { date: 'asc' },
-  });
-  const byProduct = new Map<string, Map<string, number | null>>();
-  for (const r of rows) {
-    const id = r.listing.productId;
-    const days = byProduct.get(id) ?? new Map<string, number | null>();
-    byProduct.set(id, days);
-    const day = dayOf(r.date);
-    const p = toNumber(r.minBuyablePrice);
-    const cur = days.get(day);
-    days.set(day, p === null ? (cur ?? null) : cur == null ? p : Math.min(cur, p));
+/** Jours en stock par boutique sur 30 et 90 jours (pour savoir où guetter un réassort). */
+function stockStats(
+  daily: {
+    date: Date;
+    wasBuyable: boolean;
+    listingId: string;
+    listing: { retailer: { name: string } };
+  }[],
+): StockStat[] {
+  const d30 = periodStart(30);
+  const d90 = periodStart(90);
+  const by = new Map<string, StockStat>();
+  for (const d of daily) {
+    const day = dayOf(d.date);
+    const s = by.get(d.listingId) ?? {
+      listingId: d.listingId,
+      retailer: d.listing.retailer.name,
+      in30: 0,
+      checked30: 0,
+      in90: 0,
+      checked90: 0,
+      lastBuyable: null,
+    };
+    by.set(d.listingId, s);
+    if (d.wasBuyable) s.lastBuyable = day;
+    if (day >= d90) {
+      s.checked90++;
+      if (d.wasBuyable) s.in90++;
+    }
+    if (day >= d30) {
+      s.checked30++;
+      if (d.wasBuyable) s.in30++;
+    }
   }
-  return new Map(
-    [...byProduct.entries()].map(([id, days]) => [
-      id,
-      [...days.entries()].map(([day, best]) => ({ day, best })),
-    ]),
-  );
+  return [...by.values()]
+    .filter((s) => s.checked90 > 0)
+    .sort((a, b) => b.in90 / b.checked90 - a.in90 / a.checked90 || b.in90 - a.in90);
 }
 
 /**
  * Pastille « plus bas depuis X jours » de la liste des produits : seulement si le meilleur
- * prix actuel n'a pas été battu depuis au moins `minDays` jours.
+ * prix actuel n'a pas été battu depuis au moins `minDays` jours. Calculé en SQL (une ligne
+ * par produit), sans charger l'historique quotidien dans l'application.
  */
 export async function getLowSinceBadges(
   current: { id: string; best: number | null }[],
   minDays = 7,
 ): Promise<Map<string, { days: number; allTime: boolean }>> {
-  const series = await dailyBestByProduct(current.map((c) => c.id));
+  const priced = current.filter((c): c is { id: string; best: number } => c.best !== null);
   const out = new Map<string, { days: number; allTime: boolean }>();
-  for (const c of current) {
-    const s = lowSince(series.get(c.id) ?? [], c.best);
-    if (s && s.days >= minDays) out.set(c.id, s);
+  if (priced.length === 0) return out;
+  const values = Prisma.join(priced.map((c) => Prisma.sql`(${c.id}, ${c.best}::numeric)`));
+  const rows = await prisma.$queryRaw<
+    { id: string; lastLower: Date | null; firstDay: Date; days: bigint }[]
+  >`
+    WITH cur(id, best) AS (VALUES ${values}),
+    daily AS (
+      SELECT l."productId" AS id, d."date", MIN(d."minBuyablePrice") AS best
+      FROM "ListingDaily" d
+      JOIN "Listing" l ON l."id" = d."listingId"
+      WHERE l."productId" IN (SELECT id FROM cur)
+        AND d."minBuyablePrice" IS NOT NULL
+        AND NOT COALESCE(d."excluded", d."suspect")
+      GROUP BY l."productId", d."date"
+    )
+    SELECT daily.id,
+      MAX(daily."date") FILTER (WHERE daily.best < cur.best - 0.005) AS "lastLower",
+      MIN(daily."date") AS "firstDay",
+      COUNT(*) AS days
+    FROM daily JOIN cur ON cur.id = daily.id
+    GROUP BY daily.id`;
+  const today = todayUtc().getTime();
+  for (const r of rows) {
+    if (Number(r.days) < 2) continue;
+    const since = r.lastLower ?? r.firstDay;
+    const days = Math.round((today - since.getTime()) / 86_400_000);
+    if (days >= minDays) out.set(r.id, { days, allTime: r.lastLower === null });
   }
   return out;
 }

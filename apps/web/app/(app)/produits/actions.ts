@@ -498,3 +498,29 @@ export async function acknowledgeAllAlertsAction() {
   });
   revalidatePath('/');
 }
+
+// ─── Historique : exclure / rétablir un point ────────────
+
+/**
+ * Exclut (true) ou rétablit (false) le résumé du jour d'une fiche dans l'historique ; null
+ * revient au choix automatique (prix aberrant mis de côté ou non).
+ */
+export async function setDailyExclusionAction(
+  listingId: string,
+  day: string,
+  excluded: boolean | null,
+) {
+  await requireUser();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return;
+  const listing = await prisma.listing.findUnique({
+    where: { id: listingId },
+    select: { productId: true },
+  });
+  if (!listing) return;
+  await prisma.listingDaily.updateMany({
+    where: { listingId, date: new Date(`${day}T00:00:00Z`) },
+    data: { excluded },
+  });
+  revalidatePath(`/produits/${listing.productId}`);
+  revalidatePath('/produits');
+}

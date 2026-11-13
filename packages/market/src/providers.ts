@@ -1,3 +1,4 @@
+import { todayUtc } from '@tcgwatch/shared';
 import { z } from 'zod';
 import { CardNexusProvider } from './cardnexus';
 import { cardmarketQuote, TcgdexClient, type CardmarketQuote } from './tcgdex';
@@ -131,7 +132,7 @@ export class PokeTraceProvider implements MarketPriceProvider {
   async fetchQuotes(products: ProductRef[], context: QuoteContext = {}): Promise<MarketQuote[]> {
     if (!this.isEnabled()) return [];
     this.requests = 0;
-    const date = new Date(`${new Date().toISOString().slice(0, 10)}T00:00:00Z`);
+    const date = todayUtc();
     const quotes: MarketQuote[] = [];
     for (const [set, items] of groupBySet(products, context.sets ?? [])) {
       try {

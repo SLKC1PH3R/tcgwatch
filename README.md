@@ -49,24 +49,35 @@ prix du marché secondaire et valorisation de sa collection.
   un clic lance la recherche du produit sur chaque site où il n'est pas encore suivi.
 - **Alertes** [ntfy](https://ntfy.sh), et Telegram en option : retour en stock, prix ≤ prix cible
   (défini **par produit** et **par fiche revendeur**, la fiche est prioritaire), ouverture d'une
-  précommande, **nouveau plus bas historique** (toutes boutiques, après 14 jours d'historique) et
-  **variation du prix marché** de ±`MARKET_MOVE_ALERT_PCT` % sur 7 jours. Anti-doublon de 6 h.
+  précommande, **nouveau plus bas historique** (toutes boutiques, après 14 jours d'historique,
+  confirmé par 2 relevés de suite au même prix, une fois par jour au plus), **variation du prix
+  marché** de ±`MARKET_MOVE_ALERT_PCT` % sur 7 jours (au moins 3 annonces le jour même et le jour de
+  référence) et **seuils par carte** (tendance sous / au-dessus de X €). Anti-doublon de 6 h.
 - **Historique des prix** : un relevé détaillé n'est gardé que si le prix ou le stock change (plus un
   par jour) ; chaque fiche a un résumé quotidien (prix mini, maxi, dernier, achetable ou non). Les
   relevés de plus de 30 jours sont regroupés chaque nuit (`HISTORY_CRON`). Graphique par fiche produit
   sur 7 j / 30 j / 90 j / 1 an / tout : meilleur prix achetable, ruptures grisées, plus bas historique,
-  plus bas 30 j, prix conseillé. Prix par booster et écart au prix conseillé ; pastille « plus bas
-  depuis X jours » dans la liste des produits.
+  plus bas 30 j, prix conseillé. Un prix inférieur à 50 % de la médiane sur 30 jours (à défaut du
+  prix conseillé) est mis de côté ; un clic sur un jour du graphique permet d'exclure ou de rétablir
+  chaque point. Jours de Paris (pas d'UTC). Prix par booster et écart au prix conseillé ; pastille
+  « plus bas depuis X jours » (calculée en SQL) dans la liste des produits ; jours en stock par
+  boutique sur 30 et 90 jours.
+- **Prix livré** : frais de port et seuil de port offert relevés sur le site de chaque boutique
+  (quand ils sont affichés) ; la meilleure offre est classée au prix livré.
+- **Comparateur par extension** : sur une fiche produit, prix par booster de chaque format de la
+  même extension (display, ETB, tripack, booster…), le plus avantageux mis en avant. Sur un display
+  ou un ETB, **indicateur cartes phares** : somme des tendances des cartes phares de l'extension.
 - **Marché secondaire** : meilleur prix boutique comparé au prix conseillé, historique quotidien des
   prix, graphique « prix boutiques vs prix marché », ratio prix marché / prix d'achat. **Cartes phares
   choisies automatiquement** (cartes secrètes les mieux cotées des 4 dernières extensions), ou
   **n'importe quelle carte** suivie depuis la recherche : page par carte avec tendance, prix bas,
-  moyennes 7 j et 30 j gardées séparément chaque jour via TCGdex, mini-courbes dans le Marché. Le prix marché des produits scellés n'a pas de source automatique autorisée :
-  saisie manuelle ou PokeTrace. Provider PokeTrace prévu (squelette). **Cardmarket n'est jamais scrapé.**
+  moyennes 7 j et 30 j gardées séparément chaque jour via TCGdex, choix de la période, seuils
+  d'alerte, mini-courbes dans le Marché. Prix marché des scellés via CardNexus (annonce FR la moins
+  chère, nombre d'annonces et médiane des annonces FR), PokeTrace ou saisie manuelle. Provider PokeTrace prévu (squelette). **Cardmarket n'est jamais scrapé.**
 - **Ma collection** : quantité, prix d'achat, date, magasin, état du scellé, photo ; valeur estimée,
   plus-value latente, export CSV (compatible Excel FR).
 - **Tableau de bord** : prochaines sorties, derniers retours en stock, alertes actives, valeur de la
-  collection, top variations de prix sur 30 jours.
+  collection et sa courbe jour par jour à côté du total investi, top variations de prix sur 30 jours.
 - **Compte et connexion** : le premier compte créé devient propriétaire de l'instance. Les inscriptions
   sont ensuite fermées, sauf si `ALLOW_REGISTRATION=true`.
 

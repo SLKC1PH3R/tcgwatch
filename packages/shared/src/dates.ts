@@ -41,9 +41,36 @@ export function parseFrenchDate(raw: string): Date | null {
   return null;
 }
 
-/** Date du jour (minuit UTC, selon le calendrier local) — clé des relevés quotidiens. */
+const parisDay = new Intl.DateTimeFormat('en-CA', {
+  timeZone: 'Europe/Paris',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+});
+
+/** Jour calendaire à Paris d'un instant, au format AAAA-MM-JJ. */
+export function parisDayKey(at = new Date()): string {
+  return parisDay.format(at);
+}
+
+/**
+ * Jour du calendrier de Paris (minuit UTC de cette date) : clé des relevés quotidiens et des
+ * colonnes « date ». Un relevé fait à 0 h 30 heure de Paris compte pour ce jour, pas la veille.
+ */
 export function todayUtc(now = new Date()): Date {
-  return new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
+  return new Date(`${parisDayKey(now)}T00:00:00Z`);
+}
+
+/** Instant réel du début de la journée de Paris qui contient `at` (minuit heure de Paris). */
+export function parisDayStart(at = new Date()): Date {
+  const key = parisDayKey(at);
+  const base = Date.parse(`${key}T00:00:00Z`);
+  // Minuit à Paris = 22 h ou 23 h UTC la veille (UTC+2 l'été, UTC+1 l'hiver).
+  for (const h of [2, 1, 0]) {
+    const t = new Date(base - h * 3_600_000);
+    if (parisDayKey(t) === key) return t;
+  }
+  return new Date(base);
 }
 
 /** Nombre de jours entiers entre aujourd'hui et la date donnée (négatif si passée). */

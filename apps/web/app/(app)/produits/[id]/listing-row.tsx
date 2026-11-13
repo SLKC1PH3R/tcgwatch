@@ -38,6 +38,15 @@ export function ListingRow({ listing }: { listing: ListingDTO }) {
           <span className="font-medium">{listing.retailerName}</span>
           <AvailabilityBadge availability={listing.availability} />
           <span className="font-semibold tabular-nums">{formatPrice(listing.price)}</span>
+          {listing.price !== null && (
+            <span className="text-xs text-muted-foreground tabular-nums">
+              {listing.shipping === null
+                ? 'port inconnu'
+                : listing.shipping === 0
+                  ? 'port offert'
+                  : `+ ${formatPrice(listing.shipping)} de port (dès)`}
+            </span>
+          )}
           {listing.discovered && (
             <Badge
               variant="secondary"

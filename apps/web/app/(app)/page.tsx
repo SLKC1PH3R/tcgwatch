@@ -11,6 +11,7 @@ import { formatDate, formatDateTime, formatPercent, formatPrice } from '@tcgwatc
 import { Countdown } from '@/components/countdown';
 import { PageHeader } from '@/components/page-header';
 import { Thumb } from '@/components/thumb';
+import { TrendChart } from '@/components/trend-chart';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -25,6 +26,7 @@ const ALERT_LABEL = {
   RELEASE_DATE: 'Date de sortie',
   NEW_LOW: 'Plus bas historique',
   MARKET_MOVE: 'Variation marché',
+  CARD_PRICE: 'Carte',
 } as const;
 
 function Empty({ children }: { children: React.ReactNode }) {
@@ -92,6 +94,22 @@ export default async function DashboardPage() {
                 prix marché).
               </p>
             )}
+            {d.collectionHistory.length > 1 && (
+              <TrendChart
+                data={d.collectionHistory}
+                height="h-44"
+                series={[
+                  { key: 'value', label: 'Valeur estimée', color: 'var(--chart-2)', width: 2.5 },
+                  {
+                    key: 'invested',
+                    label: 'Total investi',
+                    color: 'var(--muted-foreground)',
+                    dashed: true,
+                    step: true,
+                  },
+                ]}
+              />
+            )}
           </CardContent>
         </Card>
 
@@ -129,10 +147,14 @@ export default async function DashboardPage() {
                         </span>
                       </div>
                       <Link
-                        href={`/produits/${a.product.id}`}
+                        href={
+                          a.product
+                            ? `/produits/${a.product.id}`
+                            : `/cartes/${encodeURIComponent(a.chaseCard?.tcgdexId ?? '')}`
+                        }
                         className="block truncate text-sm font-medium hover:underline"
                       >
-                        {a.product.name}
+                        {a.product?.name ?? a.chaseCard?.name ?? '—'}
                       </Link>
                       <p className="truncate text-xs text-muted-foreground">{a.message}</p>
                     </div>
@@ -140,7 +162,7 @@ export default async function DashboardPage() {
                       {a.url && (
                         <Button asChild size="sm" variant="outline">
                           <a href={a.url} target="_blank" rel="noopener noreferrer">
-                            Acheter
+                            {a.product ? 'Acheter' : 'Voir'}
                           </a>
                         </Button>
                       )}
@@ -219,39 +241,44 @@ export default async function DashboardPage() {
               <Empty>Aucun retour en stock détecté pour l’instant.</Empty>
             ) : (
               <ul className="divide-y">
-                {d.restocks.map((r) => (
-                  <li key={r.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
-                    <div className="flex min-w-0 items-center gap-3">
-                      <Thumb
-                        src={r.product.imageUrl ?? r.product.images[0] ?? r.listing?.lastImageUrl}
-                      />
-                      <div className="min-w-0">
-                        <Link
-                          href={`/produits/${r.product.id}`}
-                          className="text-sm font-medium hover:underline"
-                        >
-                          {r.product.name}
-                        </Link>
-                        <p className="text-xs text-muted-foreground">
-                          {ALERT_LABEL[r.type]} · {r.listing?.retailer.name ?? '—'} ·{' '}
-                          {formatDateTime(r.createdAt)}
-                        </p>
+                {d.restocks.map((r) =>
+                  !r.product ? null : (
+                    <li
+                      key={r.id}
+                      className="flex flex-wrap items-center justify-between gap-2 py-2"
+                    >
+                      <div className="flex min-w-0 items-center gap-3">
+                        <Thumb
+                          src={r.product.imageUrl ?? r.product.images[0] ?? r.listing?.lastImageUrl}
+                        />
+                        <div className="min-w-0">
+                          <Link
+                            href={`/produits/${r.product.id}`}
+                            className="text-sm font-medium hover:underline"
+                          >
+                            {r.product.name}
+                          </Link>
+                          <p className="text-xs text-muted-foreground">
+                            {ALERT_LABEL[r.type]} · {r.listing?.retailer.name ?? '—'} ·{' '}
+                            {formatDateTime(r.createdAt)}
+                          </p>
+                        </div>
                       </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium tabular-nums">
-                        {formatPrice(r.price)}
-                      </span>
-                      {r.url && (
-                        <Button asChild size="sm">
-                          <a href={r.url} target="_blank" rel="noopener noreferrer">
-                            Acheter
-                          </a>
-                        </Button>
-                      )}
-                    </div>
-                  </li>
-                ))}
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium tabular-nums">
+                          {formatPrice(r.price)}
+                        </span>
+                        {r.url && (
+                          <Button asChild size="sm">
+                            <a href={r.url} target="_blank" rel="noopener noreferrer">
+                              Acheter
+                            </a>
+                          </Button>
+                        )}
+                      </div>
+                    </li>
+                  ),
+                )}
               </ul>
             )}
           </CardContent>

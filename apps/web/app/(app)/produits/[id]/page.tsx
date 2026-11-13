@@ -22,6 +22,7 @@ import {
 import { FormError } from '@/components/form-message';
 import { PageHeader } from '@/components/page-header';
 import { PriceChart } from '@/components/price-chart';
+import { TrendChart } from '@/components/trend-chart';
 import { ProductGallery } from '@/components/product-gallery';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -29,6 +30,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { getPriceHistory, PERIODS, periodOf } from '@/lib/data/history';
 import { cn } from '@/lib/utils';
 import { getProduct, getReleaseOptions } from '@/lib/data/products';
+import { getChaseIndicator, getExtension, getFormatComparison } from '@/lib/data/release';
 import { toDateInput } from '@/lib/form';
 import { MarketPriceForm } from '../../marche/market-price-form';
 import { deleteProductAction, updateProductAction } from '../actions';
@@ -52,7 +54,9 @@ export default async function ProductPage({ params, searchParams }: Props) {
   if (!product) notFound();
   const period = periodOf(periode);
 
-  const [history, releases, alerts, marketPrices, retailers] = await Promise.all([
+  const extension = await getExtension(product.name);
+  const showChase = product.type === 'DISPLAY' || product.type === 'ETB';
+  const [history, releases, alerts, marketPrices, retailers, formats, chase] = await Promise.all([
     getPriceHistory(id, period.days),
     getReleaseOptions(),
     prisma.alertEvent.findMany({
@@ -66,6 +70,8 @@ export default async function ProductPage({ params, searchParams }: Props) {
       select: { id: true, name: true, searchUrl: true, access: true },
       orderBy: { name: 'asc' },
     }),
+    extension ? getFormatComparison(extension) : Promise.resolve([]),
+    extension && showChase ? getChaseIndicator(extension.id, period.days) : Promise.resolve(null),
   ]);
 
   // Recherche du produit sur les sites de l'annuaire où il n'est pas encore suivi.
@@ -130,6 +136,10 @@ export default async function ProductPage({ params, searchParams }: Props) {
                   <CardDescription>
                     {period.days ? `${period.days} derniers jours` : 'Tout l’historique'} · périodes
                     de rupture grisées
+                    {history.setAside > 0 &&
+                      ` · ${history.setAside} point${history.setAside > 1 ? 's' : ''} écarté${
+                        history.setAside > 1 ? 's' : ''
+                      } (prix aberrant ou exclu)`}
                   </CardDescription>
                 </div>
                 <nav aria-label="Période" className="flex gap-1">
@@ -151,7 +161,19 @@ export default async function ProductPage({ params, searchParams }: Props) {
                 </nav>
               </div>
               <dl className="grid w-full grid-cols-2 gap-x-4 gap-y-3 text-sm sm:grid-cols-4">
-                <Stat label="Meilleur prix" value={formatPrice(product.best?.price)} />
+                <Stat
+                  label="Meilleur prix"
+                  value={formatPrice(product.best?.price)}
+                  hint={
+                    product.best
+                      ? product.best.delivered !== null
+                        ? `livré ${formatPrice(product.best.delivered)}${
+                            product.best.shipping === 0 ? ' (port offert)' : ''
+                          } · ${product.best.retailerName}`
+                        : `${product.best.retailerName} · port inconnu`
+                      : undefined
+                  }
+                />
                 <Stat
                   label="Plus bas historique"
                   value={formatPrice(history.allTimeLow)}
@@ -204,9 +226,143 @@ export default async function ProductPage({ params, searchParams }: Props) {
                 low30={history.low30}
                 msrp={product.msrp}
                 avgPurchase={history.avgPurchase}
+                points={history.points}
               />
             </CardContent>
           </Card>
+
+          {formats.length > 1 && (
+            <Card>
+              <CardHeader className="flex-col">
+                <CardTitle>Comparateur {extension?.name}</CardTitle>
+                <CardDescription>
+                  Prix par booster de chaque format achetable aujourd’hui (prix livré quand le port
+                  de la boutique est connu).
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ul className="divide-y text-sm">
+                  {formats.map((f, i) => (
+                    <li
+                      key={f.productId}
+                      className={cn(
+                        'flex flex-wrap items-center gap-x-3 gap-y-1 py-2',
+                        f.productId === product.id && 'font-medium',
+                      )}
+                    >
+                      <Link
+                        href={`/produits/${f.productId}`}
+                        className="min-w-0 flex-1 basis-56 truncate hover:underline"
+                      >
+                        {f.name}
+                      </Link>
+                      {i === 0 && <Badge variant="success">Le plus avantageux</Badge>}
+                      <span className="text-xs text-muted-foreground">
+                        {f.boosters} booster{f.boosters > 1 ? 's' : ''} · {formatPrice(f.price)}
+                        {f.delivered ? ' livré' : ''} · {f.retailerName}
+                      </span>
+                      <span className="w-24 text-right font-semibold tabular-nums">
+                        {formatPrice(f.perBooster)}
+                        <span className="text-xs font-normal text-muted-foreground"> /b.</span>
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </CardContent>
+            </Card>
+          )}
+
+          {chase && (
+            <Card>
+              <CardHeader className="flex-col">
+                <CardTitle>Indicateur cartes phares</CardTitle>
+                <CardDescription>
+                  Somme des tendances Cardmarket des {chase.cards} cartes phares suivies de
+                  l’extension. Un repère de l’intérêt à ouvrir plutôt que garder scellé, pas une
+                  valeur attendue (faute de taux de tirage fiables).
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {chase.current && (
+                  <p className="text-sm">
+                    <span className="text-2xl font-semibold tabular-nums">
+                      {formatPrice(chase.current.sum)}
+                    </span>{' '}
+                    <span className="text-muted-foreground">
+                      ({chase.current.count} cartes cotées
+                      {product.best ? `, produit à ${formatPrice(product.best.price)}` : ''})
+                    </span>
+                  </p>
+                )}
+                <TrendChart
+                  data={chase.series}
+                  series={[
+                    { key: 'sum', label: 'Cartes phares', color: 'var(--chart-1)', width: 2.5 },
+                  ]}
+                />
+                {chase.top.length > 0 && (
+                  <ul className="grid gap-1 text-sm sm:grid-cols-2">
+                    {chase.top.map((c) => (
+                      <li key={c.tcgdexId} className="flex justify-between gap-2">
+                        <Link
+                          href={`/cartes/${encodeURIComponent(c.tcgdexId)}`}
+                          className="truncate hover:underline"
+                        >
+                          {c.name}
+                        </Link>
+                        <span className="text-muted-foreground tabular-nums">
+                          {formatPrice(c.trend)}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {history.stock.length > 0 && (
+            <Card>
+              <CardHeader className="flex-col">
+                <CardTitle>Historique des ruptures</CardTitle>
+                <CardDescription>
+                  Jours où le produit était achetable, sur les jours relevés de chaque boutique.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <table className="w-full text-sm">
+                  <thead className="text-xs text-muted-foreground">
+                    <tr>
+                      <th className="py-1 text-left font-normal">Boutique</th>
+                      <th className="py-1 text-right font-normal">30 j</th>
+                      <th className="py-1 text-right font-normal">90 j</th>
+                      <th className="hidden py-1 text-right font-normal sm:table-cell">
+                        Dernier jour en stock
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {history.stock.map((s) => (
+                      <tr key={s.listingId}>
+                        <td className="py-1.5">{s.retailer}</td>
+                        <td className="py-1.5 text-right tabular-nums">
+                          {s.checked30 ? `${s.in30} / ${s.checked30} j` : '—'}
+                        </td>
+                        <td className="py-1.5 text-right tabular-nums">
+                          {s.in90} / {s.checked90} j
+                        </td>
+                        <td className="hidden py-1.5 text-right text-muted-foreground sm:table-cell">
+                          {s.lastBuyable
+                            ? formatDate(new Date(`${s.lastBuyable}T00:00:00Z`))
+                            : 'jamais'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </CardContent>
+            </Card>
+          )}
 
           <Card>
             <CardHeader>
