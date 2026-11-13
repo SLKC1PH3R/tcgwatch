@@ -1,4 +1,4 @@
-import { ExternalLink, Plus, Search, Trash2 } from 'lucide-react';
+import { ArrowLeft, ExternalLink, Plus, Search, Trash2 } from 'lucide-react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
@@ -15,25 +15,27 @@ import {
   formatDateTime,
   formatPercent,
   formatPrice,
+  isBuyable,
   PRODUCT_TYPE_LABELS,
   toNumber,
   type ProductTypeKey,
 } from '@tcgwatch/shared';
+import { AvailabilityBadge } from '@/components/availability-badge';
 import { FormError } from '@/components/form-message';
-import { PageHeader } from '@/components/page-header';
 import { PriceChart } from '@/components/price-chart';
 import { TrendChart } from '@/components/trend-chart';
 import { ProductGallery } from '@/components/product-gallery';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import { getPriceHistory, PERIODS, periodOf } from '@/lib/data/history';
 import { cn } from '@/lib/utils';
 import { getProduct, getReleaseOptions } from '@/lib/data/products';
 import { getChaseIndicator, getFormatComparison, getProductExtension } from '@/lib/data/release';
 import { toDateInput } from '@/lib/form';
 import { MarketPriceForm } from '../../marche/market-price-form';
-import { deleteProductAction, updateProductAction } from '../actions';
+import { deleteProductAction, setProductTargetAction, updateProductAction } from '../actions';
 import { ProductForm } from '../product-form';
 import { ListingRow } from './listing-row';
 
@@ -97,149 +99,330 @@ export default async function ProductPage({ params, searchParams }: Props) {
     ...new Set(product.listings.map((l) => l.category).filter((c): c is string => !!c)),
   ];
 
+  const typeLabel = PRODUCT_TYPE_LABELS[product.type as ProductTypeKey] ?? product.type;
+  const sortedListings = [...product.listings].sort(
+    (a, b) =>
+      Number(isBuyable(b.availability)) - Number(isBuyable(a.availability)) ||
+      (a.delivered ?? a.price ?? Infinity) - (b.delivered ?? b.price ?? Infinity),
+  );
+  const fmtInput = (v: number | null) => (v !== null ? String(v).replace('.', ',') : '');
+  const releaseDate = product.releaseDate ?? product.release?.releaseDate;
+
   return (
     <>
-      <PageHeader
-        title={product.name}
-        description={
-          <span className="flex flex-wrap items-center gap-2">
-            <Badge variant="outline">
-              {PRODUCT_TYPE_LABELS[product.type as ProductTypeKey] ?? product.type}
-            </Badge>
-            {extension ? (
-              <Link
-                href={`/extensions/${encodeURIComponent(extension.code)}`}
-                className="font-medium text-primary hover:underline"
-              >
-                Extension {extension.name}
-                {extension.setCode ? ` (${extension.setCode})` : ''}
-              </Link>
-            ) : (
-              product.release &&
-              product.release.nameFr !== product.name && <span>{product.release.nameFr}</span>
-            )}
-            {(product.releaseDate ?? product.release?.releaseDate) && (
-              <span>
-                · sortie le {formatDate(product.releaseDate ?? product.release?.releaseDate)}
-              </span>
-            )}
-          </span>
-        }
-        actions={
-          <Button asChild>
-            <Link href={`/produits/ajouter?produit=${product.id}`}>
-              <Plus /> Ajouter une fiche revendeur
-            </Link>
-          </Button>
-        }
-      />
+      <Link
+        href="/produits"
+        className="mb-4 inline-flex items-center gap-1 text-sm font-medium text-primary underline-offset-4 hover:underline"
+      >
+        <ArrowLeft className="size-4" /> Produits suivis
+      </Link>
       <FormError message={erreur} />
+
+      <section className="mb-6 grid gap-6 md:grid-cols-[minmax(0,18rem)_1fr] lg:grid-cols-[minmax(0,20rem)_1fr]">
+        <div className="self-start rounded-2xl bg-gradient-to-br from-chart-5 via-primary to-chart-3 p-px">
+          <div className="rounded-2xl bg-card p-3">
+            {product.images.length > 0 ? (
+              <ProductGallery images={product.images} alt={product.name} />
+            ) : (
+              <p className="flex h-64 items-center justify-center rounded-lg border border-dashed p-4 text-center text-sm text-muted-foreground">
+                Pas encore d’image : elle sera reprise de la première fiche revendeur relevée.
+              </p>
+            )}
+          </div>
+        </div>
+
+        <div className="min-w-0 space-y-4">
+          <div className="space-y-1">
+            <p className="text-sm text-muted-foreground">
+              {typeLabel}
+              {extension && (
+                <>
+                  {' · '}
+                  <Link
+                    href={`/extensions/${encodeURIComponent(extension.code)}`}
+                    className="font-medium text-primary hover:underline"
+                  >
+                    {extension.name}
+                    {extension.setCode ? ` (${extension.setCode})` : ''}
+                  </Link>
+                </>
+              )}
+              {releaseDate && ` · sortie le ${formatDate(releaseDate)}`}
+            </p>
+            <h1 className="font-display text-3xl leading-tight font-bold tracking-tight text-balance sm:text-4xl">
+              {product.name}
+            </h1>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-3">
+            <HeroStat
+              label="Meilleur prix"
+              value={formatPrice(
+                product.best ? (product.best.delivered ?? product.best.price) : null,
+              )}
+              hint={
+                product.best
+                  ? `${product.best.retailerName} · ${
+                      product.best.availability === 'PREORDER' ? 'précommande' : 'en stock'
+                    }${
+                      product.best.delivered !== null
+                        ? product.best.shipping === 0
+                          ? ' · port offert'
+                          : ' · livré'
+                        : ''
+                    }`
+                  : 'pas achetable actuellement'
+              }
+              hintClass={product.best ? 'text-success' : undefined}
+            />
+            <HeroStat
+              label="Prix marché"
+              value={formatPrice(history.lastMarket)}
+              valueClass="text-primary"
+              hint={
+                [
+                  history.lastMarketSource
+                    ? (MARKET_SOURCE[history.lastMarketSource] ?? history.lastMarketSource)
+                    : null,
+                  history.lastMarketListings !== null
+                    ? `${history.lastMarketListings} annonce${history.lastMarketListings > 1 ? 's' : ''}`
+                    : null,
+                  history.lastMarketMedian !== null
+                    ? `médiane ${formatPrice(history.lastMarketMedian)}`
+                    : null,
+                ]
+                  .filter(Boolean)
+                  .join(' · ') || 'aucun relevé'
+              }
+            />
+            <HeroStat
+              label="Marché / achat"
+              value={
+                history.ratio !== null
+                  ? history.ratio.toLocaleString('fr-FR', {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })
+                  : '—'
+              }
+              hint={
+                history.owned > 0
+                  ? `sur ${history.owned} exemplaire${history.owned > 1 ? 's' : ''}`
+                  : 'pas dans la collection'
+              }
+            />
+          </div>
+
+          <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm sm:grid-cols-4">
+            <Meta label="Marque" value={product.brand} />
+            <Meta label="EAN" value={product.ean} mono />
+            <Meta
+              label="Prix public"
+              value={product.msrp !== null ? formatPrice(product.msrp) : null}
+            />
+            <div className="min-w-0">
+              <dt className="text-muted-foreground">Prix cible</dt>
+              <dd>
+                <form action={setProductTargetAction.bind(null, product.id)} className="mt-1">
+                  <Input
+                    name="targetPrice"
+                    inputMode="decimal"
+                    defaultValue={fmtInput(product.targetPrice)}
+                    placeholder="ex. 70"
+                    title="Prix cible en euros : Entrée pour enregistrer, vide pour aucun"
+                    aria-label="Prix cible en euros"
+                    className="h-9 w-28"
+                  />
+                </form>
+              </dd>
+            </div>
+            <Meta
+              label="Prix par booster"
+              value={
+                bestPerBooster !== null
+                  ? `${formatPrice(bestPerBooster)}${
+                      msrpPerBooster !== null
+                        ? ` (${formatPercent(bestPerBooster / msrpPerBooster - 1)})`
+                        : ''
+                    }`
+                  : null
+              }
+            />
+            <Meta
+              label="Plus bas historique"
+              value={history.allTimeLow !== null ? formatPrice(history.allTimeLow) : null}
+            />
+            {categories.length > 0 && (
+              <div className="col-span-2 min-w-0">
+                <dt className="text-muted-foreground">Rayons</dt>
+                <dd className="font-medium">{categories.join(' · ')}</dd>
+              </div>
+            )}
+          </dl>
+        </div>
+      </section>
+
+      <div className="mb-6 grid gap-6 lg:grid-cols-3 [&>*]:min-w-0">
+        <Card className="lg:col-span-2">
+          <CardHeader className="flex-col">
+            <div className="flex w-full flex-wrap items-start justify-between gap-3">
+              <div className="space-y-1">
+                <CardTitle>Prix boutiques vs marché</CardTitle>
+                <CardDescription>
+                  {period.days ? `${period.days} derniers jours` : 'Tout l’historique'} · périodes
+                  de rupture grisées
+                  {history.setAside > 0 &&
+                    ` · ${history.setAside} point${history.setAside > 1 ? 's' : ''} écarté${
+                      history.setAside > 1 ? 's' : ''
+                    } (prix aberrant ou exclu)`}
+                </CardDescription>
+              </div>
+              <nav aria-label="Période" className="flex gap-1">
+                {PERIODS.map((p) => (
+                  <Link
+                    key={p.key}
+                    href={`/produits/${product.id}?periode=${p.key}`}
+                    scroll={false}
+                    aria-current={p.key === period.key ? 'true' : undefined}
+                    className={cn(
+                      'rounded-full border px-2.5 py-1 text-xs font-medium text-muted-foreground hover:bg-accent',
+                      p.key === period.key &&
+                        'border-foreground bg-foreground text-background hover:bg-foreground',
+                    )}
+                  >
+                    {p.label}
+                  </Link>
+                ))}
+              </nav>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <PriceChart
+              data={history.data}
+              retailers={history.retailers}
+              hasBest={history.hasBest}
+              hasMarket={history.hasMarket}
+              outOfStock={history.outOfStock}
+              allTimeLow={history.allTimeLow}
+              low30={history.low30}
+              msrp={product.msrp}
+              avgPurchase={history.avgPurchase}
+              points={history.points}
+            />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Historique des alertes</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {alerts.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Aucune alerte émise.</p>
+            ) : (
+              <ul className="divide-y">
+                {alerts.map((a) => (
+                  <li key={a.id} className="space-y-0.5 py-2.5 first:pt-0">
+                    <p className={cn('text-xs font-semibold', ALERT_STYLE[a.type]?.className)}>
+                      {ALERT_STYLE[a.type]?.label ?? a.type}
+                    </p>
+                    <p className="text-sm">{a.message || a.title}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {formatDateTime(a.createdAt)}
+                      {a.sentNtfy ? ' · ntfy ✓' : ''}
+                      {a.sentTelegram ? ' · Telegram ✓' : ''}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card className="mb-6">
+        <CardHeader className="items-center">
+          <CardTitle>Fiches revendeurs</CardTitle>
+          <div className="flex flex-wrap gap-2">
+            <Button asChild variant="outline" size="sm">
+              <a href="#autres-revendeurs">Chercher chez d’autres revendeurs</a>
+            </Button>
+            <Button asChild size="sm">
+              <Link href={`/produits/ajouter?produit=${product.id}`}>
+                <Plus /> Ajouter une fiche
+              </Link>
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {sortedListings.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Aucune fiche suivie pour ce produit.</p>
+          ) : (
+            <table className="w-full text-sm">
+              <thead className="text-xs tracking-wide text-muted-foreground uppercase">
+                <tr className="border-b">
+                  <th className="py-2 text-left font-semibold">Site</th>
+                  <th className="py-2 text-left font-semibold">Statut</th>
+                  <th className="hidden py-2 text-left font-semibold sm:table-cell">
+                    Dernier relevé
+                  </th>
+                  <th className="py-2 text-right font-semibold">Prix</th>
+                  <th className="py-2">
+                    <span className="sr-only">Action</span>
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {sortedListings.map((l) => (
+                  <tr key={l.id}>
+                    <td className="py-3 pr-2 font-semibold">{l.retailerName}</td>
+                    <td className="py-3 pr-2">
+                      <AvailabilityBadge availability={l.availability} />
+                    </td>
+                    <td className="hidden py-3 pr-2 text-muted-foreground sm:table-cell">
+                      {l.lastCheckedAt ? ago(l.lastCheckedAt) : 'jamais'}
+                    </td>
+                    <td className="py-3 text-right font-semibold whitespace-nowrap tabular-nums">
+                      {formatPrice(l.price)}
+                      {l.delivered !== null && l.delivered !== l.price && (
+                        <span className="block text-xs font-normal text-muted-foreground">
+                          livré {formatPrice(l.delivered)}
+                        </span>
+                      )}
+                    </td>
+                    <td className="py-3 pl-3 text-right">
+                      <Button
+                        asChild
+                        size="sm"
+                        variant={l.id === product.best?.listingId ? 'default' : 'secondary'}
+                      >
+                        <a href={l.url} target="_blank" rel="noopener noreferrer">
+                          Acheter
+                        </a>
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+          {product.listings.length > 0 && (
+            <details className="mt-4 border-t pt-3">
+              <summary className="cursor-pointer text-sm font-medium text-muted-foreground hover:text-foreground">
+                Gérer les fiches (seuils, pause, relevé immédiat, suppression)
+              </summary>
+              <div className="mt-3 space-y-3">
+                {product.listings.map((l) => (
+                  <ListingRow key={l.id} listing={l} />
+                ))}
+              </div>
+            </details>
+          )}
+        </CardContent>
+      </Card>
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="min-w-0 space-y-6 lg:col-span-2">
-          <Card>
-            <CardHeader className="flex-col">
-              <div className="flex w-full flex-wrap items-start justify-between gap-3">
-                <div className="space-y-1">
-                  <CardTitle>Prix boutiques vs marché</CardTitle>
-                  <CardDescription>
-                    {period.days ? `${period.days} derniers jours` : 'Tout l’historique'} · périodes
-                    de rupture grisées
-                    {history.setAside > 0 &&
-                      ` · ${history.setAside} point${history.setAside > 1 ? 's' : ''} écarté${
-                        history.setAside > 1 ? 's' : ''
-                      } (prix aberrant ou exclu)`}
-                  </CardDescription>
-                </div>
-                <nav aria-label="Période" className="flex gap-1">
-                  {PERIODS.map((p) => (
-                    <Link
-                      key={p.key}
-                      href={`/produits/${product.id}?periode=${p.key}`}
-                      scroll={false}
-                      aria-current={p.key === period.key ? 'true' : undefined}
-                      className={cn(
-                        'rounded-full border px-2.5 py-1 text-xs font-medium text-muted-foreground hover:bg-accent',
-                        p.key === period.key &&
-                          'border-foreground bg-foreground text-background hover:bg-foreground',
-                      )}
-                    >
-                      {p.label}
-                    </Link>
-                  ))}
-                </nav>
-              </div>
-              <dl className="grid w-full grid-cols-2 gap-x-4 gap-y-3 text-sm sm:grid-cols-4">
-                <Stat
-                  label="Meilleur prix"
-                  value={formatPrice(product.best?.price)}
-                  hint={
-                    product.best
-                      ? product.best.delivered !== null
-                        ? `livré ${formatPrice(product.best.delivered)}${
-                            product.best.shipping === 0 ? ' (port offert)' : ''
-                          } · ${product.best.retailerName}`
-                        : `${product.best.retailerName} · port inconnu`
-                      : undefined
-                  }
-                />
-                <Stat
-                  label="Plus bas historique"
-                  value={formatPrice(history.allTimeLow)}
-                  hint={history.low30 !== null ? `30 j : ${formatPrice(history.low30)}` : undefined}
-                />
-                <Stat
-                  label="Prix par booster"
-                  value={bestPerBooster !== null ? formatPrice(bestPerBooster) : '—'}
-                  hint={
-                    msrpPerBooster !== null
-                      ? `conseillé ${formatPrice(msrpPerBooster)}${
-                          bestPerBooster !== null
-                            ? ` (${formatPercent(bestPerBooster / msrpPerBooster - 1)})`
-                            : ''
-                        }`
-                      : boosters
-                        ? `${boosters} booster${boosters > 1 ? 's' : ''}`
-                        : 'contenu variable'
-                  }
-                />
-                <Stat
-                  label="Prix marché"
-                  value={formatPrice(history.lastMarket)}
-                  hint={
-                    [
-                      history.lastMarketListings !== null
-                        ? `${history.lastMarketListings} annonce${history.lastMarketListings > 1 ? 's' : ''}`
-                        : null,
-                      history.lastMarketMedian !== null
-                        ? `médiane ${formatPrice(history.lastMarketMedian)}`
-                        : null,
-                      history.ratio !== null
-                        ? `${formatPercent(history.ratio - 1)} vs achat`
-                        : null,
-                    ]
-                      .filter(Boolean)
-                      .join(' · ') || undefined
-                  }
-                />
-              </dl>
-            </CardHeader>
-            <CardContent>
-              <PriceChart
-                data={history.data}
-                retailers={history.retailers}
-                hasBest={history.hasBest}
-                hasMarket={history.hasMarket}
-                outOfStock={history.outOfStock}
-                allTimeLow={history.allTimeLow}
-                low30={history.low30}
-                msrp={product.msrp}
-                avgPurchase={history.avgPurchase}
-                points={history.points}
-              />
-            </CardContent>
-          </Card>
-
           {formats.length > 1 && (
             <Card>
               <CardHeader className="flex-col">
@@ -372,108 +555,32 @@ export default async function ProductPage({ params, searchParams }: Props) {
               </CardContent>
             </Card>
           )}
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Fiches revendeurs ({product.listings.length})</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {product.listings.length === 0 && (
-                <p className="text-sm text-muted-foreground">
-                  Aucune fiche suivie pour ce produit.
-                </p>
-              )}
-              {product.listings.map((l) => (
-                <ListingRow key={l.id} listing={l} />
-              ))}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Historique des alertes</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {alerts.length === 0 ? (
-                <p className="text-sm text-muted-foreground">Aucune alerte émise.</p>
-              ) : (
-                <ul className="divide-y text-sm">
-                  {alerts.map((a) => (
-                    <li key={a.id} className="flex flex-wrap justify-between gap-2 py-2">
-                      <span>{a.title}</span>
-                      <span className="text-muted-foreground">
-                        {formatDateTime(a.createdAt)} · ntfy {a.sentNtfy ? '✓' : '—'}
-                        {a.sentTelegram ? ' · Telegram ✓' : ''}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </CardContent>
-          </Card>
         </div>
 
         <div className="min-w-0 space-y-6">
-          <Card>
-            <CardContent className="space-y-4">
-              {product.images.length > 0 ? (
-                <ProductGallery images={product.images} alt={product.name} />
-              ) : (
-                <p className="rounded-lg border border-dashed py-10 text-center text-sm text-muted-foreground">
-                  Pas encore d’image : elle sera reprise de la première fiche revendeur relevée.
-                </p>
-              )}
-              <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-sm">
-                {product.brand && (
-                  <>
-                    <dt className="text-muted-foreground">Marque</dt>
-                    <dd>{product.brand}</dd>
-                  </>
+          {(product.description || product.externalId?.startsWith('pokecardex:')) && (
+            <Card>
+              <CardContent className="space-y-3">
+                {product.description && (
+                  <p className="text-sm leading-relaxed text-muted-foreground">
+                    {product.description}
+                  </p>
                 )}
-                {product.ean && (
-                  <>
-                    <dt className="text-muted-foreground">EAN</dt>
-                    <dd className="font-mono text-xs leading-5">{product.ean}</dd>
-                  </>
+                {product.externalId?.startsWith('pokecardex:') && (
+                  <a
+                    href="https://www.pokecardex.com/calendrier"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+                  >
+                    Catalogue : calendrier Pokécardex <ExternalLink className="size-3" />
+                  </a>
                 )}
-                {product.msrp !== null && (
-                  <>
-                    <dt className="text-muted-foreground">Prix public</dt>
-                    <dd className="tabular-nums">{formatPrice(product.msrp)}</dd>
-                  </>
-                )}
-                {product.targetPrice !== null && (
-                  <>
-                    <dt className="text-muted-foreground">Prix cible</dt>
-                    <dd className="tabular-nums">{formatPrice(product.targetPrice)}</dd>
-                  </>
-                )}
-                {categories.length > 0 && (
-                  <>
-                    <dt className="text-muted-foreground">Rayons</dt>
-                    <dd>{categories.join(' · ')}</dd>
-                  </>
-                )}
-              </dl>
-              {product.externalId?.startsWith('pokecardex:') && (
-                <a
-                  href="https://www.pokecardex.com/calendrier"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
-                >
-                  Catalogue : calendrier Pokécardex <ExternalLink className="size-3" />
-                </a>
-              )}
-              {product.description && (
-                <p className="text-sm leading-relaxed text-muted-foreground">
-                  {product.description}
-                </p>
-              )}
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          )}
 
-          <Card>
+          <Card id="autres-revendeurs" className="scroll-mt-24">
             <CardHeader className="flex-col">
               <CardTitle>Chercher chez d’autres revendeurs</CardTitle>
               <CardDescription>
@@ -598,12 +705,65 @@ function SearchLink({ href, name, title }: { href: string; name: string; title: 
   );
 }
 
-function Stat({ label, value, hint }: { label: string; value: string; hint?: string }) {
+const MARKET_SOURCE: Record<string, string> = {
+  cardnexus: 'CardNexus (annonces FR)',
+  poketrace: 'PokeTrace',
+  manual: 'Saisie manuelle',
+};
+
+const ALERT_STYLE: Record<string, { label: string; className: string }> = {
+  BACK_IN_STOCK: { label: 'Retour en stock', className: 'text-success' },
+  PRICE_TARGET: { label: 'Prix cible', className: 'text-primary' },
+  PREORDER_OPEN: { label: 'Précommande', className: 'text-info' },
+  NEW_LOW: { label: 'Plus bas historique', className: 'text-success' },
+  RELEASE_DATE: { label: 'Date de sortie', className: 'text-info' },
+  MARKET_MOVE: { label: 'Variation marché', className: 'text-warning' },
+  CARD_PRICE: { label: 'Carte', className: 'text-chart-2' },
+};
+
+/** « il y a 12 min », « il y a 3 h », puis la date. */
+function ago(date: Date): string {
+  const min = Math.round((Date.now() - date.getTime()) / 60_000);
+  if (min < 1) return 'à l’instant';
+  if (min < 60) return `il y a ${min} min`;
+  const h = Math.round(min / 60);
+  if (h < 24) return `il y a ${h} h`;
+  return formatDateTime(date);
+}
+
+function HeroStat({
+  label,
+  value,
+  hint,
+  valueClass,
+  hintClass,
+}: {
+  label: string;
+  value: string;
+  hint?: string;
+  valueClass?: string;
+  hintClass?: string;
+}) {
+  return (
+    <div className="min-w-0 rounded-xl border bg-card p-4">
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className={cn('font-display text-2xl font-bold tabular-nums', valueClass)}>{value}</p>
+      {hint && (
+        <p className={cn('truncate text-xs text-muted-foreground', hintClass)} title={hint}>
+          {hint}
+        </p>
+      )}
+    </div>
+  );
+}
+
+function Meta({ label, value, mono }: { label: string; value: string | null; mono?: boolean }) {
   return (
     <div className="min-w-0">
       <dt className="text-muted-foreground">{label}</dt>
-      <dd className="font-semibold tabular-nums">{value}</dd>
-      {hint && <dd className="truncate text-xs text-muted-foreground">{hint}</dd>}
+      <dd className={cn('truncate font-medium', mono && 'font-mono text-xs leading-5')}>
+        {value ?? '—'}
+      </dd>
     </div>
   );
 }

@@ -524,3 +524,19 @@ export async function setDailyExclusionAction(
   revalidatePath(`/produits/${listing.productId}`);
   revalidatePath('/produits');
 }
+
+const targetSchema = z.object({ targetPrice: optionalPrice });
+
+/** Prix cible du produit, modifié directement depuis l'en-tête de la fiche (vide = aucun). */
+export async function setProductTargetAction(productId: string, formData: FormData) {
+  await requireUser();
+  const parsed = targetSchema.safeParse(formToObject(formData));
+  if (!parsed.success) {
+    redirect(`/produits/${productId}?erreur=${encodeURIComponent(firstIssue(parsed.error))}`);
+  }
+  await prisma.product.update({
+    where: { id: productId },
+    data: { targetPrice: parsed.data.targetPrice },
+  });
+  revalidatePath(`/produits/${productId}`);
+}

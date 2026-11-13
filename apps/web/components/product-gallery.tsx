@@ -3,6 +3,9 @@
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
 
+/** Vignettes affichées au plus (les autres images restent ignorées). */
+const MAX_THUMBS = 8;
+
 /** Galerie produit : grande image + vignettes (images des fiches revendeurs). */
 export function ProductGallery({ images, alt }: { images: string[]; alt: string }) {
   const [current, setCurrent] = useState(0);
@@ -26,7 +29,7 @@ export function ProductGallery({ images, alt }: { images: string[]; alt: string 
       </div>
       {visible.length > 1 && (
         <div className="flex flex-wrap gap-2">
-          {visible.map((url, i) => (
+          {visible.slice(0, MAX_THUMBS).map((url, i) => (
             <button
               key={url}
               type="button"

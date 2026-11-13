@@ -151,9 +151,12 @@ export async function getPriceHistory(productId: string, days: number | null) {
     allTimeLow: lowestBest(bestSeries),
     low30: lowestBest(bestSeries, 30, todayUtc()),
     avgPurchase,
+    /** Exemplaires dans la collection. */
+    owned: qty,
     lastMarket,
     lastMarketMedian: lastQuote ? toNumber(lastQuote.median) : null,
     lastMarketListings: lastQuote?.listingCount ?? null,
+    lastMarketSource: lastQuote?.source ?? null,
     ratio: avgPurchase && lastMarket ? lastMarket / avgPurchase : null,
     stock: stockStats(daily),
   };
