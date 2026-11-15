@@ -1,4 +1,3 @@
-import { Power } from 'lucide-react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import type { RetailerAccess, RetailerKind } from '@tcgwatch/adapters';
@@ -6,7 +5,6 @@ import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
 import { EXCLUDED_SITES, getRetailers, type RetailerRow } from '@/lib/data/retailers';
 import { cn } from '@/lib/utils';
-import { toggleRetailerAction } from './actions';
 
 export const metadata: Metadata = { title: 'Revendeurs' };
 
@@ -156,20 +154,6 @@ function RetailerCard({ retailer: r }: { retailer: RetailerRow }) {
           >
             Voir les fiches
           </Link>
-        )}
-        {r.id && (
-          <form action={toggleRetailerAction.bind(null, r.id)} className="ml-auto">
-            <Button
-              type="submit"
-              size="icon"
-              variant="ghost"
-              className="size-8 text-muted-foreground"
-              aria-label={r.enabled ? `Désactiver ${r.name}` : `Activer ${r.name}`}
-              title={r.enabled ? 'Désactiver les relevés' : 'Activer les relevés'}
-            >
-              <Power />
-            </Button>
-          </form>
         )}
       </div>
     </div>

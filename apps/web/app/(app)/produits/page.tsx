@@ -11,7 +11,6 @@ import {
   type ProductTypeKey,
 } from '@tcgwatch/shared';
 import { PageHeader } from '@/components/page-header';
-import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { getLowSinceBadges } from '@/lib/data/history';
@@ -77,17 +76,7 @@ export default async function ProductsPage({ searchParams }: Props) {
     <>
       <PageHeader
         title="Produits suivis"
-        description="Meilleur prix actuel et disponibilité par revendeur. Les liens ouvrent la fiche du site : aucun achat automatique."
-        actions={
-          <>
-            <Button asChild variant="outline">
-              <Link href="/produits/nouveau">Nouveau produit</Link>
-            </Button>
-            <Button asChild>
-              <Link href="/produits/ajouter">Suivre une URL</Link>
-            </Button>
-          </>
-        }
+        description="Catalogue et fiches revendeurs mis à jour automatiquement. Les liens ouvrent la fiche du site : aucun achat automatique."
       />
 
       <div className="mb-5 flex flex-wrap items-end gap-4">
@@ -144,17 +133,9 @@ export default async function ProductsPage({ searchParams }: Props) {
       <Card className="overflow-hidden py-0">
         {products.length === 0 ? (
           <p className="py-10 text-center text-sm text-muted-foreground">
-            {all.length === 0 ? (
-              <>
-                Aucun produit. Commencez par{' '}
-                <Link href="/produits/ajouter" className="text-primary underline">
-                  suivre une URL
-                </Link>
-                .
-              </>
-            ) : (
-              'Aucun produit pour cette recherche.'
-            )}
+            {all.length === 0
+              ? 'Catalogue en cours d’import (calendrier Pokécardex et rayons des boutiques).'
+              : 'Aucun produit pour cette recherche.'}
           </p>
         ) : (
           <div className="relative overflow-x-auto">

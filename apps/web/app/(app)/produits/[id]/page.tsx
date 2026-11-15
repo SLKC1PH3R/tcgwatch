@@ -1,4 +1,4 @@
-import { ArrowLeft, ExternalLink, Plus, Search, Trash2 } from 'lucide-react';
+import { ArrowLeft, ExternalLink, Search } from 'lucide-react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
@@ -17,7 +17,6 @@ import {
   formatPrice,
   isBuyable,
   PRODUCT_TYPE_LABELS,
-  toNumber,
   type ProductTypeKey,
 } from '@tcgwatch/shared';
 import { AvailabilityBadge } from '@/components/availability-badge';
@@ -31,13 +30,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { getPriceHistory, PERIODS, periodOf } from '@/lib/data/history';
 import { cn } from '@/lib/utils';
-import { getProduct, getReleaseOptions } from '@/lib/data/products';
+import { getProduct } from '@/lib/data/products';
 import { getChaseIndicator, getFormatComparison, getProductExtension } from '@/lib/data/release';
-import { toDateInput } from '@/lib/form';
-import { MarketPriceForm } from '../../marche/market-price-form';
-import { deleteProductAction, setProductTargetAction, updateProductAction } from '../actions';
-import { ProductForm } from '../product-form';
-import { ListingRow } from './listing-row';
+import { setProductTargetAction } from '../actions';
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -58,15 +53,13 @@ export default async function ProductPage({ params, searchParams }: Props) {
 
   const extension = await getProductExtension(product.id);
   const showChase = product.type === 'DISPLAY' || product.type === 'ETB';
-  const [history, releases, alerts, marketPrices, retailers, formats, chase] = await Promise.all([
+  const [history, alerts, retailers, formats, chase] = await Promise.all([
     getPriceHistory(id, period.days),
-    getReleaseOptions(),
     prisma.alertEvent.findMany({
       where: { productId: id },
       orderBy: { createdAt: 'desc' },
       take: 10,
     }),
-    prisma.marketPrice.findMany({ where: { productId: id }, orderBy: { date: 'desc' }, take: 5 }),
     prisma.retailer.findMany({
       where: { enabled: true, searchUrl: { not: null } },
       select: { id: true, name: true, searchUrl: true, access: true },
@@ -347,11 +340,6 @@ export default async function ProductPage({ params, searchParams }: Props) {
             <Button asChild variant="outline" size="sm">
               <a href="#autres-revendeurs">Chercher chez d’autres revendeurs</a>
             </Button>
-            <Button asChild size="sm">
-              <Link href={`/produits/ajouter?produit=${product.id}`}>
-                <Plus /> Ajouter une fiche
-              </Link>
-            </Button>
           </div>
         </CardHeader>
         <CardContent>
@@ -405,18 +393,6 @@ export default async function ProductPage({ params, searchParams }: Props) {
                 ))}
               </tbody>
             </table>
-          )}
-          {product.listings.length > 0 && (
-            <details className="mt-4 border-t pt-3">
-              <summary className="cursor-pointer text-sm font-medium text-muted-foreground hover:text-foreground">
-                Gérer les fiches (seuils, pause, relevé immédiat, suppression)
-              </summary>
-              <div className="mt-3 space-y-3">
-                {product.listings.map((l) => (
-                  <ListingRow key={l.id} listing={l} />
-                ))}
-              </div>
-            </details>
           )}
         </CardContent>
       </Card>
@@ -584,8 +560,8 @@ export default async function ProductPage({ params, searchParams }: Props) {
             <CardHeader className="flex-col">
               <CardTitle>Chercher chez d’autres revendeurs</CardTitle>
               <CardDescription>
-                Recherche « {terms} ». Copiez l’URL de la fiche trouvée dans « Ajouter une fiche
-                revendeur » pour la suivre.
+                Recherche « {terms} » sur les sites qui ne vendent pas encore ce produit dans le
+                suivi. Les nouvelles fiches sont trouvées automatiquement chaque jour.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -639,76 +615,17 @@ export default async function ProductPage({ params, searchParams }: Props) {
                     { label: 'Prix moyen 30 jours', value: history.cardmarket.avg30 },
                     { label: 'Prix moyen 7 jours', value: history.cardmarket.avg7 },
                     { label: 'Prix moyen 1 jour', value: history.cardmarket.avg1 },
-                  ].map((r) => (
-                    <div key={r.label}>
-                      <dt className="text-muted-foreground">{r.label}</dt>
-                      <dd className="font-semibold tabular-nums">{formatPrice(r.value)}</dd>
-                    </div>
-                  ))}
+                  ]
+                    .filter((r) => r.value !== null)
+                    .map((r) => (
+                      <div key={r.label}>
+                        <dt className="text-muted-foreground">{r.label}</dt>
+                        <dd className="font-semibold tabular-nums">{formatPrice(r.value)}</dd>
+                      </div>
+                    ))}
                 </dl>
               </CardContent>
             )}
-          </Card>
-
-          <Card>
-            <CardHeader className="flex-col">
-              <CardTitle>Saisie manuelle du prix marché</CardTitle>
-              <CardDescription>Prix constaté à la main — un relevé par jour.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <MarketPriceForm
-                productId={product.id}
-                today={new Date().toISOString().slice(0, 10)}
-              />
-              {marketPrices.length > 0 && (
-                <ul className="divide-y text-sm">
-                  {marketPrices.map((m) => (
-                    <li key={m.id} className="flex justify-between py-1.5">
-                      <span className="text-muted-foreground">
-                        {formatDate(m.date)} · {m.source}
-                      </span>
-                      <span className="tabular-nums">{formatPrice(toNumber(m.price))}</span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Fiche produit</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ProductForm
-                action={updateProductAction.bind(null, product.id)}
-                releases={releases.map((r) => ({
-                  id: r.id,
-                  label: r.setCode ? `${r.nameFr} (${r.setCode})` : r.nameFr,
-                }))}
-                values={{
-                  name: product.name,
-                  type: product.type,
-                  releaseId: product.release?.id,
-                  ean: product.ean,
-                  imageUrl: product.imageUrl,
-                  brand: product.brand,
-                  description: product.description,
-                  msrp: product.msrp,
-                  targetPrice: product.targetPrice,
-                  releaseDate: toDateInput(product.releaseDate),
-                  notes: product.notes,
-                }}
-              />
-              <form
-                action={deleteProductAction.bind(null, product.id)}
-                className="mt-6 border-t pt-4"
-              >
-                <Button type="submit" variant="ghost" size="sm" className="text-destructive">
-                  <Trash2 /> Supprimer le produit et ses suivis
-                </Button>
-              </form>
-            </CardContent>
           </Card>
         </div>
       </div>

@@ -189,13 +189,6 @@ export async function getProductOptions() {
   });
 }
 
-export async function getReleaseOptions() {
-  return prisma.release.findMany({
-    select: { id: true, nameFr: true, setCode: true, productType: true },
-    orderBy: [{ releaseDate: { sort: 'desc', nulls: 'first' } }],
-  });
-}
-
 /** Produits par identifiants (comparateur des formats d'une extension). */
 export async function getProductsByIds(ids: string[]): Promise<ProductDTO[]> {
   if (ids.length === 0) return [];

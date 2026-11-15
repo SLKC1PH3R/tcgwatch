@@ -1,4 +1,4 @@
-import { Check, ChevronLeft, ChevronRight, ExternalLink, Trash2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import {
@@ -6,31 +6,19 @@ import {
   formatPrice,
   PRODUCT_TYPE_LABELS,
   todayUtc,
-  toNumber,
   type ProductTypeKey,
 } from '@tcgwatch/shared';
-import { Countdown } from '@/components/countdown';
 import { PageHeader } from '@/components/page-header';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   getCalendarEvents,
-  getReleasesForEdit,
   getUpcomingEvents,
   parseCalendarFilter,
   type CalendarEvent,
   type CalendarFilter,
 } from '@/lib/data/releases';
-import { toDateInput } from '@/lib/form';
 import { cn } from '@/lib/utils';
-import {
-  createReleaseAction,
-  deleteReleaseAction,
-  updateReleaseAction,
-  validateReleaseAction,
-} from './actions';
-import { ReleaseForm } from './release-form';
 
 export const metadata: Metadata = { title: 'Calendrier des sorties' };
 
@@ -88,13 +76,11 @@ export default async function CalendarPage({
 }: {
   searchParams: Promise<{
     mois?: string;
-    tout?: string;
-    edit?: string;
     type?: string;
     jour?: string;
   }>;
 }) {
-  const { mois, tout, edit, type, jour } = await searchParams;
+  const { mois, type, jour } = await searchParams;
   const filter = parseCalendarFilter(type);
   const selectedDay = jour && /^\d{4}-\d{2}-\d{2}$/.test(jour) ? jour : undefined;
   /** Lien du calendrier qui conserve mois et filtre. */
@@ -111,10 +97,9 @@ export default async function CalendarPage({
   const next = new Date(Date.UTC(month.getUTCFullYear(), month.getUTCMonth() + 1, 1));
   const today = todayUtc();
 
-  const [events, upcoming, releases] = await Promise.all([
+  const [events, upcoming] = await Promise.all([
     getCalendarEvents(grid[0]!, new Date(grid[41]!.getTime() + 86_400_000), filter),
     getUpcomingEvents(15, filter),
-    getReleasesForEdit(filter),
   ]);
 
   const byDay = new Map<string, CalendarEvent[]>();
@@ -126,10 +111,6 @@ export default async function CalendarPage({
   // Jour détaillé à droite : celui choisi, sinon la prochaine sortie.
   const shownDay = selectedDay ?? upcoming[0]?.date.toISOString().slice(0, 10);
 
-  const recentLimit = new Date(today.getTime() - 60 * 86_400_000);
-  const shownReleases = tout
-    ? releases
-    : releases.filter((r) => !r.releaseDate || r.releaseDate >= recentLimit);
   const monthLabel = month.toLocaleDateString('fr-FR', {
     month: 'long',
     year: 'numeric',
@@ -141,11 +122,6 @@ export default async function CalendarPage({
       <PageHeader
         title="Calendrier des sorties"
         description="Extensions (TCGdex) et produits scellés FR (Pokécardex), enrichis par les dates « Sortie prévue le » des revendeurs."
-        actions={
-          <Button asChild>
-            <a href="#ajouter-sortie">Ajouter une sortie</a>
-          </Button>
-        }
       />
 
       <nav aria-label="Filtrer par type" className="mb-4 flex flex-wrap gap-1.5">
@@ -285,130 +261,6 @@ export default async function CalendarPage({
           </Card>
         </div>
       </div>
-
-      <div className="mt-6 grid gap-6 xl:grid-cols-[1fr_340px] [&>*]:min-w-0">
-        <Card>
-          <CardHeader>
-            <div className="space-y-1">
-              <CardTitle>Sorties</CardTitle>
-              <CardDescription>
-                {tout ? 'Toutes les sorties.' : 'À venir et 60 derniers jours.'}{' '}
-                <Link
-                  href={tout ? '/calendrier' : '/calendrier?tout=1'}
-                  className="text-primary hover:underline"
-                >
-                  {tout ? 'Masquer les anciennes' : 'Tout afficher'}
-                </Link>
-              </CardDescription>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <ul className="divide-y">
-              {shownReleases.map((r) => (
-                <li key={r.id} id={`release-${r.id}`} className="scroll-mt-20 py-3">
-                  <details open={edit === r.id}>
-                    <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-2">
-                      <div className="flex min-w-0 items-center gap-3">
-                        {r.imageUrl ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            referrerPolicy="no-referrer"
-                            src={r.imageUrl}
-                            alt=""
-                            className="h-8 w-16 shrink-0 object-contain"
-                            loading="lazy"
-                          />
-                        ) : (
-                          <div className="h-8 w-16 shrink-0 rounded bg-muted" />
-                        )}
-                        <div className="min-w-0">
-                          <p className="truncate font-medium">
-                            {r.nameFr}{' '}
-                            {r.setCode && (
-                              <span className="text-muted-foreground">({r.setCode})</span>
-                            )}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {formatDate(r.releaseDate)}
-                            {r.productType &&
-                              ` · ${PRODUCT_TYPE_LABELS[r.productType as ProductTypeKey]}`}
-                            {r.msrp !== null && ` · ${formatPrice(toNumber(r.msrp))}`}
-                            {` · ${SOURCE_LABEL[r.source] ?? r.source}`}
-                            {r._count.products > 0 && ` · ${r._count.products} produit(s)`}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {r.releaseDate && r.releaseDate >= today && (
-                          <Countdown date={r.releaseDate} />
-                        )}
-                        <Badge variant={r.status === 'VALIDATED' ? 'success' : 'warning'}>
-                          {r.status === 'VALIDATED' ? 'Validé' : 'Auto'}
-                        </Badge>
-                        <span className="text-xs text-primary">Modifier</span>
-                      </div>
-                    </summary>
-                    <div className="mt-4 space-y-3 rounded-lg border p-4">
-                      <ReleaseForm
-                        action={updateReleaseAction.bind(null, r.id)}
-                        submitLabel="Enregistrer et valider"
-                        values={{
-                          id: r.id,
-                          nameFr: r.nameFr,
-                          setCode: r.setCode,
-                          releaseDate: toDateInput(r.releaseDate),
-                          productType: r.productType,
-                          imageUrl: r.imageUrl,
-                          notes: r.notes,
-                          status: r.status,
-                        }}
-                      />
-                      <div className="flex flex-wrap gap-2 border-t pt-3">
-                        {r.sourceUrl && (
-                          <Button asChild size="sm" variant="ghost">
-                            <a href={r.sourceUrl} target="_blank" rel="noopener noreferrer">
-                              Source : {SOURCE_LABEL[r.source] ?? r.source} <ExternalLink />
-                            </a>
-                          </Button>
-                        )}
-                        {r.status === 'AUTO' && (
-                          <form action={validateReleaseAction.bind(null, r.id)}>
-                            <Button size="sm" variant="success" type="submit">
-                              <Check /> Valider tel quel
-                            </Button>
-                          </form>
-                        )}
-                        <form action={deleteReleaseAction.bind(null, r.id)}>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            type="submit"
-                            className="text-destructive"
-                          >
-                            <Trash2 /> Supprimer
-                          </Button>
-                        </form>
-                      </div>
-                    </div>
-                  </details>
-                </li>
-              ))}
-            </ul>
-          </CardContent>
-        </Card>
-
-        <Card id="ajouter-sortie" className="scroll-mt-24 self-start">
-          <CardHeader className="flex-col">
-            <CardTitle>Ajouter une sortie</CardTitle>
-            <CardDescription>
-              Coffret spécial, UPC, date annoncée… (statut « validé »).
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ReleaseForm action={createReleaseAction} submitLabel="Ajouter" />
-          </CardContent>
-        </Card>
-      </div>
     </>
   );
 }
@@ -512,15 +364,10 @@ function DayPanel({ day, events }: { day: string | undefined; events: CalendarEv
                   {main.href.startsWith('/extensions/') ? 'Voir l’extension' : 'Voir le produit'}
                 </Link>
               </Button>
-              {main.kind === 'release' && (
-                <Button asChild size="sm" variant="outline">
-                  <Link href={`/calendrier?edit=${main.id}#release-${main.id}`}>Modifier</Link>
-                </Button>
-              )}
             </div>
             <p className="text-xs text-muted-foreground">
-              Statut : {main.status === 'VALIDATED' ? 'validé' : 'auto'}
-              {main.source ? ` · ${SOURCE_LABEL[main.source] ?? main.source}` : ''}
+              Source :{' '}
+              {main.source ? (SOURCE_LABEL[main.source] ?? main.source) : 'import automatique'}
             </p>
           </>
         ) : (

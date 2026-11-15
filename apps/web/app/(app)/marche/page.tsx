@@ -1,4 +1,3 @@
-import { Trash2 } from 'lucide-react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { prisma } from '@tcgwatch/db';
@@ -16,7 +15,6 @@ import { getEnv } from '@tcgwatch/shared/env';
 import { PageHeader } from '@/components/page-header';
 import { Thumb } from '@/components/thumb';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Table,
@@ -29,10 +27,7 @@ import {
 import { latestMarketPrices } from '@/lib/data/collection';
 import { bestOffer, getProducts } from '@/lib/data/products';
 import { cn } from '@/lib/utils';
-import { deleteChaseCardAction } from './actions';
-import { ChaseCardForm } from './chase-card-form';
 import { Sparkline } from '@/components/sparkline';
-import { MarketPriceForm } from './market-price-form';
 
 export const metadata: Metadata = { title: 'Marché secondaire' };
 
@@ -50,7 +45,7 @@ export default async function MarketPage({
 }) {
   const { periode } = await searchParams;
   const period: Period = PERIODS.some((p) => p.value === periode) ? (periode as Period) : 'recent';
-  const [products, market, cards, releases] = await Promise.all([
+  const [products, market, cards] = await Promise.all([
     getProducts(),
     latestMarketPrices(),
     prisma.chaseCard.findMany({
@@ -60,11 +55,6 @@ export default async function MarketPage({
         prices: { orderBy: { date: 'desc' }, take: 30 },
       },
       orderBy: [{ release: { releaseDate: 'desc' } }, { name: 'asc' }],
-    }),
-    prisma.release.findMany({
-      where: { tcgdexId: { not: null } },
-      select: { id: true, nameFr: true, setCode: true },
-      orderBy: { releaseDate: { sort: 'desc', nulls: 'last' } },
     }),
   ]);
   const providers = createMarketProviders(getEnv());
@@ -243,7 +233,6 @@ export default async function MarketPage({
                       <TableHead className="text-right">Prix</TableHead>
                       <TableHead className="text-right">Variation</TableHead>
                       <TableHead className="text-center">30 derniers relevés</TableHead>
-                      <TableHead />
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -295,19 +284,6 @@ export default async function MarketPage({
                                 .reverse()}
                             />
                           </TableCell>
-                          <TableCell>
-                            <form action={deleteChaseCardAction.bind(null, c.id)}>
-                              <Button
-                                size="icon"
-                                variant="ghost"
-                                type="submit"
-                                aria-label="Retirer"
-                                className="text-destructive"
-                              >
-                                <Trash2 />
-                              </Button>
-                            </form>
-                          </TableCell>
                         </TableRow>
                       );
                     })}
@@ -319,35 +295,6 @@ export default async function MarketPage({
         </div>
 
         <div className="space-y-6">
-          <Card>
-            <CardHeader className="flex-col">
-              <CardTitle>Saisir un prix Cardmarket</CardTitle>
-              <CardDescription>
-                Une saisie par jour et par produit (la dernière remplace la précédente).
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <MarketPriceForm
-                products={products.map((p) => ({ id: p.id, name: p.name }))}
-                today={new Date().toISOString().slice(0, 10)}
-              />
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Suivre une carte phare</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ChaseCardForm
-                releases={releases.map((r) => ({
-                  id: r.id,
-                  label: r.setCode ? `${r.nameFr} (${r.setCode})` : r.nameFr,
-                }))}
-              />
-            </CardContent>
-          </Card>
-
           <Card>
             <CardHeader>
               <CardTitle>Sources de prix</CardTitle>

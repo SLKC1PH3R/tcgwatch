@@ -62,16 +62,3 @@ export function firstIssue(error: z.ZodError): string {
 }
 
 /** Date → valeur d'<input type="date">. */
-export function toDateInput(d: Date | null | undefined): string {
-  return d ? d.toISOString().slice(0, 10) : '';
-}
-
-export function slugify(input: string): string {
-  return input
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 80);
-}

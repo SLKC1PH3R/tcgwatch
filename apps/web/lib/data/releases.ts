@@ -112,11 +112,3 @@ export async function getUpcomingEvents(limit = 20, filter?: CalendarFilter) {
   const to = new Date(from.getTime() + 400 * 86_400_000);
   return (await getCalendarEvents(from, to, filter)).slice(0, limit);
 }
-
-export async function getReleasesForEdit(filter?: CalendarFilter) {
-  return prisma.release.findMany({
-    where: releaseWhere(filter),
-    orderBy: [{ releaseDate: { sort: 'desc', nulls: 'first' } }, { nameFr: 'asc' }],
-    include: { _count: { select: { products: true } } },
-  });
-}

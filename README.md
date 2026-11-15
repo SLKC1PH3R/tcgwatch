@@ -21,9 +21,8 @@ prix du marché secondaire et valorisation de sa collection.
   (gratuite, sans clé) et des **produits scellés FR** (displays, ETB, tripacks, coffrets, UPC…, avec
   image et prix conseillé) depuis le [calendrier Pokécardex](https://www.pokecardex.com/calendrier),
   enrichi par les dates « Sortie prévue le … » détectées sur les fiches revendeurs.
-  Vue mensuelle filtrable par type, détail d'un jour, liste « à venir » avec compte à rebours,
-  édition et validation manuelles (statuts `auto` / `validé` : une sortie validée n'est plus modifiée
-  par les imports).
+  Vue mensuelle filtrable par type (une couleur par type), détail du jour choisi, liste « à venir »
+  avec compte à rebours. Entièrement automatique : aucune saisie ni modification manuelle.
 - **Pages extension** (`/extensions/me06`, ouvertes depuis le calendrier) : logo, symbole, série,
   date de sortie FR, nombre de cartes (officielles + secrètes). Onglets **Produits** (scellés de
   l'extension avec prix conseillé, meilleur prix, stock, prix par booster et comparateur des formats),
@@ -47,9 +46,14 @@ prix du marché secondaire et valorisation de sa collection.
 - **Suivi stock & prix** : une architecture d'adaptateurs par site (JSON-LD schema.org générique, plus
   Play-In, Philibert, Cultura et Smyths Toys), une fréquence configurable par fiche, un délai aléatoire,
   une seule requête à la fois par domaine, un backoff exponentiel et le respect de `robots.txt`.
-  Formulaire « ajouter une URL » avec détection du revendeur et test immédiat. Chaque relevé récupère
+  Les fiches sont trouvées automatiquement (rayons Pokémon des boutiques). Chaque relevé récupère
   le maximum d'infos de la fiche : **galerie d'images** (dans la plus grande taille disponible),
   description, marque, EAN normalisé, référence et rayon du site.
+- **Tout est automatique** : catalogue, fiches revendeurs, prix et sorties ne se saisissent ni ne se
+  modifient à la main. Restent des préférences : prix cible d'un produit, seuils et suivi d'une
+  carte, exclusion d'un prix aberrant sur un graphique. Seule **Ma collection** se remplit à la main.
+- **Retours en stock** (`/retours-en-stock`) : chaque retour en stock (ou ouverture de précommande)
+  avec le prix, le site où acheter et la disponibilité sur les autres sites suivis.
 - **Recherche globale** (barre latérale, raccourcis `/` et Ctrl+K) : produits scellés FR avec prix
   conseillé, meilleur prix boutique et revente, extensions, et cartes Pokémon (prix Cardmarket via TCGdex).
 - **Annuaire des revendeurs** : 22 sites français vendant du Pokémon TCG (boutiques spécialisées,
@@ -87,8 +91,8 @@ prix du marché secondaire et valorisation de sa collection.
   d'alerte, mini-courbes dans le Marché. Prix marché des scellés via CardNexus (annonce FR la moins
   chère, nombre d'annonces et médiane des annonces FR), **guide des prix officiel Cardmarket**
   (fichier JSON publié chaque jour : « à partir de », tendance, moyennes 1 / 7 / 30 j, toutes langues
-  confondues ; produits liés grâce aux ids Cardmarket fournis par CardNexus), PokeTrace ou saisie
-  manuelle. **Aucune page Cardmarket n'est lue.**
+  confondues ; produits liés grâce aux ids Cardmarket fournis par CardNexus), ou PokeTrace.
+  **Aucune page Cardmarket n'est lue.**
 - **Ma collection** : quantité, prix d'achat, date, magasin, état du scellé, photo ; valeur estimée,
   plus-value latente, export CSV (compatible Excel FR).
 - **Tableau de bord** : prochaines sorties, derniers retours en stock, alertes actives, valeur de la

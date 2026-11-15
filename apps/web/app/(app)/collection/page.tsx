@@ -243,11 +243,7 @@ export default async function CollectionPage({ searchParams }: Props) {
         <CardHeader className="flex-col">
           <CardTitle>Ajouter un achat</CardTitle>
           <CardDescription>
-            Produit absent ?{' '}
-            <Link href="/produits/nouveau" className="text-primary hover:underline">
-              Créez-le
-            </Link>
-            .
+            Choisissez un produit du catalogue (importé automatiquement).
           </CardDescription>
         </CardHeader>
         <CardContent>

@@ -40,11 +40,6 @@ export default async function DashboardPage() {
         description={`${d.trackedCount} fiche${d.trackedCount > 1 ? 's' : ''} revendeur suivie${
           d.trackedCount > 1 ? 's' : ''
         }${d.lastCheckedAt ? ` · dernier relevé ${ago(d.lastCheckedAt)}` : ''}`}
-        actions={
-          <Button asChild>
-            <Link href="/produits/ajouter">Suivre une URL</Link>
-          </Button>
-        }
       />
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)] [&>*]:min-w-0">
