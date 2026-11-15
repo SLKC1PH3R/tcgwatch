@@ -105,16 +105,25 @@ export async function getTopPriceMoves(limit = 6): Promise<PriceMove[]> {
 }
 
 export async function getDashboard() {
-  const [upcoming, restocks, alerts, collection, moves, trackedCount, collectionHistory] =
-    await Promise.all([
-      getUpcomingEvents(6),
-      getRecentRestocks(),
-      getActiveAlerts(),
-      getCollection(),
-      getTopPriceMoves(),
-      prisma.listing.count({ where: { state: { not: 'PAUSED' } } }),
-      getCollectionHistory(365),
-    ]);
+  const [
+    upcoming,
+    restocks,
+    alerts,
+    collection,
+    moves,
+    trackedCount,
+    lastCheck,
+    collectionHistory,
+  ] = await Promise.all([
+    getUpcomingEvents(6),
+    getRecentRestocks(),
+    getActiveAlerts(),
+    getCollection(),
+    getTopPriceMoves(),
+    prisma.listing.count({ where: { state: { not: 'PAUSED' } } }),
+    prisma.listing.aggregate({ _max: { lastCheckedAt: true } }),
+    getCollectionHistory(365),
+  ]);
   return {
     upcoming,
     restocks,
@@ -124,5 +133,6 @@ export async function getDashboard() {
     collectionHistory,
     moves,
     trackedCount,
+    lastCheckedAt: lastCheck._max.lastCheckedAt,
   };
 }

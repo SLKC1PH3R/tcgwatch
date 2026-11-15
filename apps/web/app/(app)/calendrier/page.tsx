@@ -11,7 +11,6 @@ import {
 } from '@tcgwatch/shared';
 import { Countdown } from '@/components/countdown';
 import { PageHeader } from '@/components/page-header';
-import { Thumb } from '@/components/thumb';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -124,6 +123,9 @@ export default async function CalendarPage({
     byDay.set(k, [...(byDay.get(k) ?? []), e]);
   }
 
+  // Jour détaillé à droite : celui choisi, sinon la prochaine sortie.
+  const shownDay = selectedDay ?? upcoming[0]?.date.toISOString().slice(0, 10);
+
   const recentLimit = new Date(today.getTime() - 60 * 86_400_000);
   const shownReleases = tout
     ? releases
@@ -138,7 +140,12 @@ export default async function CalendarPage({
     <>
       <PageHeader
         title="Calendrier des sorties"
-        description="Import quotidien des extensions (TCGdex) et des produits scellés FR (Pokécardex), enrichi par les dates « Sortie prévue le » des revendeurs."
+        description="Extensions (TCGdex) et produits scellés FR (Pokécardex), enrichis par les dates « Sortie prévue le » des revendeurs."
+        actions={
+          <Button asChild>
+            <a href="#ajouter-sortie">Ajouter une sortie</a>
+          </Button>
+        }
       />
 
       <nav aria-label="Filtrer par type" className="mb-4 flex flex-wrap gap-1.5">
@@ -148,44 +155,45 @@ export default async function CalendarPage({
             href={href({ type: f.value, jour: undefined })}
             aria-current={filter === f.value ? 'page' : undefined}
             className={cn(
-              'rounded-full border px-3 py-1 text-xs font-medium transition-colors hover:bg-accent',
+              'flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold transition-colors hover:bg-accent',
               filter === f.value &&
-                'border-primary bg-primary text-primary-foreground hover:bg-primary/90',
+                'border-foreground bg-foreground text-background hover:bg-foreground',
             )}
           >
+            <span aria-hidden className={cn('size-1.5 rounded-full', dotClass(f.value ?? 'ALL'))} />
             {f.label}
           </Link>
         ))}
       </nav>
 
-      <div className="grid gap-6 xl:grid-cols-[1fr_340px] [&>*]:min-w-0">
+      <div className="grid gap-5 xl:grid-cols-[1fr_360px] [&>*]:min-w-0">
         <Card>
           <CardHeader className="items-center">
             <CardTitle className="capitalize">{monthLabel}</CardTitle>
-            <div className="flex gap-1">
+            <div className="flex gap-1.5">
               <Button asChild size="icon" variant="outline" aria-label="Mois précédent">
-                <Link href={href({ mois: monthKey(prev) })}>
+                <Link href={href({ mois: monthKey(prev), jour: undefined })}>
                   <ChevronLeft />
                 </Link>
               </Button>
               <Button asChild size="sm" variant="outline">
-                <Link href={href({ mois: undefined })}>Aujourd’hui</Link>
+                <Link href={href({ mois: undefined, jour: undefined })}>Aujourd’hui</Link>
               </Button>
               <Button asChild size="icon" variant="outline" aria-label="Mois suivant">
-                <Link href={href({ mois: monthKey(next) })}>
+                <Link href={href({ mois: monthKey(next), jour: undefined })}>
                   <ChevronRight />
                 </Link>
               </Button>
             </div>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-7 overflow-hidden rounded-lg border text-sm">
+            <div className="grid grid-cols-7 gap-1.5 text-sm">
               {WEEKDAYS.map((d) => (
                 <div
                   key={d}
-                  className="border-b bg-muted/50 px-2 py-1.5 text-center text-xs font-medium text-muted-foreground"
+                  className="px-1 pb-1 text-[11px] font-semibold tracking-wide text-muted-foreground uppercase"
                 >
-                  {d}
+                  {d}.
                 </div>
               ))}
               {grid.map((day) => {
@@ -197,18 +205,18 @@ export default async function CalendarPage({
                   <div
                     key={k}
                     className={cn(
-                      'min-h-20 border-r border-b p-1 last:border-r-0 sm:min-h-24 [&:nth-child(7n)]:border-r-0',
-                      !inMonth && 'bg-muted/30 text-muted-foreground',
-                      k === selectedDay && 'bg-primary/5 ring-2 ring-primary ring-inset',
+                      'min-h-16 rounded-lg border border-transparent bg-secondary/60 p-1.5 sm:min-h-20',
+                      !inMonth && 'bg-secondary/25 text-muted-foreground/60',
+                      isToday && 'border-muted-foreground/60',
+                      k === shownDay && 'border-primary',
                     )}
                   >
                     <Link
                       href={href({ mois: monthKey(month), jour: k })}
                       aria-label={`Sorties du ${formatDate(day)}`}
                       className={cn(
-                        'inline-flex size-6 items-center justify-center rounded-full text-xs hover:bg-accent',
-                        isToday &&
-                          'bg-primary font-semibold text-primary-foreground hover:bg-primary/90',
+                        'text-xs font-semibold hover:underline',
+                        isToday && 'text-primary',
                       )}
                     >
                       {day.getUTCDate()}
@@ -220,23 +228,19 @@ export default async function CalendarPage({
                           href={e.href}
                           title={e.title}
                           className={cn(
-                            'block truncate rounded px-1 py-0.5 text-[11px] leading-tight font-medium',
-                            e.kind === 'release'
-                              ? 'bg-primary/15 text-primary'
-                              : 'bg-chart-2/20 text-foreground',
+                            'block truncate rounded px-1.5 py-0.5 text-[10px] leading-tight font-semibold',
+                            chipClass(eventType(e)),
                           )}
                         >
-                          {e.subtitle && e.kind === 'release' ? `${e.subtitle} · ` : ''}
-                          {e.title}
+                          {eventLabel(e)}
                         </Link>
                       ))}
                       {dayEvents.length > MAX_PER_DAY && (
                         <Link
                           href={href({ mois: monthKey(month), jour: k })}
-                          className="block rounded px-1 text-[11px] font-medium text-muted-foreground hover:text-foreground"
+                          className="block px-1 text-[10px] font-semibold text-muted-foreground hover:text-foreground"
                         >
-                          +{dayEvents.length - MAX_PER_DAY} autre
-                          {dayEvents.length - MAX_PER_DAY > 1 ? 's' : ''}
+                          +{dayEvents.length - MAX_PER_DAY}
                         </Link>
                       )}
                     </div>
@@ -244,42 +248,42 @@ export default async function CalendarPage({
                 );
               })}
             </div>
-            <p className="mt-3 flex flex-wrap gap-3 text-xs text-muted-foreground">
-              <span className="flex items-center gap-1">
-                <span className="size-3 rounded bg-primary/15" /> Sortie / extension
-              </span>
-              <span className="flex items-center gap-1">
-                <span className="size-3 rounded bg-chart-2/20" /> Date propre à un produit
-                (revendeur)
-              </span>
-            </p>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>
-              {selectedDay
-                ? `Sorties du ${formatDate(new Date(`${selectedDay}T00:00:00Z`))}`
-                : 'À venir'}
-            </CardTitle>
-            {selectedDay && (
-              <Link
-                href={href({ jour: undefined })}
-                className="text-xs text-primary hover:underline"
-              >
-                Voir « À venir »
-              </Link>
-            )}
-          </CardHeader>
-          <CardContent>
-            <EventList
-              events={selectedDay ? (byDay.get(selectedDay) ?? []) : upcoming}
-              showDate={!selectedDay}
-              empty={selectedDay ? 'Aucune sortie ce jour-là.' : 'Aucune sortie à venir connue.'}
-            />
-          </CardContent>
-        </Card>
+        <div className="space-y-5">
+          <DayPanel day={shownDay} events={shownDay ? (byDay.get(shownDay) ?? []) : []} />
+          <Card>
+            <CardHeader>
+              <CardTitle>À venir</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {upcoming.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Aucune sortie à venir connue.</p>
+              ) : (
+                <ul className="divide-y">
+                  {upcoming.map((e) => (
+                    <li key={`${e.kind}-${e.id}`} className="flex items-center gap-3 py-2.5">
+                      <div className="min-w-0 flex-1">
+                        <Link
+                          href={e.href}
+                          className="block truncate text-sm font-semibold hover:underline"
+                          title={e.title}
+                        >
+                          {upcomingTitle(e)}
+                        </Link>
+                        <p className="text-xs text-muted-foreground">{shortDate.format(e.date)}</p>
+                      </div>
+                      <span className="shrink-0 text-xs font-bold text-primary tabular-nums">
+                        {countdown(e.date)}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </CardContent>
+          </Card>
+        </div>
       </div>
 
       <div className="mt-6 grid gap-6 xl:grid-cols-[1fr_340px] [&>*]:min-w-0">
@@ -393,7 +397,7 @@ export default async function CalendarPage({
           </CardContent>
         </Card>
 
-        <Card className="self-start">
+        <Card id="ajouter-sortie" className="scroll-mt-24 self-start">
           <CardHeader className="flex-col">
             <CardTitle>Ajouter une sortie</CardTitle>
             <CardDescription>
@@ -409,39 +413,120 @@ export default async function CalendarPage({
   );
 }
 
-function EventList({
-  events,
-  showDate,
-  empty,
-}: {
-  events: CalendarEvent[];
-  showDate: boolean;
-  empty: string;
-}) {
-  if (events.length === 0) return <p className="text-sm text-muted-foreground">{empty}</p>;
+/** Couleur de chaque type de sortie (pastilles des filtres et cases du calendrier). */
+const TYPE_COLOR: Record<string, { dot: string; chip: string }> = {
+  ALL: { dot: 'bg-current', chip: '' },
+  extension: { dot: 'bg-foreground', chip: 'bg-foreground/15 text-foreground' },
+  ETB: { dot: 'bg-chart-2', chip: 'bg-chart-2/25 text-chart-2' },
+  DISPLAY: { dot: 'bg-chart-3', chip: 'bg-chart-3/20 text-chart-3' },
+  TRIPACK: { dot: 'bg-chart-4', chip: 'bg-chart-4/20 text-chart-4' },
+  COFFRET: { dot: 'bg-chart-5', chip: 'bg-chart-5/20 text-chart-5' },
+  BOOSTER: { dot: 'bg-primary', chip: 'bg-primary/20 text-primary' },
+  BLISTER: { dot: 'bg-primary', chip: 'bg-primary/20 text-primary' },
+  MINI_TIN: { dot: 'bg-chart-5', chip: 'bg-chart-5/20 text-chart-5' },
+};
+const OTHER_COLOR = { dot: 'bg-muted-foreground', chip: 'bg-muted-foreground/20 text-foreground' };
+const dotClass = (type: string) => (TYPE_COLOR[type] ?? OTHER_COLOR).dot;
+const chipClass = (type: string) => (TYPE_COLOR[type] ?? OTHER_COLOR).chip;
+
+/** Type d'une sortie : « extension » pour une extension TCGdex, sinon le type de produit. */
+const eventType = (e: CalendarEvent) =>
+  e.productType ?? (e.href.startsWith('/extensions/') ? 'extension' : 'AUTRE');
+/** Libellé court dans une case : type de produit, ou nom de l'extension. */
+const eventLabel = (e: CalendarEvent) =>
+  e.productType ? (typeLabel(e.productType) ?? e.title) : e.title;
+const upcomingTitle = (e: CalendarEvent) =>
+  e.productType && e.subtitle && !e.title.includes(e.subtitle)
+    ? `${typeLabel(e.productType)} — ${e.subtitle}`
+    : e.title;
+
+const shortDate = new Intl.DateTimeFormat('fr-FR', {
+  weekday: 'short',
+  day: 'numeric',
+  month: 'short',
+  timeZone: 'UTC',
+});
+const longDate = new Intl.DateTimeFormat('fr-FR', {
+  weekday: 'long',
+  day: 'numeric',
+  month: 'long',
+  timeZone: 'UTC',
+});
+function countdown(date: Date): string {
+  const days = Math.round((date.getTime() - todayUtc().getTime()) / 86_400_000);
+  if (days === 0) return 'Jour J';
+  return days > 0 ? `J-${days}` : `J+${-days}`;
+}
+
+/** Détail du jour choisi : extension et produits qui sortent, prix conseillés. */
+function DayPanel({ day, events }: { day: string | undefined; events: CalendarEvent[] }) {
+  if (!day) {
+    return (
+      <Card className="holo-frame">
+        <CardContent className="py-8 text-center text-sm text-muted-foreground">
+          Cliquez sur un jour pour voir ses sorties.
+        </CardContent>
+      </Card>
+    );
+  }
+  const date = new Date(`${day}T00:00:00Z`);
+  const main = events.find((e) => e.href.startsWith('/extensions/')) ?? events[0];
+  const items = events.filter((e) => e !== main || events.length === 1);
   return (
-    <ul className="divide-y">
-      {events.map((e) => (
-        <li key={`${e.kind}-${e.id}`} className="flex items-center gap-3 py-2">
-          <Thumb src={e.imageUrl} className="size-11" />
-          <div className="min-w-0 flex-1">
-            <Link href={e.href} className="line-clamp-2 text-sm font-medium hover:underline">
-              {e.title}
+    <Card className="holo-frame">
+      <CardContent className="space-y-3 pt-5">
+        <p className="text-xs text-muted-foreground first-letter:uppercase">
+          {longDate.format(date)} · {countdown(date)}
+        </p>
+        {main ? (
+          <>
+            <Link
+              href={main.href}
+              className="block font-display text-xl leading-tight font-bold hover:underline"
+            >
+              {main.productType ? (main.subtitle ?? main.title) : main.title}
             </Link>
+            <ul className="divide-y border-y text-sm">
+              {items.map((e) => (
+                <li key={`${e.kind}-${e.id}`} className="flex items-center gap-2 py-2">
+                  <span
+                    aria-hidden
+                    className={cn('size-1.5 shrink-0 rounded-full', dotClass(eventType(e)))}
+                  />
+                  <Link
+                    href={e.href}
+                    className="min-w-0 flex-1 truncate hover:underline"
+                    title={e.title}
+                  >
+                    {e.title}
+                  </Link>
+                  <span className="shrink-0 text-muted-foreground tabular-nums">
+                    {e.msrp !== null ? formatPrice(e.msrp) : '—'}
+                  </span>
+                </li>
+              ))}
+            </ul>
+            <div className="flex flex-wrap gap-2">
+              <Button asChild size="sm" variant="secondary">
+                <Link href={main.href}>
+                  {main.href.startsWith('/extensions/') ? 'Voir l’extension' : 'Voir le produit'}
+                </Link>
+              </Button>
+              {main.kind === 'release' && (
+                <Button asChild size="sm" variant="outline">
+                  <Link href={`/calendrier?edit=${main.id}#release-${main.id}`}>Modifier</Link>
+                </Button>
+              )}
+            </div>
             <p className="text-xs text-muted-foreground">
-              {[
-                showDate ? formatDate(e.date) : null,
-                typeLabel(e.productType),
-                e.msrp !== null ? formatPrice(e.msrp) : null,
-                e.status === 'AUTO' ? 'à valider' : null,
-              ]
-                .filter(Boolean)
-                .join(' · ')}
+              Statut : {main.status === 'VALIDATED' ? 'validé' : 'auto'}
+              {main.source ? ` · ${SOURCE_LABEL[main.source] ?? main.source}` : ''}
             </p>
-          </div>
-          {showDate && <Countdown date={e.date} />}
-        </li>
-      ))}
-    </ul>
+          </>
+        ) : (
+          <p className="text-sm text-muted-foreground">Aucune sortie ce jour-là.</p>
+        )}
+      </CardContent>
+    </Card>
   );
 }

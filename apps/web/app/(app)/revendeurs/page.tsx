@@ -1,29 +1,37 @@
-import { ExternalLink, Plus } from 'lucide-react';
+import { Power } from 'lucide-react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import {
-  RETAILER_ACCESS_LABELS,
-  RETAILER_KIND_LABELS,
-  type RetailerAccess,
-  type RetailerKind,
-} from '@tcgwatch/adapters';
+import type { RetailerAccess, RetailerKind } from '@tcgwatch/adapters';
 import { PageHeader } from '@/components/page-header';
-import { SiteIcon } from '@/components/site-icon';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { EXCLUDED_SITES, getRetailers, type RetailerRow } from '@/lib/data/retailers';
+import { cn } from '@/lib/utils';
 import { toggleRetailerAction } from './actions';
 
 export const metadata: Metadata = { title: 'Revendeurs' };
 
 const KIND_ORDER: RetailerKind[] = ['SPECIALIST', 'CULTURE', 'TOYS', 'SUPERMARKET', 'OTHER'];
+const ACCESS_ORDER: RetailerAccess[] = ['OK', 'BROWSER', 'LIMITED', 'UNTESTED'];
+const KIND_TITLE: Record<RetailerKind, string> = {
+  SPECIALIST: 'Boutiques spécialisées',
+  CULTURE: 'Enseignes culturelles',
+  TOYS: 'Jouets',
+  SUPERMARKET: 'Grandes surfaces',
+  OTHER: 'Autres sites',
+};
+const ACCESS_LABEL: Record<RetailerAccess, string> = {
+  OK: 'Fiable',
+  BROWSER: 'Via Chromium',
+  LIMITED: 'Bloqué',
+  UNTESTED: 'Non testé',
+};
 
-const ACCESS_VARIANT: Record<RetailerAccess, 'success' | 'info' | 'destructive' | 'secondary'> = {
-  OK: 'success',
-  BROWSER: 'info',
-  LIMITED: 'destructive',
-  UNTESTED: 'secondary',
+/** Statut de relevé : pastille et badge (Fiable, Via Chromium, Bloqué, Non testé). */
+const ACCESS_STYLE: Record<RetailerAccess, { dot: string; badge: string }> = {
+  OK: { dot: 'bg-success', badge: 'bg-success/15 text-success' },
+  BROWSER: { dot: 'bg-info', badge: 'bg-info/15 text-info' },
+  LIMITED: { dot: 'bg-chart-5', badge: 'bg-chart-5/15 text-chart-5' },
+  UNTESTED: { dot: 'bg-muted-foreground', badge: 'bg-secondary text-muted-foreground' },
 };
 
 const ACCESS_HELP: Record<RetailerAccess, string> = {
@@ -39,103 +47,131 @@ export default async function RetailersPage() {
     kind,
     items: retailers.filter((r) => r.kind === kind),
   })).filter((g) => g.items.length > 0);
-  const reliable = retailers.filter((r) => r.access === 'OK').length;
+  const byAccess = Object.fromEntries(
+    ACCESS_ORDER.map((a) => [a, retailers.filter((r) => r.access === a).length]),
+  ) as Record<RetailerAccess, number>;
 
   return (
     <>
-      <PageHeader
-        title="Revendeurs"
-        description={`${retailers.length} sites français vendant du Pokémon TCG, dont ${reliable} relevés de façon fiable.`}
-        actions={
-          <Button asChild>
-            <Link href="/produits/ajouter">
-              <Plus /> Ajouter une URL
-            </Link>
-          </Button>
-        }
-      />
+      <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
+        <PageHeader
+          title="Revendeurs"
+          description={`${retailers.length} sites français vendant du Pokémon TCG, dont ${byAccess.OK} relevés de façon fiable. ${EXCLUDED_SITES.join(', ').replace(/, ([^,]*)$/, ' et $1')} sont volontairement exclus.`}
+        />
+        <p className="mb-6 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+          {ACCESS_ORDER.map((a) => (
+            <span key={a} className="flex items-center gap-1.5" title={ACCESS_HELP[a]}>
+              <span aria-hidden className={cn('size-1.5 rounded-full', ACCESS_STYLE[a].dot)} />
+              {ACCESS_LABEL[a]} · {byAccess[a]}
+            </span>
+          ))}
+        </p>
+      </div>
 
       <div className="space-y-8">
         {groups.map((g) => (
           <section key={g.kind} className="space-y-3">
-            <h2 className="text-sm font-semibold tracking-wide text-muted-foreground uppercase">
-              {RETAILER_KIND_LABELS[g.kind]}
+            <h2 className="font-display text-lg font-bold">
+              {KIND_TITLE[g.kind]}{' '}
+              <span className="text-sm font-normal text-muted-foreground">· {g.items.length}</span>
             </h2>
-            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {g.items.map((r) => (
                 <RetailerCard key={r.domain} retailer={r} />
               ))}
             </div>
           </section>
         ))}
-
-        <Card>
-          <CardHeader className="flex-col">
-            <CardTitle>Non pris en charge</CardTitle>
-            <CardDescription>
-              {EXCLUDED_SITES.join(', ')} : protections anti-bot agressives et CGU interdisant les
-              relevés automatisés. TCGWatch n’y fait aucune requête et n’achète jamais rien à votre
-              place.
-            </CardDescription>
-          </CardHeader>
-        </Card>
       </div>
     </>
   );
 }
 
+/** « Play-In » → « P », « BCD Jeux » → « BJ », « Le Coin des Barons » → « LC ». */
+function initials(name: string) {
+  const words = name
+    .replace(/[^\p{L}\p{N} ]/gu, ' ')
+    .split(/\s+/)
+    .filter(Boolean);
+  if (words.length === 1) return words[0]![0]!.toUpperCase();
+  return (words[0]![0]! + words[1]![0]!).toUpperCase();
+}
+
 function RetailerCard({ retailer: r }: { retailer: RetailerRow }) {
+  const style = ACCESS_STYLE[r.access];
   return (
-    <Card className={r.enabled ? 'gap-3' : 'gap-3 opacity-60'}>
-      <CardHeader className="items-start gap-3">
-        <div className="flex min-w-0 items-center gap-3">
-          <SiteIcon websiteUrl={r.websiteUrl} name={r.name} />
-          <div className="min-w-0">
-            <CardTitle className="truncate">{r.name}</CardTitle>
-            <p className="truncate text-xs text-muted-foreground">{r.domain}</p>
-          </div>
+    <div
+      className={cn(
+        'flex flex-col gap-3 rounded-2xl border bg-card p-4',
+        !r.enabled && 'opacity-60',
+      )}
+    >
+      <div className="flex items-start gap-3">
+        <span
+          aria-hidden
+          className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-secondary text-xs font-bold"
+        >
+          {initials(r.name)}
+        </span>
+        <div className="min-w-0 flex-1">
+          <a
+            href={r.websiteUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            title={r.notes ?? r.domain}
+            className="line-clamp-2 font-semibold hover:underline"
+          >
+            {r.name}
+          </a>
+          <p className="text-xs text-muted-foreground">
+            {r.listings === 0
+              ? 'Aucune fiche suivie'
+              : `${r.listings} fiche${r.listings > 1 ? 's' : ''} suivie${r.listings > 1 ? 's' : ''} · ${r.buyable} achetable${r.buyable > 1 ? 's' : ''}`}
+            {!r.enabled && ' · relevés désactivés'}
+          </p>
         </div>
-        <Badge variant={ACCESS_VARIANT[r.access]} title={ACCESS_HELP[r.access]}>
-          {RETAILER_ACCESS_LABELS[r.access]}
-        </Badge>
-      </CardHeader>
-      <CardContent className="flex flex-1 flex-col gap-3">
-        {r.notes && <p className="text-sm text-muted-foreground">{r.notes}</p>}
-        <p className="text-sm">
-          {r.listings === 0 ? (
-            <span className="text-muted-foreground">Aucune fiche suivie</span>
-          ) : (
-            <>
-              <span className="font-medium tabular-nums">{r.listings}</span>{' '}
-              {r.listings > 1 ? 'fiches suivies' : 'fiche suivie'} ·{' '}
-              <span className="font-medium tabular-nums">{r.buyable}</span>{' '}
-              {r.buyable > 1 ? 'achetables' : 'achetable'}
-            </>
+        <span
+          title={ACCESS_HELP[r.access]}
+          className={cn(
+            'inline-flex shrink-0 items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-semibold',
+            style.badge,
           )}
-          {!r.enabled && <span className="text-muted-foreground"> · relevés désactivés</span>}
-        </p>
-        <div className="mt-auto flex flex-wrap gap-2">
-          {r.pokemonUrl && (
-            <Button asChild size="sm" variant="secondary">
-              <a href={r.pokemonUrl} target="_blank" rel="noopener noreferrer">
-                Rayon Pokémon <ExternalLink />
-              </a>
-            </Button>
-          )}
-          <Button asChild size="sm" variant="ghost">
-            <a href={r.websiteUrl} target="_blank" rel="noopener noreferrer">
-              Site <ExternalLink />
+        >
+          <span aria-hidden className={cn('size-1.5 rounded-full', style.dot)} />
+          {ACCESS_LABEL[r.access]}
+        </span>
+      </div>
+      <div className="mt-auto flex items-center gap-x-3">
+        {r.pokemonUrl && (
+          <Button asChild size="sm" variant="outline" className="rounded-full">
+            <a href={r.pokemonUrl} target="_blank" rel="noopener noreferrer">
+              Rayon Pokémon
             </a>
           </Button>
-          {r.id && (
-            <form action={toggleRetailerAction.bind(null, r.id)} className="ml-auto">
-              <Button type="submit" size="sm" variant="ghost">
-                {r.enabled ? 'Désactiver' : 'Activer'}
-              </Button>
-            </form>
-          )}
-        </div>
-      </CardContent>
-    </Card>
+        )}
+        {r.listings > 0 && (
+          <Link
+            href={`/produits?site=${encodeURIComponent(r.slug)}`}
+            className="shrink-0 text-sm font-semibold whitespace-nowrap text-primary hover:underline"
+          >
+            Voir les fiches
+          </Link>
+        )}
+        {r.id && (
+          <form action={toggleRetailerAction.bind(null, r.id)} className="ml-auto">
+            <Button
+              type="submit"
+              size="icon"
+              variant="ghost"
+              className="size-8 text-muted-foreground"
+              aria-label={r.enabled ? `Désactiver ${r.name}` : `Activer ${r.name}`}
+              title={r.enabled ? 'Désactiver les relevés' : 'Activer les relevés'}
+            >
+              <Power />
+            </Button>
+          </form>
+        )}
+      </div>
+    </div>
   );
 }

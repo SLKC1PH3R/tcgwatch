@@ -11,6 +11,7 @@ import { isBuyable } from '@tcgwatch/shared';
 export interface RetailerRow {
   /** null : site de l'annuaire pas encore synchronisé en base (worker non démarré). */
   id: string | null;
+  slug: string;
   name: string;
   domain: string;
   kind: RetailerKind;
@@ -36,6 +37,7 @@ export async function getRetailers(): Promise<RetailerRow[]> {
     seen.add(r.domain);
     return {
       id: r.id,
+      slug: r.slug,
       name: r.name,
       domain: r.domain,
       kind: r.kind !== 'OTHER' ? r.kind : (info?.kind ?? 'OTHER'),
@@ -53,6 +55,7 @@ export async function getRetailers(): Promise<RetailerRow[]> {
     if (seen.has(info.domain)) continue;
     out.push({
       id: null,
+      slug: info.slug,
       name: info.name,
       domain: info.domain,
       kind: info.kind,
