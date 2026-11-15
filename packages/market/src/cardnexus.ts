@@ -41,6 +41,16 @@ export class CardNexusProvider implements MarketPriceProvider {
     return Boolean(this.apiKey);
   }
 
+  private links = new Map<string, number>();
+
+  /**
+   * Identifiants Cardmarket des produits locaux rapprochés lors du dernier `fetchQuotes`
+   * (CardNexus les fournit dans `externalIds`) : servent au guide des prix Cardmarket.
+   */
+  cardmarketLinks(): Map<string, number> {
+    return this.links;
+  }
+
   /** Tous les produits scellés Pokémon, noms en français quand une traduction existe. */
   async sealedCatalog(): Promise<CardNexusSealed[]> {
     const all: CardNexusSealed[] = [];
@@ -76,7 +86,9 @@ export class CardNexusProvider implements MarketPriceProvider {
       .filter((p) => p.type)
       .map((p) => ({ id: p.id, name: p.name, type: p.type! }));
     const date = todayUtc();
-    const matched = quotesFromCatalog(await this.sealedCatalog(), catalog);
+    const sealed = await this.sealedCatalog();
+    this.links = cardmarketLinks(sealed, catalog);
+    const matched = quotesFromCatalog(sealed, catalog);
 
     // Médiane des annonces FR, pour les produits les plus fournis d'abord.
     const medians = new Map<number, number | null>();
@@ -199,6 +211,43 @@ export function frenchListingCount(p: CardNexusSealed): number | null {
   return counts.length ? counts.reduce((a, b) => a + b, 0) : null;
 }
 
+/**
+ * Produit local → identifiant Cardmarket, via le rapprochement prudent du catalogue CardNexus.
+ * Écarté si plusieurs produits CardNexus (ou plusieurs ids Cardmarket) visent le même produit.
+ */
+export function cardmarketLinks(
+  sealed: CardNexusSealed[],
+  catalog: CatalogProduct[],
+): Map<string, number> {
+  const hits = new Map<string, Set<number>>();
+  for (const p of sealed) {
+    if (p.languages && p.languages.length > 0 && !p.languages.includes('fr')) continue;
+    const ids = p.externalIds?.cardmarket ?? [];
+    const standard = ids.find((i) => !i.finish || i.finish === 'Standard') ?? ids[0];
+    if (!standard) continue;
+    const title = cardNexusTitle(p);
+    if (!title) continue;
+    const match = matchProduct(title, catalog);
+    if (!match) continue;
+    const set = hits.get(match.productId) ?? new Set<number>();
+    set.add(standard.id);
+    hits.set(match.productId, set);
+  }
+  // Un même produit Cardmarket pour plusieurs produits locaux : rapprochement douteux, écarté.
+  const owners = new Map<number, number>();
+  for (const ids of hits.values())
+    if (ids.size === 1) {
+      const id = [...ids][0]!;
+      owners.set(id, (owners.get(id) ?? 0) + 1);
+    }
+  const links = new Map<string, number>();
+  for (const [productId, ids] of hits) {
+    const id = [...ids][0]!;
+    if (ids.size === 1 && owners.get(id) === 1) links.set(productId, id);
+  }
+  return links;
+}
+
 export interface CatalogQuote {
   productId: string;
   cardnexusId: number;
@@ -241,6 +290,12 @@ const sealedSchema = z.object({
   productCategory: z.string().nullish(),
   languages: z.array(z.string()).nullish(),
   expansion: z.object({ name: z.string() }).partial().nullish(),
+  externalIds: z
+    .object({
+      cardmarket: z.array(z.object({ id: z.number(), finish: z.string().nullish() })).nullish(),
+    })
+    .passthrough()
+    .nullish(),
   prices: z
     .object({
       cardnexus: z

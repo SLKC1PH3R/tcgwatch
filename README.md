@@ -85,7 +85,10 @@ prix du marché secondaire et valorisation de sa collection.
   **n'importe quelle carte** suivie depuis la recherche : page par carte avec tendance, prix bas,
   moyennes 7 j et 30 j gardées séparément chaque jour via TCGdex, choix de la période, seuils
   d'alerte, mini-courbes dans le Marché. Prix marché des scellés via CardNexus (annonce FR la moins
-  chère, nombre d'annonces et médiane des annonces FR), PokeTrace ou saisie manuelle. Provider PokeTrace prévu (squelette). **Cardmarket n'est jamais scrapé.**
+  chère, nombre d'annonces et médiane des annonces FR), **guide des prix officiel Cardmarket**
+  (fichier JSON publié chaque jour : « à partir de », tendance, moyennes 1 / 7 / 30 j, toutes langues
+  confondues ; produits liés grâce aux ids Cardmarket fournis par CardNexus), PokeTrace ou saisie
+  manuelle. **Aucune page Cardmarket n'est lue.**
 - **Ma collection** : quantité, prix d'achat, date, magasin, état du scellé, photo ; valeur estimée,
   plus-value latente, export CSV (compatible Excel FR).
 - **Tableau de bord** : prochaines sorties, derniers retours en stock, alertes actives, valeur de la
@@ -175,26 +178,27 @@ Commandes utiles :
 
 La liste complète et commentée est dans [`.env.example`](.env.example). Aucun secret n'est présent dans le code.
 
-| Variable                                        | Défaut                                   | Rôle                                                                                                                            |
-| ----------------------------------------------- | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| `DATABASE_URL`                                  | **obligatoire**                          | Connexion PostgreSQL (Internal Connection URL de la base Dokploy)                                                               |
-| `APP_URL`                                       | `https://tcg.digitalstack.cloud`         | URL publique                                                                                                                    |
-| `TZ`                                            | `Europe/Paris`                           | Fuseau des crons et de l'affichage                                                                                              |
-| `ALLOW_REGISTRATION`                            | `false`                                  | Autorise d'autres inscriptions après le premier compte                                                                          |
-| `SESSION_TTL_DAYS`                              | `30`                                     | Durée des sessions                                                                                                              |
-| `COOKIE_SECURE`                                 | `true`                                   | Cookie HTTPS uniquement (`false` en local sans HTTPS)                                                                           |
-| `NTFY_URL` / `NTFY_TOKEN`                       | —                                        | Topic ntfy (ex. `https://ntfy.sh/mon-topic-secret`) et jeton optionnel                                                          |
-| `TELEGRAM_BOT_TOKEN` / `TELEGRAM_CHAT_ID`       | —                                        | Notifications Telegram (optionnel)                                                                                              |
-| `DEFAULT_CHECK_INTERVAL_MIN`                    | `30`                                     | Fréquence par défaut d'un relevé                                                                                                |
-| `SCRAPER_USER_AGENT`                            | Chrome récent                            | User-agent envoyé aux sites                                                                                                     |
-| `SCRAPER_MIN_DELAY_MS` / `SCRAPER_MAX_DELAY_MS` | `2000` / `6000`                          | Délai aléatoire entre deux requêtes d'un même domaine                                                                           |
-| `PLAYWRIGHT_ENABLED`                            | `true`                                   | Repli Chromium pour les sites rendus en JavaScript                                                                              |
-| `LISTINGS_CRON` / `TCGDEX_CRON` / `MARKET_CRON` | `* * * * *` / `0 6 * * *` / `30 6 * * *` | Planification                                                                                                                   |
-| `TCGDEX_SERIES`                                 | `*`                                      | Séries TCGdex importées : `*` = toutes (de Wizards à Méga-Évolution, promos et kits compris), ou une liste d'ids (`me,sv,swsh`) |
-| `POKECARDEX_ENABLED` / `POKECARDEX_CRON`        | `true` / `15 6 * * *`                    | Import du calendrier des produits FR de Pokécardex                                                                              |
-| `CARDNEXUS_API_KEY`                             | —                                        | Clé API CardNexus (gratuite) : annonce FR la moins chère de chaque produit scellé                                               |
-| `POKETRACE_API_KEY`                             | —                                        | Clé PokeTrace **offre Pro** (marché EU) : ventes Cardmarket FR                                                                  |
-| `SEED_IF_EMPTY`                                 | `true` (compose)                         | Seed initial au premier démarrage si la base est vide                                                                           |
+| Variable                                        | Défaut                                   | Rôle                                                                                                                                                            |
+| ----------------------------------------------- | ---------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `DATABASE_URL`                                  | **obligatoire**                          | Connexion PostgreSQL (Internal Connection URL de la base Dokploy)                                                                                               |
+| `APP_URL`                                       | `https://tcg.digitalstack.cloud`         | URL publique                                                                                                                                                    |
+| `TZ`                                            | `Europe/Paris`                           | Fuseau des crons et de l'affichage                                                                                                                              |
+| `ALLOW_REGISTRATION`                            | `false`                                  | Autorise d'autres inscriptions après le premier compte                                                                                                          |
+| `SESSION_TTL_DAYS`                              | `30`                                     | Durée des sessions                                                                                                                                              |
+| `COOKIE_SECURE`                                 | `true`                                   | Cookie HTTPS uniquement (`false` en local sans HTTPS)                                                                                                           |
+| `NTFY_URL` / `NTFY_TOKEN`                       | —                                        | Topic ntfy (ex. `https://ntfy.sh/mon-topic-secret`) et jeton optionnel                                                                                          |
+| `TELEGRAM_BOT_TOKEN` / `TELEGRAM_CHAT_ID`       | —                                        | Notifications Telegram (optionnel)                                                                                                                              |
+| `DEFAULT_CHECK_INTERVAL_MIN`                    | `30`                                     | Fréquence par défaut d'un relevé                                                                                                                                |
+| `SCRAPER_USER_AGENT`                            | Chrome récent                            | User-agent envoyé aux sites                                                                                                                                     |
+| `SCRAPER_MIN_DELAY_MS` / `SCRAPER_MAX_DELAY_MS` | `2000` / `6000`                          | Délai aléatoire entre deux requêtes d'un même domaine                                                                                                           |
+| `PLAYWRIGHT_ENABLED`                            | `true`                                   | Repli Chromium pour les sites rendus en JavaScript                                                                                                              |
+| `LISTINGS_CRON` / `TCGDEX_CRON` / `MARKET_CRON` | `* * * * *` / `0 6 * * *` / `30 6 * * *` | Planification                                                                                                                                                   |
+| `TCGDEX_SERIES`                                 | `*`                                      | Séries TCGdex importées : `*` = toutes (de Wizards à Méga-Évolution, promos et kits compris), ou une liste d'ids (`me,sv,swsh`)                                 |
+| `POKECARDEX_ENABLED` / `POKECARDEX_CRON`        | `true` / `15 6 * * *`                    | Import du calendrier des produits FR de Pokécardex                                                                                                              |
+| `CARDNEXUS_API_KEY`                             | —                                        | Clé API CardNexus (gratuite) : annonce FR la moins chère de chaque produit scellé                                                                               |
+| `CARDMARKET_PRICE_GUIDE_ENABLED`                | `true`                                   | Guide des prix officiel Cardmarket (fichier JSON quotidien, aucune page lue) : « à partir de », tendance, moyennes 1 / 7 / 30 j des produits liés via CardNexus |
+| `POKETRACE_API_KEY`                             | —                                        | Clé PokeTrace **offre Pro** (marché EU) : ventes Cardmarket FR                                                                                                  |
+| `SEED_IF_EMPTY`                                 | `true` (compose)                         | Seed initial au premier démarrage si la base est vide                                                                                                           |
 
 ## Déploiement sur Dokploy
 

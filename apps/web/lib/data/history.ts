@@ -26,6 +26,9 @@ export const MARKET_SERIES = 'Marché';
 
 const dayOf = (d: Date) => d.toISOString().slice(0, 10);
 
+/** Sources du prix marché, de la plus fiable à la moins fiable (un même jour). */
+const MARKET_PRIORITY = ['cardmarket', 'cardnexus', 'poketrace', 'manual'];
+
 /** Point du résumé quotidien d'une fiche, pour l'exclure ou le rétablir sur le graphique. */
 export interface DayPoint {
   listingId: string;
@@ -73,7 +76,18 @@ export async function getPriceHistory(productId: string, days: number | null) {
     }),
     prisma.marketPrice.findMany({
       where: { productId },
-      select: { date: true, price: true, median: true, listingCount: true, source: true },
+      select: {
+        date: true,
+        price: true,
+        median: true,
+        listingCount: true,
+        source: true,
+        low: true,
+        trend: true,
+        avg1: true,
+        avg7: true,
+        avg30: true,
+      },
       orderBy: { date: 'asc' },
     }),
     prisma.collectionItem.findMany({
@@ -82,6 +96,12 @@ export async function getPriceHistory(productId: string, days: number | null) {
     }),
   ]);
   const kept = daily.filter(isKept);
+  // Même jour, plusieurs sources : la plus fiable est écrite en dernier (elle l'emporte).
+  market.sort(
+    (a, b) =>
+      a.date.getTime() - b.date.getTime() ||
+      MARKET_PRIORITY.indexOf(b.source) - MARKET_PRIORITY.indexOf(a.source),
+  );
 
   // Meilleur prix achetable par jour, sur tout l'historique (repères).
   const bestByDay = new Map<string, number | null>();
@@ -136,6 +156,7 @@ export async function getPriceHistory(productId: string, days: number | null) {
     ? purchases.reduce((s, p) => s + p.quantity * toNumber(p.purchasePrice)!, 0) / qty
     : null;
   const lastQuote = market.at(-1);
+  const guide = market.filter((m) => m.source === 'cardmarket').at(-1);
   const lastMarket = lastQuote ? toNumber(lastQuote.price) : null;
 
   return {
@@ -157,6 +178,17 @@ export async function getPriceHistory(productId: string, days: number | null) {
     lastMarketMedian: lastQuote ? toNumber(lastQuote.median) : null,
     lastMarketListings: lastQuote?.listingCount ?? null,
     lastMarketSource: lastQuote?.source ?? null,
+    /** Dernier relevé du guide des prix Cardmarket. */
+    cardmarket: guide
+      ? {
+          date: guide.date,
+          low: toNumber(guide.low),
+          trend: toNumber(guide.trend),
+          avg1: toNumber(guide.avg1),
+          avg7: toNumber(guide.avg7),
+          avg30: toNumber(guide.avg30),
+        }
+      : null,
     ratio: avgPurchase && lastMarket ? lastMarket / avgPurchase : null,
     stock: stockStats(daily),
   };

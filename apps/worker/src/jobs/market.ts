@@ -1,5 +1,10 @@
 import { prisma } from '@tcgwatch/db';
-import { createMarketProviders, TcgdexChaseCardProvider } from '@tcgwatch/market';
+import {
+  CardmarketGuideProvider,
+  CardNexusProvider,
+  createMarketProviders,
+  TcgdexChaseCardProvider,
+} from '@tcgwatch/market';
 import { todayUtc } from '@tcgwatch/shared';
 import type { WorkerContext } from '../context';
 import { selectChaseCards } from './chase-cards';
@@ -16,7 +21,14 @@ export async function runMarketJob(ctx: WorkerContext) {
   const date = todayUtc();
   const providers = createMarketProviders(ctx.env).filter((p) => p.isEnabled());
   const products = await prisma.product.findMany({
-    select: { id: true, name: true, ean: true, type: true },
+    select: {
+      id: true,
+      name: true,
+      ean: true,
+      type: true,
+      cardmarketId: true,
+      releaseDate: true,
+    },
   });
   const sets = (
     await prisma.release.findMany({
@@ -39,11 +51,34 @@ export async function runMarketJob(ctx: WorkerContext) {
             currency: q.currency,
             median: q.median ?? null,
             listingCount: q.listingCount ?? null,
+            low: q.low ?? null,
+            trend: q.trend ?? null,
+            avg1: q.avg1 ?? null,
+            avg7: q.avg7 ?? null,
+            avg30: q.avg30 ?? null,
           },
           create: q,
         });
       }
       quotes += results.length;
+      if (provider instanceof CardmarketGuideProvider && provider.rejected > 0) {
+        ctx.logger.info(
+          { rejected: provider.rejected },
+          'Liens Cardmarket écartés (format, année ou date incohérents)',
+        );
+      }
+      // CardNexus donne l'id Cardmarket des produits rapprochés : gardé pour le guide des prix.
+      if (provider instanceof CardNexusProvider) {
+        let linked = 0;
+        for (const [productId, cardmarketId] of provider.cardmarketLinks()) {
+          const p = products.find((x) => x.id === productId);
+          if (!p || p.cardmarketId === cardmarketId) continue;
+          await prisma.product.update({ where: { id: productId }, data: { cardmarketId } });
+          p.cardmarketId = cardmarketId;
+          linked++;
+        }
+        ctx.logger.info({ linked }, 'Produits liés à Cardmarket (via CardNexus)');
+      }
     } catch (err) {
       ctx.logger.error({ err, provider: provider.key }, 'Échec du provider de prix marché');
     }

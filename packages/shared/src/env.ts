@@ -67,6 +67,12 @@ const schema = z.object({
   // Marché secondaire
   CARDNEXUS_API_KEY: optionalString,
   CARDNEXUS_API_URL: z.string().url().default('https://public-api.cardnexus.com'),
+  /** Guide des prix officiel Cardmarket (fichier JSON quotidien, produits liés via CardNexus). */
+  CARDMARKET_PRICE_GUIDE_ENABLED: bool(true),
+  CARDMARKET_PRICE_GUIDE_URL: z
+    .string()
+    .url()
+    .default('https://downloads.s3.cardmarket.com/productCatalog/priceGuide/price_guide_6.json'),
   POKETRACE_API_KEY: optionalString,
   POKETRACE_API_URL: z.string().url().default('https://api.poketrace.com'),
 

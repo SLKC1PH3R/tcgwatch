@@ -1,5 +1,6 @@
 import { todayUtc } from '@tcgwatch/shared';
 import { z } from 'zod';
+import { CardmarketGuideProvider } from './cardmarket';
 import { CardNexusProvider } from './cardnexus';
 import { cardmarketQuote, TcgdexClient, type CardmarketQuote } from './tcgdex';
 
@@ -9,7 +10,8 @@ import { cardmarketQuote, TcgdexClient, type CardmarketQuote } from './tcgdex';
  * Un provider renvoie des cotations datées ; le worker les enregistre dans `MarketPrice`
  * (un relevé par jour/produit/source, unicité en base) : l'historique se construit seul.
  *
- * ⚠️ Cardmarket n'est jamais scrapé (CGU + Cloudflare) : uniquement saisie manuelle ou API tierces.
+ * ⚠️ Cardmarket n'est jamais scrapé (CGU + Cloudflare) : saisie manuelle, API tierces ou guide
+ * des prix officiel publié chaque jour par Cardmarket (fichier JSON, voir ./cardmarket).
  */
 export interface ProductRef {
   id: string;
@@ -17,6 +19,10 @@ export interface ProductRef {
   ean?: string | null;
   /** Type de produit (ETB, DISPLAY…), pour rapprocher les catalogues tiers. */
   type?: string;
+  /** Identifiant Cardmarket (rapproché via CardNexus). */
+  cardmarketId?: number | null;
+  /** Date de sortie, pour vérifier un rapprochement. */
+  releaseDate?: Date | null;
 }
 
 /** Extension connue (TCGdex) : nom FR, pour retrouver l'extension d'un produit. */
@@ -39,6 +45,12 @@ export interface MarketQuote {
   median?: number | null;
   /** Nombre d'annonces prises en compte, si la source le fournit. */
   listingCount?: number | null;
+  /** Guide des prix Cardmarket : « À partir de », tendance, moyennes 1 / 7 / 30 jours. */
+  low?: number | null;
+  trend?: number | null;
+  avg1?: number | null;
+  avg7?: number | null;
+  avg30?: number | null;
 }
 
 export interface MarketPriceProvider {
@@ -315,10 +327,17 @@ export function createMarketProviders(env: {
   POKETRACE_API_URL: string;
   CARDNEXUS_API_KEY?: string;
   CARDNEXUS_API_URL?: string;
+  CARDMARKET_PRICE_GUIDE_ENABLED?: boolean;
+  CARDMARKET_PRICE_GUIDE_URL?: string;
 }): MarketPriceProvider[] {
+  // Ordre utile : CardNexus fournit les ids Cardmarket utilisés par le guide des prix.
   return [
     manualProvider,
     new CardNexusProvider(env.CARDNEXUS_API_KEY, env.CARDNEXUS_API_URL),
+    new CardmarketGuideProvider(
+      env.CARDMARKET_PRICE_GUIDE_ENABLED ?? true,
+      env.CARDMARKET_PRICE_GUIDE_URL,
+    ),
     new PokeTraceProvider(env.POKETRACE_API_KEY, env.POKETRACE_API_URL),
   ];
 }

@@ -179,6 +179,8 @@ model Product {
   notes             String?
   releaseId         String?
   release           Release?         @relation("ProductRelease", fields: [releaseId], references: [id], onDelete: SetNull)
+  /// Identifiant du produit Cardmarket (via CardNexus) : guide des prix officiel quotidien.
+  cardmarketId      Int?
   /// Extension TCGdex du produit (calculée à l'import d'après le nom et la date).
   extensionId       String?
   extension         Release?         @relation("ProductExtension", fields: [extensionId], references: [id], onDelete: SetNull)
@@ -329,6 +331,12 @@ model MarketPrice {
   median       Decimal? @db.Decimal(10, 2)
   /// Nombre d'annonces prises en compte, si la source le fournit.
   listingCount Int?
+  /// Guide des prix Cardmarket : prix le plus bas (« À partir de »), tendance, moyennes.
+  low          Decimal? @db.Decimal(10, 2)
+  trend        Decimal? @db.Decimal(10, 2)
+  avg1         Decimal? @db.Decimal(10, 2)
+  avg7         Decimal? @db.Decimal(10, 2)
+  avg30        Decimal? @db.Decimal(10, 2)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 

@@ -623,10 +623,37 @@ export default async function ProductPage({ params, searchParams }: Props) {
 
           <Card>
             <CardHeader className="flex-col">
-              <CardTitle>Prix marché (Cardmarket)</CardTitle>
+              <CardTitle>Cardmarket</CardTitle>
               <CardDescription>
-                Saisie manuelle du prix constaté — un relevé par jour.
+                {history.cardmarket
+                  ? `Guide des prix officiel du ${formatDate(history.cardmarket.date)}, toutes langues confondues.`
+                  : 'Guide des prix officiel : disponible quand le produit est relié à Cardmarket (via CardNexus).'}
               </CardDescription>
+            </CardHeader>
+            {history.cardmarket && (
+              <CardContent>
+                <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                  {[
+                    { label: 'À partir de', value: history.cardmarket.low },
+                    { label: 'Tendance des prix', value: history.cardmarket.trend },
+                    { label: 'Prix moyen 30 jours', value: history.cardmarket.avg30 },
+                    { label: 'Prix moyen 7 jours', value: history.cardmarket.avg7 },
+                    { label: 'Prix moyen 1 jour', value: history.cardmarket.avg1 },
+                  ].map((r) => (
+                    <div key={r.label}>
+                      <dt className="text-muted-foreground">{r.label}</dt>
+                      <dd className="font-semibold tabular-nums">{formatPrice(r.value)}</dd>
+                    </div>
+                  ))}
+                </dl>
+              </CardContent>
+            )}
+          </Card>
+
+          <Card>
+            <CardHeader className="flex-col">
+              <CardTitle>Saisie manuelle du prix marché</CardTitle>
+              <CardDescription>Prix constaté à la main — un relevé par jour.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <MarketPriceForm
@@ -707,6 +734,7 @@ function SearchLink({ href, name, title }: { href: string; name: string; title: 
 
 const MARKET_SOURCE: Record<string, string> = {
   cardnexus: 'CardNexus (annonces FR)',
+  cardmarket: 'Cardmarket · tendance',
   poketrace: 'PokeTrace',
   manual: 'Saisie manuelle',
 };

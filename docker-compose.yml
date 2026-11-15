@@ -61,6 +61,7 @@ services:
       DISCOVERY_CRON: ${DISCOVERY_CRON:-45 6 * * *}
       CARDNEXUS_API_KEY: ${CARDNEXUS_API_KEY:-}
       POKETRACE_API_KEY: ${POKETRACE_API_KEY:-}
+      CARDMARKET_PRICE_GUIDE_ENABLED: ${CARDMARKET_PRICE_GUIDE_ENABLED:-true}
     networks: [dokploy-network]
 
   web:
