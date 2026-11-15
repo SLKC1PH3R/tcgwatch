@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { ShieldCheck } from 'lucide-react';
 import type { RetailerAccess, RetailerKind } from '@tcgwatch/adapters';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
@@ -127,6 +128,17 @@ function RetailerCard({ retailer: r }: { retailer: RetailerRow }) {
               : `${r.listings} fiche${r.listings > 1 ? 's' : ''} suivie${r.listings > 1 ? 's' : ''} · ${r.buyable} achetable${r.buyable > 1 ? 's' : ''}`}
             {!r.enabled && ' · relevés désactivés'}
           </p>
+          {r.pokescam && (
+            <a
+              href="https://pokescam.com/sites-fiables/"
+              target="_blank"
+              rel="noopener noreferrer"
+              title={`PokéScam : ${r.pokescam}`}
+              className="mt-0.5 inline-flex items-center gap-1 text-[11px] font-medium text-success hover:underline"
+            >
+              <ShieldCheck className="size-3" aria-hidden /> Vérifiée par PokéScam
+            </a>
+          )}
         </div>
         <span
           title={ACCESS_HELP[r.access]}

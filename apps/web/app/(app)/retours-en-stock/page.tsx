@@ -139,12 +139,49 @@ export default async function RestocksPage({ searchParams }: Props) {
   );
 }
 
+type PriceTier = 'best' | 'mid' | 'worst' | 'off';
+/** Moins cher : vert ; plus cher : rouge ; entre les deux : orange ; non achetable : gris. */
+const TIER_PILL: Record<PriceTier, string> = {
+  best: 'border-success/60 bg-success/15 text-success font-semibold',
+  mid: 'border-orange-400/50 bg-orange-400/10 text-orange-300',
+  worst: 'border-destructive/50 bg-destructive/10 text-destructive',
+  off: 'text-muted-foreground',
+};
+const TIER_BUTTON: Record<PriceTier, string> = {
+  best: 'bg-success text-black hover:bg-success/90',
+  mid: 'bg-orange-400 text-black hover:bg-orange-400/90',
+  worst: 'bg-destructive text-white hover:bg-destructive/90',
+  off: '',
+};
+const TIER_LABEL: Partial<Record<PriceTier, string>> = {
+  best: ' · meilleur prix',
+  worst: ' · le plus cher',
+};
+
 function RestockItem({ row: r }: { row: RestockRow }) {
   const l = r.listing;
   const stillBuyable = l ? isBuyable(l.availability) : false;
   const current = l?.delivered ?? l?.price ?? null;
-  const buyable = r.others.filter((o) => isBuyable(o.availability));
+  const buyable = r.others
+    .filter((o) => isBuyable(o.availability))
+    .sort((a, b) => (a.delivered ?? a.price ?? Infinity) - (b.delivered ?? b.price ?? Infinity));
   const rest = r.others.filter((o) => !isBuyable(o.availability));
+  // Comparaison des offres achetables (fiche du retour en stock comprise) : la moins chère en
+  // vert, la plus chère en rouge, les autres en orange.
+  const offers = [
+    ...(stillBuyable && current !== null ? [current] : []),
+    ...buyable.map((o) => o.delivered ?? o.price).filter((v): v is number => v !== null),
+  ];
+  const min = offers.length ? Math.min(...offers) : null;
+  const max = offers.length ? Math.max(...offers) : null;
+  const tier = (price: number | null, available: boolean): PriceTier =>
+    !available || price === null || min === null
+      ? 'off'
+      : price <= min
+        ? 'best'
+        : price >= max! && max! > min
+          ? 'worst'
+          : 'mid';
 
   return (
     <li className="rounded-xl border bg-card p-4">
@@ -188,7 +225,11 @@ function RestockItem({ row: r }: { row: RestockRow }) {
           )}
         </div>
         {l && (
-          <Button asChild variant={stillBuyable ? 'default' : 'secondary'} className="shrink-0">
+          <Button
+            asChild
+            variant="secondary"
+            className={cn('shrink-0', TIER_BUTTON[tier(current, stillBuyable)])}
+          >
             <a href={l.url} target="_blank" rel="noopener noreferrer">
               Acheter chez {l.retailerName} <ExternalLink />
             </a>
@@ -201,6 +242,13 @@ function RestockItem({ row: r }: { row: RestockRow }) {
           <p className="text-xs font-medium text-muted-foreground">
             Ailleurs : {buyable.length} site{buyable.length > 1 ? 's' : ''} achetable
             {buyable.length > 1 ? 's' : ''} sur {r.others.length}
+            {offers.length > 1 && (
+              <span className="ml-2 inline-flex flex-wrap gap-x-2 font-normal">
+                <span className="text-success">● moins cher</span>
+                <span className="text-orange-300">● plus cher</span>
+                <span className="text-destructive">● le plus cher</span>
+              </span>
+            )}
           </p>
           <ul className="flex flex-wrap gap-1.5">
             {[...buyable, ...rest].map((o) => (
@@ -209,10 +257,12 @@ function RestockItem({ row: r }: { row: RestockRow }) {
                   href={o.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  title={AVAILABILITY_LABELS[o.availability]}
+                  title={`${AVAILABILITY_LABELS[o.availability]}${
+                    TIER_LABEL[tier(o.delivered ?? o.price, isBuyable(o.availability))] ?? ''
+                  }`}
                   className={cn(
-                    'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs transition-colors hover:bg-accent',
-                    !isBuyable(o.availability) && 'text-muted-foreground',
+                    'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs transition-opacity hover:opacity-80',
+                    TIER_PILL[tier(o.delivered ?? o.price, isBuyable(o.availability))],
                   )}
                 >
                   <span
@@ -230,6 +280,9 @@ function RestockItem({ row: r }: { row: RestockRow }) {
                   <span className="tabular-nums">
                     {o.price !== null ? formatPrice(o.delivered ?? o.price) : '—'}
                   </span>
+                  {tier(o.delivered ?? o.price, isBuyable(o.availability)) === 'best' && (
+                    <span className="text-[10px] uppercase">moins cher</span>
+                  )}
                   <span className="sr-only">{AVAILABILITY_LABELS[o.availability]}</span>
                 </a>
               </li>

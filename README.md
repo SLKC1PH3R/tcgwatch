@@ -34,7 +34,9 @@ prix du marché secondaire et valorisation de sa collection.
   manquant »). Les produits sont rattachés à leur extension à l'import (nom + date de sortie).
 - **Catalogue 100 % automatique et 100 % français** : chaque sortie FR du calendrier Pokécardex
   devient un produit suivi (nom, type, image, date, prix conseillé). Chaque jour, le worker parcourt
-  les rayons Pokémon des boutiques (Play-In, Philibert, Agorajeux, Ludifolie, BCD Jeux, Akilon, Masterset, Trading Cards XXX, Destock TCG, Fantasy Sphere, Pikastore, Tales of Games, Plaza TCG, Mondes Fantastiques — uniquement
+  les rayons Pokémon d'une soixantaine de boutiques françaises (spécialistes Pokémon, multi-TCG,
+  enseignes ; liste complète sur la page Revendeurs, complétée par la liste des sites fiables de
+  [PokéScam](https://pokescam.com/sites-fiables/)) — uniquement
   les pages autorisées par leur `robots.txt`) et la recherche Play-In, puis rattache les fiches
   trouvées aux produits du catalogue : même type et mêmes mots distinctifs, versions EN/JP/KO et
   accessoires écartés, aucun rattachement en cas de doute. Aucune saisie n'est nécessaire.

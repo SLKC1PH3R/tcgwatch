@@ -19,6 +19,8 @@ export interface RetailerRow {
   websiteUrl: string;
   pokemonUrl: string | null;
   notes: string | null;
+  /** Présentation PokéScam si la boutique figure dans leur liste de sites fiables. */
+  pokescam: string | null;
   enabled: boolean;
   listings: number;
   buyable: number;
@@ -45,6 +47,7 @@ export async function getRetailers(): Promise<RetailerRow[]> {
       websiteUrl: r.websiteUrl ?? info?.websiteUrl ?? `https://${r.domain}/`,
       pokemonUrl: r.pokemonUrl ?? info?.pokemonUrl ?? null,
       notes: r.notes ?? info?.notes ?? null,
+      pokescam: info?.pokescam ?? null,
       enabled: r.enabled,
       listings: r.listings.length,
       buyable: r.listings.filter((l) => l.state === 'ACTIVE' && isBuyable(l.lastAvailability))
@@ -63,6 +66,7 @@ export async function getRetailers(): Promise<RetailerRow[]> {
       websiteUrl: info.websiteUrl,
       pokemonUrl: info.pokemonUrl,
       notes: info.notes ?? null,
+      pokescam: info.pokescam ?? null,
       enabled: true,
       listings: 0,
       buyable: 0,
