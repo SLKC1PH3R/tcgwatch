@@ -1,10 +1,40 @@
 import { load, type CheerioAPI } from 'cheerio';
+import { normalizeEan } from '@tcgwatch/shared';
 import { extractJsonLdNodes } from './jsonld';
 
 /** Lien vers une fiche produit trouvé dans une page de rayon ou de recherche. */
 export interface CatalogLink {
   title: string;
   url: string;
+  /** EAN lu dans l'adresse de la fiche (PrestaShop : « …-0196214144620.html »). */
+  ean?: string;
+}
+
+/** Titre tronqué par le site (« Pokémon - Octobre 2026 -... »). */
+const TRUNCATED = /(?:\.{3}|…)\s*$/;
+/** EAN de 12 à 14 chiffres en fin d'adresse. */
+const URL_EAN = /-(\d{12,14})(?:\.html?)?$/;
+
+/**
+ * Intitulé et EAN tirés de l'adresse d'une fiche : « /jcc-pokemon/35491-pokemon-octobre-2026-
+ * pack-2-boosters-piece-fr-0196214155992.html » → « pokemon octobre 2026 pack 2 boosters piece
+ * fr » et 196214155992. Sert quand le titre affiché est tronqué.
+ */
+export function linkInfoFromUrl(url: string): { title: string; ean?: string } {
+  let slug = '';
+  try {
+    slug = decodeURIComponent(new URL(url).pathname.split('/').filter(Boolean).pop() ?? '');
+  } catch {
+    return { title: '' };
+  }
+  const ean = normalizeEan(slug.match(URL_EAN)?.[1]) ?? undefined;
+  const title = slug
+    .replace(/\.html?$/, '')
+    .replace(URL_EAN, '')
+    .replace(/^\d+-+/, '')
+    .replace(/[-_]+/g, ' ')
+    .trim();
+  return { title, ean };
 }
 
 const clean = (s: string | undefined) => (s ?? '').replace(/\s+/g, ' ').trim();
@@ -114,5 +144,13 @@ export function extractCatalogLinks(
       (current.fromAlt === fromAlt && link.title.length > current.title.length);
     if (better) best.set(key, { title: link.title, fromAlt });
   }
-  return [...best].map(([url, { title }]) => ({ url, title }));
+  return [...best].map(([url, { title }]) => {
+    const fromUrl = linkInfoFromUrl(url);
+    const useUrl = TRUNCATED.test(title) && fromUrl.title.length >= 8;
+    return {
+      url,
+      title: useUrl ? fromUrl.title : title,
+      ...(fromUrl.ean ? { ean: fromUrl.ean } : {}),
+    };
+  });
 }

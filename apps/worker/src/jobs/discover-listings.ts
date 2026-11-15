@@ -55,9 +55,12 @@ export async function discoverListings(
       name: true,
       type: true,
       releaseDate: true,
+      ean: true,
       listings: { select: { retailerId: true } },
     },
   });
+  // EAN du catalogue : rapprochement direct quand l'adresse d'une fiche en contient un.
+  const byEan = new Map(products.filter((p) => p.ean).map((p) => [p.ean!, p.id]));
   const catalog: DatedProduct[] = products.map((p) => ({
     id: p.id,
     name: p.name,
@@ -81,7 +84,7 @@ export async function discoverListings(
             .filter((p) => p.listings.some((l) => l.retailerId === retailer.id))
             .map((p) => p.id),
         );
-        const candidates = await collectCandidates(ctx, info, catalog, followed, summary);
+        const candidates = await collectCandidates(ctx, info, catalog, followed, summary, byEan);
         summary.created += await createListings(ctx, retailer.id, candidates, followed);
       } catch (err) {
         ctx.logger.warn({ err, retailer: retailer.slug }, 'Découverte interrompue pour ce site');
@@ -98,6 +101,7 @@ async function collectCandidates(
   catalog: DatedProduct[],
   followed: Set<string>,
   summary: DiscoverySummary,
+  byEan: Map<string, string> = new Map(),
 ): Promise<Map<string, Candidate>> {
   const discovery = info.discovery!;
   const seen = new Set<string>();
@@ -110,7 +114,10 @@ async function collectCandidates(
       seen.add(link.url);
       fresh++;
       summary.links++;
-      const match = matchProduct(link.title, catalog);
+      const eanProduct = link.ean ? byEan.get(link.ean) : undefined;
+      const match = eanProduct
+        ? { productId: eanProduct, quality: 'exact' as const }
+        : matchProduct(link.title, catalog);
       if (!match) continue;
       summary.matched++;
       const current = best.get(match.productId);
