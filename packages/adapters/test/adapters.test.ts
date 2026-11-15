@@ -277,3 +277,31 @@ describe('Fantasy Sphere', () => {
     expect(parseFantasySphere(html, url).availability).toBe('OUT_OF_STOCK');
   });
 });
+
+describe('microdonnées schema.org (Ultrajeux)', () => {
+  it('lit prix, disponibilité et EAN des itemprop du premier produit', () => {
+    const html = `<html><body>
+      <div itemscope itemtype="http://schema.org/Product">
+        <meta itemprop="name" content="Display 36 Boosters - ME06 Règne Delta" />
+        <meta itemprop="gtin13" content="0196214144620" />
+        <meta itemprop="brand" content="The Pokémon Company" />
+        <div itemprop="offers" itemscope itemtype="http://schema.org/Offer">
+          <meta itemprop="price" content="229.90" />
+          <meta itemprop="priceCurrency" content="EUR" />
+          <meta itemprop="availability" content="InStock" />
+        </div>
+      </div>
+      <div itemscope itemtype="http://schema.org/Product">
+        <meta itemprop="price" content="6.90" />
+        <meta itemprop="availability" content="OutOfStock" />
+      </div>
+    </body></html>`;
+    const r = parseGeneric(html, 'https://www.ultrajeux.com/produit-33586-display.html');
+    expect(r).toMatchObject({
+      price: 229.9,
+      availability: 'IN_STOCK',
+      ean: '196214144620',
+      brand: 'The Pokémon Company',
+    });
+  });
+});

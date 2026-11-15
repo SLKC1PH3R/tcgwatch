@@ -268,6 +268,51 @@ export function parseOpenGraph($: CheerioAPI, url: string): Partial<ListingResul
 }
 
 /**
+ * Microdonnées schema.org (`itemscope itemtype=".../Product"` et `itemprop`), utilisées par
+ * les boutiques sans JSON-LD (Ultrajeux…) : nom, prix, disponibilité, EAN, image, marque.
+ * Seul le premier produit de la page est lu (les vignettes « produits similaires » suivent).
+ */
+export function parseMicrodata($: CheerioAPI, url: string): Partial<ListingResult> {
+  const scope = $('[itemscope][itemtype*="schema.org/Product" i]').first();
+  if (!scope.length) return {};
+  // itemprop d'un sous-produit (itemscope imbriqué de type Product) ignorés.
+  const prop = (name: string) => {
+    const el = scope
+      .find(`[itemprop="${name}" i]`)
+      .filter(
+        (_, e) =>
+          $(e).parents('[itemscope][itemtype*="schema.org/Product" i]').first()[0] === scope[0],
+      )
+      .first();
+    if (!el.length) return undefined;
+    return (
+      (el.attr('content') ?? el.attr('href') ?? el.attr('src') ?? el.text()).trim() || undefined
+    );
+  };
+  const result: Partial<ListingResult> = {};
+  const name = prop('name');
+  if (name) result.title = decodeEntities(name);
+  const price = parsePrice(prop('price'));
+  if (price !== null && price > 0) result.price = price;
+  const currency = prop('priceCurrency');
+  if (currency && /^[A-Z]{3}$/.test(currency)) result.currency = currency;
+  const availability = mapSchemaAvailability(prop('availability'));
+  if (availability) result.availability = availability;
+  const ean = normalizeEan(prop('gtin13') ?? prop('gtin') ?? prop('gtin12') ?? prop('gtin14'));
+  if (ean) result.ean = ean;
+  const sku = prop('sku');
+  if (sku) result.sku = sku;
+  const brand = prop('brand');
+  if (brand) result.brand = decodeEntities(brand);
+  const image = absoluteUrl(prop('image'), url);
+  if (image) {
+    result.imageUrl = image;
+    result.images = [image];
+  }
+  return result;
+}
+
+/**
  * Fusionne des résultats partiels : les premiers ont priorité.
  * `undefined` = champ absent ; `price: null` explicite = « pas de prix pratiqué » et l'emporte.
  */
