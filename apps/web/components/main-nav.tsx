@@ -6,6 +6,7 @@ import {
   ChartLine,
   LayoutDashboard,
   Package,
+  PackageCheck,
   Store,
   Vault,
 } from 'lucide-react';
@@ -18,8 +19,9 @@ const LINKS = [
   { href: '/calendrier', label: 'Calendrier', icon: CalendarDays },
   { href: '/series', label: 'Encyclopédie', icon: BookOpen, also: ['/extensions', '/cartes'] },
   { href: '/produits', label: 'Produits', icon: Package },
+  { href: '/retours-en-stock', label: 'Retours en stock', icon: PackageCheck },
   { href: '/revendeurs', label: 'Revendeurs', icon: Store },
-  { href: '/collection', label: 'Ma collection', icon: Vault },
+  { href: '/collection', label: 'Collection', icon: Vault },
   { href: '/marche', label: 'Marché', icon: ChartLine },
 ] as { href: string; label: string; icon: typeof Package; also?: string[] }[];
 
@@ -43,7 +45,7 @@ export function MainNav() {
               active && 'bg-foreground text-background hover:bg-foreground hover:text-background',
             )}
           >
-            <Icon className="size-4 xl:hidden" aria-hidden />
+            <Icon className="size-4 lg:hidden" aria-hidden />
             {label}
           </Link>
         );
