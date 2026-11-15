@@ -1071,13 +1071,15 @@ export const RETAILER_DIRECTORY: RetailerInfo[] = [
     name: 'Smyths Toys',
     domain: 'smythstoys.com',
     kind: 'TOYS',
-    access: 'BROWSER',
+    access: 'LIMITED',
     websiteUrl: 'https://www.smythstoys.com/fr/fr-fr',
-    pokemonUrl: 'https://www.smythstoys.com/fr/fr-fr/search/?text=pokemon',
+    pokemonUrl:
+      'https://www.smythstoys.com/fr/fr-fr/jouets/jeux-de-societe-et-puzzles/cartes-a-collectionner/cartes-pokemon/c/SM1301061101',
     searchUrl: 'https://www.smythstoys.com/fr/fr-fr/search/?text={q}',
     pokescam: 'Enseigne de jouets irlandaise multinationale.',
     minDelayMs: 5000,
-    notes: 'Anti-bot Imperva : relevé via Chromium, sans garantie. Alerte de stock sur la fiche.',
+    notes:
+      'Anti-bot Imperva : page de défi servie aux requêtes automatisées, Chromium compris (vérifié le 15/11/2026). Lien vers le rayon Pokémon seulement, aucun relevé. Alerte de stock sur la fiche.',
   },
   {
     slug: 'king-jouet',
