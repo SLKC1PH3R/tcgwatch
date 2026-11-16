@@ -59,9 +59,8 @@ try {
       break;
     case 'card-prices': {
       const ids = await resolveCardmarketIds(ctx, Number(process.argv[3] ?? 3000));
-      const priced = await applyCardPrices(
-        await new CardmarketGuideProvider(true, ctx.env.CARDMARKET_PRICE_GUIDE_URL).priceGuide(),
-      );
+      const guide = new CardmarketGuideProvider(true, ctx.env.CARDMARKET_PRICE_GUIDE_URL);
+      const priced = await applyCardPrices(await guide.priceGuide(), await guide.singlesList());
       await snapshotMarketIndex();
       ctx.logger.info({ ...ids, priced }, 'Cotes des cartes mises à jour');
       break;

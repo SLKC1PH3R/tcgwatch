@@ -16,6 +16,72 @@ export const CARDMARKET_PRICE_GUIDE_URL =
 export const CARDMARKET_PRODUCTS_URL =
   'https://downloads.s3.cardmarket.com/productCatalog/productList/products_nonsingles_6.json';
 
+/** Liste officielle des cartes à l'unité Pokémon de Cardmarket (versions, extensions). */
+export const CARDMARKET_SINGLES_URL =
+  'https://downloads.s3.cardmarket.com/productCatalog/productList/products_singles_6.json';
+
+const singleSchema = z
+  .object({
+    idProduct: z.number(),
+    idMetacard: z.number().nullish(),
+    idExpansion: z.number().nullish(),
+  })
+  .passthrough();
+const singlesSchema = z.object({ products: z.array(singleSchema) });
+export type CardmarketSingle = z.infer<typeof singleSchema>;
+
+/**
+ * TCGdex relie parfois toutes les versions d'une carte d'une extension (double rare, illustration
+ * spéciale, hyper rare…) au même produit Cardmarket, celui de la version de base. Cardmarket range
+ * ces versions sous la même « métacarte » dans la même extension, créées dans l'ordre des numéros :
+ * quand le nombre de versions concorde, chacune reçoit son produit ; sinon seule la première
+ * (numéro le plus bas) garde le lien, les autres restent sans cote plutôt qu'avec une cote fausse.
+ *
+ * `cards` : cartes d'une même extension avec l'id Cardmarket donné par TCGdex.
+ */
+export function disambiguateCardVersions(
+  cards: { id: string; number: number | null; localId: string; cardmarketId: number }[],
+  singles: Map<number, CardmarketSingle>,
+  byMetacard: Map<string, number[]>,
+): Map<string, number | null> {
+  const out = new Map<string, number | null>();
+  const groups = new Map<number, typeof cards>();
+  for (const c of cards) groups.set(c.cardmarketId, [...(groups.get(c.cardmarketId) ?? []), c]);
+  for (const [cmId, group] of groups) {
+    if (group.length === 1) {
+      out.set(group[0]!.id, cmId);
+      continue;
+    }
+    const sorted = [...group].sort(
+      (a, b) =>
+        (a.number ?? Infinity) - (b.number ?? Infinity) || a.localId.localeCompare(b.localId),
+    );
+    const base = singles.get(cmId);
+    const versions =
+      base?.idMetacard && base.idExpansion
+        ? (byMetacard.get(`${base.idMetacard}:${base.idExpansion}`) ?? [])
+        : [];
+    if (versions.length === sorted.length) {
+      sorted.forEach((c, i) => out.set(c.id, versions[i]!));
+    } else {
+      sorted.forEach((c, i) => out.set(c.id, i === 0 ? cmId : null));
+    }
+  }
+  return out;
+}
+
+/** Index des versions : « métacarte:extension » → produits triés par id (ordre de création). */
+export function indexSingles(singles: Map<number, CardmarketSingle>): Map<string, number[]> {
+  const index = new Map<string, number[]>();
+  for (const s of singles.values()) {
+    if (!s.idMetacard || !s.idExpansion) continue;
+    const key = `${s.idMetacard}:${s.idExpansion}`;
+    index.set(key, [...(index.get(key) ?? []), s.idProduct]);
+  }
+  for (const ids of index.values()) ids.sort((a, b) => a - b);
+  return index;
+}
+
 const productSchema = z
   .object({
     idProduct: z.number(),
@@ -165,6 +231,17 @@ export class CardmarketGuideProvider implements MarketPriceProvider {
     });
     if (!res.ok) throw new Error(`Produits Cardmarket : HTTP ${res.status}`);
     const body = productsSchema.parse(await res.json());
+    return new Map(body.products.map((p) => [p.idProduct, p]));
+  }
+
+  /** Catalogue des cartes à l'unité (versions de chaque carte). */
+  async singlesList(): Promise<Map<number, CardmarketSingle>> {
+    const res = await this.fetchImpl(CARDMARKET_SINGLES_URL, {
+      headers: { accept: 'application/json', 'user-agent': 'TCGWatch (self-hosted)' },
+      signal: AbortSignal.timeout(120_000),
+    });
+    if (!res.ok) throw new Error(`Cartes Cardmarket : HTTP ${res.status}`);
+    const body = singlesSchema.parse(await res.json());
     return new Map(body.products.map((p) => [p.idProduct, p]));
   }
 

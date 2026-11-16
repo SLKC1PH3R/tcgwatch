@@ -115,7 +115,10 @@ export async function runMarketJob(ctx: WorkerContext) {
   if (guideProvider) {
     try {
       const ids = await resolveCardmarketIds(ctx, ctx.env.CARD_CARDMARKET_LOOKUPS);
-      cardPrices = await applyCardPrices(await guideProvider.priceGuide());
+      cardPrices = await applyCardPrices(
+        await guideProvider.priceGuide(),
+        await guideProvider.singlesList(),
+      );
       await snapshotMarketIndex(date);
       ctx.logger.info({ ...ids, cardPrices }, 'Cotes Cardmarket des cartes mises à jour');
     } catch (err) {

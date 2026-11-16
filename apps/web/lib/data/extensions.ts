@@ -1,6 +1,6 @@
 import 'server-only';
 import { Prisma, prisma } from '@tcgwatch/db';
-import { cardmarketQuote, tcgdexAsset, TcgdexClient } from '@tcgwatch/market';
+import { cardmarketProductId, cardmarketQuote, tcgdexAsset, TcgdexClient } from '@tcgwatch/market';
 import { boosterCount, toNumber } from '@tcgwatch/shared';
 import { getProductsByIds, type ProductDTO } from './products';
 
@@ -103,22 +103,33 @@ export function staleCardIds(cards: { id: string; priceAt: Date | null }[], now 
 }
 
 /**
- * Relit les cotes Cardmarket (via TCGdex) de quelques cartes et les garde en cache sur la
- * carte. Appelé après l'affichage d'une page (pas d'attente pour l'utilisateur).
+ * Cartes pas encore reliées à Cardmarket : lit leur produit Cardmarket sur TCGdex (gardé pour
+ * la cote quotidienne du guide des prix) et, en attendant, leur cote TCGdex. Pas de cote pour
+ * une carte qui existe en plusieurs versions dans l'extension : TCGdex leur donne la cote de la
+ * version de base. Appelé après l'affichage d'une page (pas d'attente pour l'utilisateur).
  */
 export async function refreshCardPrices(ids: string[]): Promise<number> {
   const client = new TcgdexClient();
-  const queue = ids.slice(0, PRICE_REFRESH_MAX);
+  const pending = await prisma.card.findMany({
+    where: { id: { in: ids }, cardmarketId: null },
+    select: { id: true, name: true, releaseId: true },
+  });
+  const queue = pending.slice(0, PRICE_REFRESH_MAX);
   let done = 0;
   await Promise.all(
     Array.from({ length: PRICE_REFRESH_CONCURRENCY }, async () => {
-      for (let id = queue.shift(); id; id = queue.shift()) {
-        const card = await client.getCard(id).catch(() => null);
+      for (let c = queue.shift(); c; c = queue.shift()) {
+        const card = await client.getCard(c.id).catch(() => null);
         if (!card) continue;
-        const q = cardmarketQuote(card);
+        const versions = await prisma.card.count({
+          where: { releaseId: c.releaseId, name: c.name },
+        });
+        const q = versions > 1 ? null : cardmarketQuote(card);
         await prisma.card.update({
-          where: { id },
+          where: { id: c.id },
           data: {
+            cardmarketId: cardmarketProductId(card),
+            cardmarketCheckedAt: new Date(),
             priceTrend: q?.trend ?? q?.price ?? null,
             priceLow: q?.low ?? null,
             priceAvg30: q?.avg30 ?? null,

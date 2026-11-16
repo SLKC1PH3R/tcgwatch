@@ -33,9 +33,11 @@ const SECTIONS: Section[] = [
           {
             href: '/produits',
             label: 'Produits suivis',
+            // Liste et fiches produit (/produits/<id>), pas les pages Prix ni Bons plans.
             active: (p) =>
               p === '/produits' ||
-              (/^\/produits\/[^/]+$/.test(p) && !['/produits/bons-plans'].includes(p)),
+              (/^\/produits\/[^/]+$/.test(p) &&
+                !['/produits/prix', '/produits/bons-plans'].includes(p)),
           },
         ],
       },

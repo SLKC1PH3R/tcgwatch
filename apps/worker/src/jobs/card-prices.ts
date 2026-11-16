@@ -2,7 +2,10 @@ import { Prisma, prisma } from '@tcgwatch/db';
 import {
   cardmarketProductId,
   cardQuoteFromGuide,
+  disambiguateCardVersions,
+  indexSingles,
   type CardmarketGuideEntry,
+  type CardmarketSingle,
   TcgdexClient,
 } from '@tcgwatch/market';
 import { todayUtc } from '@tcgwatch/shared';
@@ -15,8 +18,8 @@ const LOOKUP_PAUSE_MS = 120;
 
 /**
  * Produit Cardmarket des cartes qui n'en ont pas encore, lu sur leur fiche TCGdex : une seule
- * fois par carte, par lots quotidiens (`limit`). Extensions récentes et cartes rares d'abord,
- * pour que les cotes utiles arrivent en premier.
+ * fois par carte, par lots quotidiens (`limit`). Extensions récentes d'abord, toutes les cartes
+ * d'une extension ensemble (les versions d'une carte doivent être connues ensemble).
  */
 export async function resolveCardmarketIds(
   ctx: WorkerContext,
@@ -28,8 +31,7 @@ export async function resolveCardmarketIds(
     SELECT c.id FROM "Card" c JOIN "Release" r ON r.id = c."releaseId"
     WHERE c."cardmarketId" IS NULL
       AND (c."cardmarketCheckedAt" IS NULL OR c."cardmarketCheckedAt" < ${since})
-    ORDER BY (c.rarity IN ('Commune', 'Peu Commune')) ASC NULLS LAST,
-      r."releaseDate" DESC NULLS LAST, c.number ASC NULLS LAST
+    ORDER BY r."releaseDate" DESC NULLS LAST, r.id, c.number ASC NULLS LAST
     LIMIT ${limit}`;
 
   let linked = 0;
@@ -52,24 +54,58 @@ export async function resolveCardmarketIds(
 /**
  * Cote du jour de toutes les cartes liées à Cardmarket, d'après le guide des prix (un seul
  * fichier pour tout le catalogue) : une requête SQL, quel que soit le nombre de cartes.
+ * Les versions d'une même carte (illustrations, hyper rares) reçoivent chacune leur produit
+ * (`disambiguateCardVersions`) ; une carte sans produit sûr perd sa cote.
  */
-export async function applyCardPrices(guide: Map<number, CardmarketGuideEntry>): Promise<number> {
+export async function applyCardPrices(
+  guide: Map<number, CardmarketGuideEntry>,
+  singles: Map<number, CardmarketSingle>,
+): Promise<number> {
   const linked = await prisma.card.findMany({
     where: { cardmarketId: { not: null } },
-    select: { id: true, cardmarketId: true },
+    select: {
+      id: true,
+      releaseId: true,
+      number: true,
+      localId: true,
+      name: true,
+      cardmarketId: true,
+    },
   });
+  // Homonymes pas encore cherchés sur TCGdex : la version de la carte reste incertaine.
+  const unchecked = new Set(
+    (
+      await prisma.card.findMany({
+        where: { cardmarketCheckedAt: null },
+        select: { releaseId: true, name: true },
+      })
+    ).map((c) => `${c.releaseId}|${c.name}`),
+  );
+  const byRelease = new Map<string, typeof linked>();
+  for (const c of linked) byRelease.set(c.releaseId, [...(byRelease.get(c.releaseId) ?? []), c]);
+  const index = indexSingles(singles);
+  const product = new Map<string, number | null>();
+  for (const cards of byRelease.values()) {
+    const fixed = disambiguateCardVersions(
+      cards.map((c) => ({ ...c, cardmarketId: c.cardmarketId! })),
+      singles,
+      index,
+    );
+    for (const [id, cm] of fixed) product.set(id, cm);
+  }
   const rows = linked.flatMap((c) => {
-    const entry = guide.get(c.cardmarketId!);
+    const cm = unchecked.has(`${c.releaseId}|${c.name}`) ? null : (product.get(c.id) ?? null);
+    const entry = cm ? guide.get(cm) : undefined;
     const q = entry ? cardQuoteFromGuide(entry) : null;
-    return q
+    return q || cm === null
       ? [
           {
             id: c.id,
-            trend: q.trend ?? q.price,
-            low: q.low,
-            avg1: q.avg1,
-            avg7: q.avg7,
-            avg30: q.avg30,
+            trend: q ? (q.trend ?? q.price) : null,
+            low: q?.low ?? null,
+            avg1: q?.avg1 ?? null,
+            avg7: q?.avg7 ?? null,
+            avg30: q?.avg30 ?? null,
           },
         ]
       : [];

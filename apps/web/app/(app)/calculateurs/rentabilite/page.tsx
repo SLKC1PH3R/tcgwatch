@@ -34,6 +34,8 @@ const MIN_VALUES = [
   { value: 5, label: 'À partir de 5 €' },
 ];
 const COMMISSION = 0.05;
+/** Part minimale des cartes rares cotées pour un résultat fiable. */
+const MIN_COVERAGE = 0.9;
 
 const field =
   'h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring';
@@ -81,9 +83,11 @@ export default async function OpeningCalculatorPage({ searchParams }: Props) {
     }),
     getSealedPrices(),
   ]);
+  // Cartes sans cote ignorées (pas comptées à 0 €) : la valeur d'une rareté = moyenne des
+  // cartes cotées. Couverture : part des cartes rares et plus qui ont une cote.
   const toCards = (cards: (typeof sets)[number]['cards']): OpeningCard[] =>
     cards
-      .filter((c) => c.rarity)
+      .filter((c) => c.rarity && c.priceTrend !== null)
       .map((c) => ({
         id: c.id,
         name: c.name,
@@ -91,6 +95,10 @@ export default async function OpeningCalculatorPage({ searchParams }: Props) {
         rarity: c.rarity!,
         price: toNumber(c.priceTrend) ?? 0,
       }));
+  const coverage = (cards: (typeof sets)[number]['cards']) => {
+    const rares = cards.filter((c) => c.rarity && !['Commune', 'Peu Commune'].includes(c.rarity));
+    return rares.length ? rares.filter((c) => c.priceTrend !== null).length / rares.length : 0;
+  };
 
   const set = sets.find((s) => s.tcgdexId === q.ext) ?? sets[0];
   const product = PRODUCTS.find((p) => p.key === q.type) ?? PRODUCTS[0];
@@ -110,6 +118,7 @@ export default async function OpeningCalculatorPage({ searchParams }: Props) {
     ? simulateOpening(toCards(set.cards), { boosters, minValue, commission })
     : null;
   const gain = result && paid ? result.expected - paid : null;
+  const setCoverage = set ? coverage(set.cards) : 0;
 
   // Classement : quelle display ouvrir aujourd'hui (même filtre, même commission) ?
   const ranking = sets
@@ -118,7 +127,7 @@ export default async function OpeningCalculatorPage({ searchParams }: Props) {
       const display = productPrice(sealed, s.setCode, 'display');
       return { s, expected: r.expected, supported: r.supported, display };
     })
-    .filter((x) => x.supported && x.display)
+    .filter((x) => x.supported && x.display && coverage(x.s.cards) >= MIN_COVERAGE)
     .sort((a, b) => b.expected / b.display!.price - a.expected / a.display!.price);
 
   return (
@@ -263,6 +272,13 @@ export default async function OpeningCalculatorPage({ searchParams }: Props) {
                       : ''}
                     {commission > 0 ? ' · commission Cardmarket déduite' : ''}
                   </p>
+                  {setCoverage < MIN_COVERAGE && (
+                    <p className="rounded-md border border-orange-400/50 bg-orange-400/10 px-3 py-2 text-sm text-orange-300">
+                      Cotes incomplètes : {Math.floor(setCoverage * 100)} % des cartes rares de{' '}
+                      {set.nameFr} ont une cote aujourd’hui. Le résultat sera fiable une fois toutes
+                      les cartes reliées à Cardmarket (quelques jours après une sortie).
+                    </p>
+                  )}
                 </CardContent>
               </Card>
 
