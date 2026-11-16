@@ -4,6 +4,7 @@ import { Suspense } from 'react';
 import { Button } from '@/components/ui/button';
 import { requireUser } from '@/lib/auth';
 import { MainNav } from '@/components/main-nav';
+import { SectionNav } from '@/components/section-nav';
 import { SearchBox } from '@/components/search-box';
 import { logoutAction } from '../(auth)/actions';
 
@@ -43,7 +44,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           </div>
         </div>
       </header>
-      <main className="mx-auto w-full max-w-7xl px-4 py-6 md:px-8 md:py-10">{children}</main>
+      <main className="mx-auto w-full max-w-7xl px-4 py-6 md:px-8 md:py-10">
+        <Suspense>
+          <SectionNav />
+        </Suspense>
+        {children}
+      </main>
     </div>
   );
 }

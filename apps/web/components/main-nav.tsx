@@ -2,6 +2,7 @@
 
 import {
   BookOpen,
+  Calculator,
   CalendarDays,
   ChartLine,
   LayoutDashboard,
@@ -23,6 +24,12 @@ const LINKS = [
   { href: '/revendeurs', label: 'Revendeurs', icon: Store },
   { href: '/collection', label: 'Collection', icon: Vault },
   { href: '/marche', label: 'Marché', icon: ChartLine },
+  {
+    href: '/calculateurs/rentabilite',
+    label: 'Calculateurs',
+    icon: Calculator,
+    also: ['/calculateurs'],
+  },
 ] as { href: string; label: string; icon: typeof Package; also?: string[] }[];
 
 export function MainNav() {

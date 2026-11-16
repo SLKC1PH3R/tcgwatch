@@ -45,6 +45,17 @@ export async function getSeries() {
       },
     },
   });
+  // Valeur de chaque extension : somme des cotes Cardmarket du jour de ses cartes.
+  const values = new Map(
+    (
+      await prisma.card.groupBy({
+        by: ['releaseId'],
+        where: { priceTrend: { gt: 0 } },
+        _sum: { priceTrend: true },
+        _count: { _all: true },
+      })
+    ).map((g) => [g.releaseId, { value: toNumber(g._sum.priceTrend), priced: g._count._all }]),
+  );
   const withSets = series
     .filter((s) => s.releases.length > 0)
     .map(({ releases, ...s }) => ({
@@ -52,6 +63,8 @@ export async function getSeries() {
       releases: releases.map(({ extensionProducts, cards, ...r }) => ({
         ...r,
         coverUrl: r.imageUrl || r.symbolUrl ? null : coverOf(extensionProducts, cards),
+        cardsValue: values.get(r.id)?.value ?? null,
+        pricedCards: values.get(r.id)?.priced ?? 0,
       })),
     }));
   return {
