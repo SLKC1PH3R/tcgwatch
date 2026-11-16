@@ -69,10 +69,15 @@ export async function importTcgdex(
       await new Promise((r) => setTimeout(r, 200));
 
       const releaseDate = set.releaseDate ? parseFrenchDate(set.releaseDate) : null;
-      const imageUrl = tcgdexAsset(set.logo ?? setBrief.logo, '.png') ?? null;
+      // Logo ou symbole absents de l'API : souvent déjà en ligne sur le CDN de TCGdex.
+      const unlisted =
+        !(set.logo ?? setBrief.logo) || !set.symbol
+          ? await client.unlistedAssets(serie.id, set.id)
+          : {};
+      const imageUrl = tcgdexAsset(set.logo ?? setBrief.logo ?? unlisted.logo, '.png') ?? null;
       const details = {
         serieId: serie.id,
-        symbolUrl: tcgdexAsset(set.symbol, '.png') ?? null,
+        symbolUrl: tcgdexAsset(set.symbol ?? unlisted.symbol, '.png') ?? null,
         cardCountOfficial: set.cardCount?.official ?? null,
         cardCountTotal: set.cardCount?.total ?? null,
       };

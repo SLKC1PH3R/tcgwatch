@@ -28,16 +28,54 @@ export async function getSeries() {
           cardCountOfficial: true,
           cardCountTotal: true,
           _count: { select: { extensionProducts: true } },
+          // Replis quand TCGdex n'a ni logo ni symbole : visuel d'un produit scellé, sinon
+          // première carte illustrée.
+          extensionProducts: {
+            where: { imageUrl: { not: null } },
+            select: { type: true, imageUrl: true },
+            take: 12,
+          },
+          cards: {
+            where: { imageUrl: { not: null } },
+            orderBy: [{ number: 'asc' }, { localId: 'asc' }],
+            select: { imageUrl: true },
+            take: 1,
+          },
         },
       },
     },
   });
-  const withSets = series.filter((s) => s.releases.length > 0);
+  const withSets = series
+    .filter((s) => s.releases.length > 0)
+    .map(({ releases, ...s }) => ({
+      ...s,
+      releases: releases.map(({ extensionProducts, cards, ...r }) => ({
+        ...r,
+        coverUrl: r.imageUrl || r.symbolUrl ? null : coverOf(extensionProducts, cards),
+      })),
+    }));
   return {
     main: withSets.filter((s) => !SIDE_SERIES.has(s.id)),
     side: withSets.filter((s) => SIDE_SERIES.has(s.id)),
   };
 }
+/** Types de produits dont la boîte montre le mieux l'extension, du plus parlant au moins. */
+const COVER_TYPES = ['ETB', 'DISPLAY', 'BOOSTER', 'TRIPACK', 'COFFRET'];
+
+function coverOf(
+  products: { type: string; imageUrl: string | null }[],
+  cards: { imageUrl: string | null }[],
+): string | null {
+  const rank = (t: string) => {
+    const i = COVER_TYPES.indexOf(t);
+    return i === -1 ? COVER_TYPES.length : i;
+  };
+  const product = [...products].sort((a, b) => rank(a.type) - rank(b.type))[0];
+  if (product?.imageUrl) return product.imageUrl;
+  const card = cards[0]?.imageUrl;
+  return card ? tcgdexAsset(card, '/low.webp')! : null;
+}
+
 export type SerieWithSets = Awaited<ReturnType<typeof getSeries>>['main'][number];
 
 /** Minuscules sans accents côté SQL (même principe que `fold` de @tcgwatch/shared). */

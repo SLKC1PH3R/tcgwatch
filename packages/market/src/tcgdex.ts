@@ -135,6 +135,41 @@ export class TcgdexClient {
     return this.get(`/sets/${encodeURIComponent(id)}`, setSchema);
   }
 
+  /**
+   * Logo et symbole publiés sur le CDN de TCGdex mais pas (encore) déclarés par l'API :
+   * fréquent pour les extensions récentes. Logo français d'abord, puis anglais.
+   */
+  async unlistedAssets(
+    serieId: string,
+    setId: string,
+  ): Promise<{ logo?: string; symbol?: string }> {
+    const base = `https://assets.tcgdex.net`;
+    const path = `${encodeURIComponent(serieId)}/${encodeURIComponent(setId)}`;
+    const exists = async (url: string) => {
+      try {
+        const res = await this.fetchImpl(url, {
+          method: 'HEAD',
+          headers: { 'user-agent': 'TCGWatch (self-hosted)' },
+          signal: AbortSignal.timeout(10_000),
+        });
+        return res.ok;
+      } catch {
+        return false;
+      }
+    };
+    let logo: string | undefined;
+    for (const lang of ['fr', 'en']) {
+      if (await exists(`${base}/${lang}/${path}/logo.png`)) {
+        logo = `${base}/${lang}/${path}/logo`;
+        break;
+      }
+    }
+    const symbol = (await exists(`${base}/univ/${path}/symbol.png`))
+      ? `${base}/univ/${path}/symbol`
+      : undefined;
+    return { logo, symbol };
+  }
+
   getCard(id: string) {
     return this.get(`/cards/${encodeURIComponent(id)}`, cardSchema);
   }

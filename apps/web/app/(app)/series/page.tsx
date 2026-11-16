@@ -111,6 +111,18 @@ function SerieCard({ serie }: { serie: SerieWithSets }) {
                     />
                   ) : r.symbolUrl ? (
                     <SafeImg src={r.symbolUrl} alt="" className="size-10 object-contain" />
+                  ) : r.coverUrl ? (
+                    <SafeImg
+                      src={r.coverUrl}
+                      alt=""
+                      className="max-h-14 max-w-full rounded object-contain"
+                    />
+                  ) : serie.logoUrl ? (
+                    <SafeImg
+                      src={serie.logoUrl}
+                      alt=""
+                      className="max-h-10 max-w-full object-contain opacity-40 grayscale"
+                    />
                   ) : null}
                 </span>
                 <span className="line-clamp-2 text-sm font-medium">{r.nameFr}</span>
