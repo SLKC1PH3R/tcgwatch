@@ -282,6 +282,18 @@ export function cardmarketQuote(card: TcgdexCard): CardmarketQuote | null {
   return null;
 }
 
+/** Produit Cardmarket d'une carte (le même quelle que soit la variante), s'il est connu. */
+export function cardmarketProductId(card: TcgdexCard): number | null {
+  for (const p of [
+    card.pricing?.cardmarket,
+    ...(card.variants_detailed ?? []).map((v) => v.pricing?.cardmarket),
+  ]) {
+    const id = (p as Record<string, unknown> | null | undefined)?.idProduct;
+    if (typeof id === 'number' && id > 0) return id;
+  }
+  return null;
+}
+
 /** Prix Cardmarket d'une carte : tendance, sinon moyenne 30 j, sinon moyenne. */
 export function cardmarketPrice(card: TcgdexCard): number | null {
   return cardmarketQuote(card)?.price ?? null;

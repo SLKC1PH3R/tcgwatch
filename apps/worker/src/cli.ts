@@ -8,6 +8,7 @@
  *   pnpm --filter @tcgwatch/worker check-once pokecardex # import du calendrier Pokécardex
  *   pnpm --filter @tcgwatch/worker check-once discover [slug]  # découverte des fiches revendeurs
  *   pnpm --filter @tcgwatch/worker check-once market     # relevé du marché secondaire
+ *   pnpm --filter @tcgwatch/worker check-once card-prices [n]  # cotes des cartes (n ids cherchés)
  *   pnpm --filter @tcgwatch/worker check-once all-now    # force le relevé de TOUS les listings
  *   pnpm --filter @tcgwatch/worker check-once retailers  # synchronise l'annuaire des revendeurs
  */
@@ -19,7 +20,9 @@ import { importCards } from './jobs/import-cards';
 import { importPokecardex } from './jobs/import-pokecardex';
 import { importTcgdex } from './jobs/import-tcgdex';
 import { linkProductExtensions } from './jobs/link-extensions';
+import { applyCardPrices, resolveCardmarketIds, snapshotMarketIndex } from './jobs/card-prices';
 import { runMarketJob } from './jobs/market';
+import { CardmarketGuideProvider } from '@tcgwatch/market';
 import { syncRetailers } from './jobs/sync-retailers';
 
 const command = process.argv[2] ?? 'listings';
@@ -54,13 +57,22 @@ try {
     case 'market':
       await runMarketJob(ctx);
       break;
+    case 'card-prices': {
+      const ids = await resolveCardmarketIds(ctx, Number(process.argv[3] ?? 3000));
+      const priced = await applyCardPrices(
+        await new CardmarketGuideProvider(true, ctx.env.CARDMARKET_PRICE_GUIDE_URL).priceGuide(),
+      );
+      await snapshotMarketIndex();
+      ctx.logger.info({ ...ids, priced }, 'Cotes des cartes mises à jour');
+      break;
+    }
     case 'retailers':
       await syncRetailers(ctx);
       break;
     default:
       ctx.logger.error(
         { command },
-        'Commande inconnue (listings | all-now | tcgdex | cards | link | pokecardex | discover | market | retailers)',
+        'Commande inconnue (listings | all-now | tcgdex | cards | link | pokecardex | discover | market | card-prices | retailers)',
       );
       process.exitCode = 1;
   }

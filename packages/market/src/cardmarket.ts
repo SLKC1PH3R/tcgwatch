@@ -127,6 +127,23 @@ export function quoteFromGuide(e: CardmarketGuideEntry) {
   };
 }
 
+/**
+ * Cote d'une carte à l'unité dans le guide : valeurs normales, sinon « holo » (cartes qui
+ * n'existent qu'en version brillante). Tendance d'abord, comme sur la fiche Cardmarket.
+ */
+export function cardQuoteFromGuide(e: CardmarketGuideEntry) {
+  const x = e as Record<string, unknown>;
+  const pick = (k: string) =>
+    positive(x[k] as number | null | undefined) ?? positive(x[`${k}-holo`] as number | null);
+  const trend = pick('trend');
+  const avg30 = pick('avg30');
+  const price = trend ?? avg30 ?? pick('avg');
+  if (price === null) return null;
+  let low = pick('low');
+  if (low !== null && low > price * 3) low = null;
+  return { price, trend, low, avg1: pick('avg1'), avg7: pick('avg7'), avg30 };
+}
+
 export class CardmarketGuideProvider implements MarketPriceProvider {
   readonly key = 'cardmarket';
   readonly label = 'Cardmarket (guide des prix officiel)';
@@ -155,7 +172,16 @@ export class CardmarketGuideProvider implements MarketPriceProvider {
     return this.enabled;
   }
 
-  async priceGuide(): Promise<Map<number, CardmarketGuideEntry>> {
+  private guide?: Promise<Map<number, CardmarketGuideEntry>>;
+
+  /** Guide des prix, téléchargé une seule fois par instance (produits scellés et cartes). */
+  priceGuide(): Promise<Map<number, CardmarketGuideEntry>> {
+    this.guide ??= this.downloadGuide();
+    this.guide.catch(() => (this.guide = undefined));
+    return this.guide;
+  }
+
+  private async downloadGuide(): Promise<Map<number, CardmarketGuideEntry>> {
     const res = await this.fetchImpl(this.url, {
       headers: { accept: 'application/json', 'user-agent': 'TCGWatch (self-hosted)' },
       signal: AbortSignal.timeout(120_000),

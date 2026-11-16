@@ -349,31 +349,51 @@ model MarketPrice {
 /// d'environ 24 h lu à l'ouverture d'une page ; l'historique quotidien est réservé aux
 /// cartes suivies (ChaseCard, même id TCGdex).
 model Card {
-  id          String    @id /// id TCGdex (ex. "me06-130")
-  releaseId   String
-  release     Release   @relation(fields: [releaseId], references: [id], onDelete: Cascade)
-  localId     String /// numéro dans l'extension (ex. "130", "TG05")
-  number      Int? /// partie numérique du numéro, pour le tri
-  name        String
+  id                  String    @id /// id TCGdex (ex. "me06-130")
+  releaseId           String
+  release             Release   @relation(fields: [releaseId], references: [id], onDelete: Cascade)
+  localId             String /// numéro dans l'extension (ex. "130", "TG05")
+  number              Int? /// partie numérique du numéro, pour le tri
+  name                String
   /// Pas de nom français dans TCGdex : `name` est le nom anglais.
-  nameMissing Boolean   @default(false)
+  nameMissing         Boolean   @default(false)
   /// Image TCGdex sans suffixe (/low.webp, /high.webp) ; anglaise si la française manque.
-  imageUrl    String?
-  rarity      String?
-  illustrator String?
-  category    String? /// Pokémon, Dresseur, Énergie
-  types       String[]  @default([])
-  dexIds      Int[]     @default([])
+  imageUrl            String?
+  rarity              String?
+  illustrator         String?
+  category            String? /// Pokémon, Dresseur, Énergie
+  types               String[]  @default([])
+  dexIds              Int[]     @default([])
   /// Variantes existantes : normal, reverse, holo, firstEdition.
-  variants    String[]  @default([])
-  priceTrend  Decimal?  @db.Decimal(10, 2)
-  priceLow    Decimal?  @db.Decimal(10, 2)
-  priceAvg30  Decimal?  @db.Decimal(10, 2)
-  priceAt     DateTime?
-  updatedAt   DateTime  @updatedAt
+  variants            String[]  @default([])
+  priceTrend          Decimal?  @db.Decimal(10, 2)
+  priceLow            Decimal?  @db.Decimal(10, 2)
+  priceAvg30          Decimal?  @db.Decimal(10, 2)
+  priceAvg7           Decimal?  @db.Decimal(10, 2)
+  priceAvg1           Decimal?  @db.Decimal(10, 2)
+  priceAt             DateTime?
+  /// Produit Cardmarket de la carte (via TCGdex) : cote quotidienne tirée du guide des prix.
+  cardmarketId        Int?
+  /// Dernière recherche de l'id Cardmarket (évite de redemander une carte sans cote).
+  cardmarketCheckedAt DateTime?
+  updatedAt           DateTime  @updatedAt
 
   @@index([releaseId, number])
   @@index([name])
+  @@index([priceTrend])
+  @@index([cardmarketId])
+}
+
+/// Valeur totale d'une famille de produits un jour donné (indice du marché) : cartes FR,
+/// displays, ETB… Une ligne par jour et par famille, quelques Ko par an.
+model MarketIndexSnapshot {
+  id    String   @id @default(cuid())
+  date  DateTime @db.Date
+  key   String /// "cards" | "displays" | "etb" | "sealed"
+  value Decimal  @db.Decimal(14, 2)
+  count Int
+
+  @@unique([date, key])
 }
 
 model ChaseCard {

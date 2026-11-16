@@ -7,6 +7,7 @@ import {
 } from '@tcgwatch/market';
 import { todayUtc } from '@tcgwatch/shared';
 import type { WorkerContext } from '../context';
+import { applyCardPrices, resolveCardmarketIds, snapshotMarketIndex } from './card-prices';
 import { selectChaseCards } from './chase-cards';
 import { checkCardThresholds, checkMarketMoves } from './price-alerts';
 
@@ -108,9 +109,26 @@ export async function runMarketJob(ctx: WorkerContext) {
     }
   }
 
+  // Cote du jour de toutes les cartes (guide Cardmarket) puis indice du marché.
+  let cardPrices = 0;
+  const guideProvider = providers.find((p) => p instanceof CardmarketGuideProvider);
+  if (guideProvider) {
+    try {
+      const ids = await resolveCardmarketIds(ctx, ctx.env.CARD_CARDMARKET_LOOKUPS);
+      cardPrices = await applyCardPrices(await guideProvider.priceGuide());
+      await snapshotMarketIndex(date);
+      ctx.logger.info({ ...ids, cardPrices }, 'Cotes Cardmarket des cartes mises à jour');
+    } catch (err) {
+      ctx.logger.error({ err }, 'Échec de la cotation des cartes (guide Cardmarket)');
+    }
+  }
+
   // Seuils réglés sur les pages des cartes (prévenir si la tendance passe sous X €…).
   const cardAlerts = await checkCardThresholds(ctx, date);
 
   ctx.status.lastMarketRun = new Date();
-  ctx.logger.info({ quotes, cardQuotes, moves, cardAlerts }, 'Relevé du marché secondaire terminé');
+  ctx.logger.info(
+    { quotes, cardQuotes, cardPrices, moves, cardAlerts },
+    'Relevé du marché secondaire terminé',
+  );
 }

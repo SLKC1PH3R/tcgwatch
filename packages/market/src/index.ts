@@ -6,3 +6,4 @@ export * from './matching';
 export * from './pokecardex-forum';
 export * from './cardnexus';
 export * from './cardmarket';
+export * from './opening';

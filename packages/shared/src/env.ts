@@ -73,6 +73,8 @@ const schema = z.object({
     .string()
     .url()
     .default('https://downloads.s3.cardmarket.com/productCatalog/priceGuide/price_guide_6.json'),
+  /** Cartes dont l'id Cardmarket est cherché sur TCGdex à chaque relevé (une fois par carte). */
+  CARD_CARDMARKET_LOOKUPS: z.coerce.number().int().min(0).default(3000),
   POKETRACE_API_KEY: optionalString,
   POKETRACE_API_URL: z.string().url().default('https://api.poketrace.com'),
 
