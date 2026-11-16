@@ -1065,6 +1065,172 @@ export const RETAILER_DIRECTORY: RetailerInfo[] = [
     notes:
       'Protégé par Cloudflare, y compris contre Chromium : à surveiller via le rayon Pokémon (relevés automatiques bloqués).',
   },
+  // ── Ajouts du 16/11/2026 (boutiques signalées par la communauté) ──
+  {
+    slug: 'pokemoncarte',
+    name: 'PokemonCarte',
+    domain: 'pokemoncarte.com',
+    kind: 'SPECIALIST',
+    access: 'OK',
+    websiteUrl: 'https://www.pokemoncarte.com/',
+    pokemonUrl: 'https://www.pokemoncarte.com/14-coffret-pokemon',
+    minDelayMs: 4000,
+    notes:
+      'PrestaShop, JSON-LD complet (prix, stock, EAN en fin d’adresse). Boutique historique 100 % VF : rayons boosters, coffrets et Pokébox parcourus.',
+    discovery: {
+      productUrl: /^https:\/\/www\.pokemoncarte\.com\/[a-z0-9-]+\/\d+-[a-z0-9-]+\.html$/,
+      pages: [
+        'https://www.pokemoncarte.com/34-booster-pokemon?page={page}',
+        'https://www.pokemoncarte.com/14-coffret-pokemon?page={page}',
+        'https://www.pokemoncarte.com/13-pokebox-pokemon?page={page}',
+      ],
+      maxPages: 6,
+    },
+  },
+  {
+    slug: 'bacchusia-jeux',
+    name: 'Bacchusia Jeux',
+    domain: 'bacchusia-jeux.com',
+    kind: 'SPECIALIST',
+    access: 'OK',
+    websiteUrl: 'https://www.bacchusia-jeux.com/',
+    pokemonUrl: 'https://www.bacchusia-jeux.com/3-pokemon',
+    minDelayMs: 4000,
+    notes:
+      'PrestaShop. Rayons scellés parcourus (boosters et displays, ETB, coffrets, duopacks et decks, Pokébox, 30 ans) ; les produits japonais, anglais et chinois sont écartés au rapprochement.',
+    discovery: {
+      productUrl: /^https:\/\/www\.bacchusia-jeux\.com\/[a-z0-9-]+\/\d+-[a-z0-9-]+\.html$/,
+      pages: [
+        'https://www.bacchusia-jeux.com/10-boosters-et-displays?page={page}',
+        'https://www.bacchusia-jeux.com/82-etb-elite-trainer-box?page={page}',
+        'https://www.bacchusia-jeux.com/14-coffret?page={page}',
+        'https://www.bacchusia-jeux.com/11-duopack-tripack-deck?page={page}',
+        'https://www.bacchusia-jeux.com/15-pokebox-tin-box-boite-metal?page={page}',
+        'https://www.bacchusia-jeux.com/211-anniversaire?page={page}',
+      ],
+      maxPages: 5,
+    },
+  },
+  {
+    slug: 'le-repaire-du-dragon',
+    name: 'Le Repaire du Dragon',
+    domain: 'lerepairedudragon.fr',
+    kind: 'SPECIALIST',
+    access: 'OK',
+    websiteUrl: 'https://www.lerepairedudragon.fr/',
+    pokemonUrl: 'https://www.lerepairedudragon.fr/1920-pokemon',
+    minDelayMs: 4000,
+    notes: 'PrestaShop, boutique de Paris 19e. Rayon Pokémon (accessoires écartés).',
+    discovery: {
+      productUrl:
+        /^https:\/\/www\.lerepairedudragon\.fr\/(pokemon|decks-pokemon|coffrets-pokemon|boosters-pokemon)\/\d+-[a-z0-9-]+\.html$/,
+      pages: ['https://www.lerepairedudragon.fr/1920-pokemon?p={page}'],
+      maxPages: 5,
+    },
+  },
+  {
+    slug: 'goupiya',
+    name: 'Goupiya',
+    domain: 'goupiya.com',
+    kind: 'SPECIALIST',
+    access: 'OK',
+    websiteUrl: 'https://www.goupiya.com/fr/',
+    pokemonUrl: 'https://www.goupiya.com/fr/7-pokemon',
+    minDelayMs: 4000,
+    notes:
+      'PrestaShop. Rayons boosters, boîtes de boosters, coffrets et decks, Pokébox, précommandes.',
+    discovery: {
+      productUrl:
+        /^https:\/\/www\.goupiya\.com\/fr\/(boosters|boites-de-boosters|coffrets-decks|pokebox|precommandes)-pokemon\/\d+-[a-z0-9-]+\.html$/,
+      pages: [
+        'https://www.goupiya.com/fr/701-boosters-pokemon?p={page}',
+        'https://www.goupiya.com/fr/702-boites-de-boosters-pokemon?p={page}',
+        'https://www.goupiya.com/fr/703-coffrets-decks-pokemon?p={page}',
+        'https://www.goupiya.com/fr/704-pokebox-pokemon?p={page}',
+        'https://www.goupiya.com/fr/40163-precommandes-pokemon?p={page}',
+      ],
+      maxPages: 4,
+    },
+  },
+  {
+    slug: 'maxi-reves',
+    name: 'Maxi Rêves',
+    domain: 'maxireves.fr',
+    kind: 'SPECIALIST',
+    access: 'OK',
+    websiteUrl: 'https://maxireves.fr/',
+    pokemonUrl:
+      'https://maxireves.fr/selection-jeux/jeux-de-cartes-tcg/pokemon-tcg/produits-scelles-pokemon-tcg/',
+    minDelayMs: 4000,
+    notes:
+      'WooCommerce sans JSON-LD Product : prix lu dans le bloc prix (le prix Maxi Rêves, pas le prix public affiché avant). Rayon chargé en Ajax : rayon et recherche « pokemon » lus.',
+    discovery: {
+      productUrl: /^https:\/\/maxireves\.fr\/produit\/[a-z0-9-]+\/?$/,
+      pages: [
+        'https://maxireves.fr/selection-jeux/jeux-de-cartes-tcg/pokemon-tcg/produits-scelles-pokemon-tcg/',
+        'https://maxireves.fr/?s=pokemon&post_type=product',
+      ],
+    },
+  },
+  {
+    slug: 'le-temple-du-jeu',
+    name: 'Le Temple du Jeu',
+    domain: 'letempledujeu.fr',
+    kind: 'SPECIALIST',
+    access: 'OK',
+    websiteUrl: 'https://www.letempledujeu.fr/',
+    pokemonUrl: 'https://www.letempledujeu.fr/jeux1010.html',
+    minDelayMs: 4000,
+    notes:
+      'Réseau de boutiques ludiques (site SPIP, adaptateur dédié). Les articles « ne pouvant pas être expédiés » (vente en boutique seulement) sont comptés indisponibles en ligne.',
+    discovery: {
+      productUrl: /^https:\/\/www\.letempledujeu\.fr\/zoom\d+\.html$/,
+      pages: [
+        'https://www.letempledujeu.fr/jeux1010.html',
+        'https://www.letempledujeu.fr/jeux1178.html',
+      ],
+    },
+  },
+  {
+    slug: 'sortileges',
+    name: 'Sortilèges',
+    domain: 'sortileges.fr',
+    kind: 'SPECIALIST',
+    access: 'OK',
+    websiteUrl: 'https://www.sortileges.fr/',
+    pokemonUrl: 'https://www.sortileges.fr/shop?search=pokemon',
+    minDelayMs: 4000,
+    notes:
+      'Chaîne de boutiques de jeux (Odoo), nouveautés au prix public. Pas de rayon Pokémon : recherche « pokemon » de la boutique.',
+    discovery: {
+      productUrl: /^https:\/\/www\.sortileges\.fr\/shop\/[a-z0-9-]+-\d+(\?.*)?$/,
+      pages: ['https://www.sortileges.fr/shop?search=pokemon'],
+    },
+  },
+  {
+    slug: 'lorenzone',
+    name: 'LorenZone',
+    domain: 'lorenzone.fr',
+    kind: 'SPECIALIST',
+    access: 'LIMITED',
+    websiteUrl: 'https://lorenzone.fr/',
+    pokemonUrl: 'https://lorenzone.fr/collections/blister-pokemon',
+    minDelayMs: 6000,
+    notes:
+      'Shopify : répond « 429 » aux requêtes automatisées (vérifié le 16/11/2026). Lien vers le rayon seulement, aucun relevé.',
+  },
+  {
+    slug: 'sneyzen-corp',
+    name: 'Sneyzen Corp',
+    domain: 'sneyzencorp.com',
+    kind: 'SPECIALIST',
+    access: 'LIMITED',
+    websiteUrl: 'https://sneyzencorp.com/',
+    pokemonUrl: 'https://sneyzencorp.com/collections/displays-pokemon',
+    minDelayMs: 6000,
+    notes:
+      'Shopify : répond « 429 » aux requêtes automatisées (vérifié le 16/11/2026). Lien vers le rayon seulement, aucun relevé.',
+  },
   // ── Magasins de jouets ────────────────────────────────────
   {
     slug: 'smyths',

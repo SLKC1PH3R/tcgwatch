@@ -12,6 +12,9 @@ export interface CatalogLink {
 
 /** Titre tronqué par le site (« Pokémon - Octobre 2026 -... »). */
 const TRUNCATED = /(?:\.{3}|…)\s*$/;
+/** Libellés de bouton (« Voir plus », « Ajouter au panier »…) : pas un nom de produit. */
+const CALL_TO_ACTION =
+  /^(voir( le)?( plus| produit| la fiche| d[ée]tails?)?|en savoir plus|d[ée]tails?|acheter|commander|ajouter au panier|d[ée]couvrir|lire la suite)\s*[.!›»>]*$/i;
 /** EAN de 12 à 14 chiffres en fin d'adresse. */
 const URL_EAN = /-(\d{12,14})(?:\.html?)?$/;
 
@@ -98,7 +101,9 @@ function fromAnchors(
     const a = $(el);
     const url = absolute(a.attr('href'), pageUrl);
     if (!url || !productUrl.test(url)) return;
-    const text = clean(a.text()) || clean(a.attr('title')) || clean(a.attr('aria-label'));
+    let text = clean(a.text()) || clean(a.attr('title')) || clean(a.attr('aria-label'));
+    // Libellé de bouton : le nom est tiré de l'adresse (plus fiable qu'un texte alternatif SEO).
+    if (CALL_TO_ACTION.test(text)) text = linkInfoFromUrl(url).title;
     // Le texte alternatif d'une image est souvent une description SEO : dernier recours.
     const title = text || clean(a.find('img').attr('alt'));
     if (title.length >= 8) out.push({ title, url, fromAlt: !text });

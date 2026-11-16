@@ -53,3 +53,19 @@ describe('titre tronqué et EAN dans l’adresse', () => {
     });
   });
 });
+
+describe('libellé de bouton à la place du nom', () => {
+  it('tire le nom de l’adresse quand le lien dit seulement « Voir plus »', () => {
+    const html = `<ul><li>
+      <a href="/produit/tripack-me06-regne-delta/"><img src="x.jpg" alt="Tripack ME06 Règne Delta est idéal pour les fans" /></a>
+      <a href="/produit/tripack-me06-regne-delta/">Voir plus</a>
+    </li></ul>`;
+    const links = extractCatalogLinks(html, 'https://maxireves.fr/?s=pokemon', /\/produit\//);
+    expect(links).toEqual([
+      {
+        url: 'https://maxireves.fr/produit/tripack-me06-regne-delta/',
+        title: 'tripack me06 regne delta',
+      },
+    ]);
+  });
+});

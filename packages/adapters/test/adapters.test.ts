@@ -14,6 +14,7 @@ import {
   mapSchemaAvailability,
   parseCultura,
   parseFantasySphere,
+  parseLeTempleDuJeu,
   parseGeneric,
   parsePhilibert,
   parsePlayIn,
@@ -303,5 +304,65 @@ describe('microdonnées schema.org (Ultrajeux)', () => {
       ean: '196214144620',
       brand: 'The Pokémon Company',
     });
+  });
+});
+
+describe('WooCommerce sans JSON-LD (Maxi Rêves)', () => {
+  const page = (stock: string, price: string) => `<html><body><div class="product">
+    <div class="summary entry-summary">
+      <h1 class="product_title">Pokémon - Coffret collection premium Zygarde</h1>
+      ${price}
+      <p class="stock ${stock}">3 en stock</p>
+    </div></div></body></html>`;
+
+  it('prend le prix de la boutique plutôt que le prix public affiché avant', () => {
+    const html = page(
+      'in-stock',
+      `<p class="price"><span>Prix public conseillé : <span class="woocommerce-Price-amount amount"><bdi>60,00&euro;</bdi></span></span>
+       <span>Votre prix : <span class="woocommerce-Price-amount amount"><bdi>51,00&euro;</bdi></span></span></p>`,
+    );
+    const r = parseGeneric(html, 'https://maxireves.fr/produit/zygarde/');
+    expect(r).toMatchObject({ price: 51, availability: 'IN_STOCK' });
+  });
+
+  it('prend le prix soldé et lit la rupture', () => {
+    const html = page(
+      'out-of-stock',
+      `<p class="price"><del><span class="woocommerce-Price-amount amount"><bdi>59,90&euro;</bdi></span></del>
+       <ins><span class="woocommerce-Price-amount amount"><bdi>49,90&euro;</bdi></span></ins></p>`,
+    );
+    const r = parseGeneric(html, 'https://example.fr/produit/x/');
+    expect(r).toMatchObject({ price: 49.9, availability: 'OUT_OF_STOCK' });
+  });
+});
+
+describe('Le Temple du Jeu', () => {
+  const page = (panier: string) => `<html><body><div class="designation">
+    <h1 itemprop="name" class="jeu_titre">DUOPACK ZARUDE (Pokémon Q3 2026)</h1></div>
+    <div class="anto_blocpanier"><p class="jeu_prix price fleft">14.90&nbsp;&euro;</p>${panier}</div>
+    </body></html>`;
+  const url = 'https://www.letempledujeu.fr/zoom1109057.html';
+
+  it('lit le prix et le stock du bloc panier', () => {
+    const r = parseLeTempleDuJeu(
+      page(`<span class="enstock-big">cet article est <span>en stock</span>.</span>
+        <a class="dispo bouton-valide">ajouter au panier</a>`),
+      url,
+    );
+    expect(r).toMatchObject({
+      title: 'DUOPACK ZARUDE (Pokémon Q3 2026)',
+      price: 14.9,
+      availability: 'IN_STOCK',
+    });
+    expect(getAdapterForUrl(url).key).toBe('letempledujeu');
+  });
+
+  it('compte un article vendu seulement en boutique comme indisponible en ligne', () => {
+    const r = parseLeTempleDuJeu(
+      page(`Cet article ne peut pas être expedié par correspondance. Néanmoins, il est peut-être
+        disponible dans l'une de nos boutiques.`),
+      url,
+    );
+    expect(r.availability).toBe('OUT_OF_STOCK');
   });
 });

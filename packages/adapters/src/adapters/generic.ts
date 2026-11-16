@@ -1,6 +1,7 @@
 import { load } from 'cheerio';
 import { mergeResults, parseJsonLdFrom, parseMicrodata, parseOpenGraph } from '../jsonld';
 import { parsePrestaShop } from '../prestashop';
+import { parseWooCommerce } from '../woocommerce';
 import {
   availabilityFromText,
   findReleaseDate,
@@ -12,26 +13,32 @@ import type { ListingResult, RetailerAdapter } from '../types';
 /**
  * Adaptateur générique : JSON-LD schema.org Product/Offer, puis microdonnées schema.org
  * (itemprop), puis structure PrestaShop
- * (très courante chez les boutiques de jeux), puis OpenGraph, puis heuristiques textuelles.
+ * (très courante chez les boutiques de jeux), puis WooCommerce, puis OpenGraph, puis heuristiques textuelles.
  */
 export function parseGeneric(html: string, url: string): ListingResult {
   const $ = load(html);
   const jsonLd = parseJsonLdFrom($, url);
   const microdata = parseMicrodata($, url);
   const prestashop = parsePrestaShop($);
+  const woocommerce = parseWooCommerce($);
   const og = parseOpenGraph($, url);
   const main = $('main').first().length ? $('main').first() : $('body');
   const text = visibleText($, main);
 
   const fallback: Partial<ListingResult> = {};
-  if (!jsonLd.availability && !microdata.availability && !prestashop.availability)
+  if (
+    !jsonLd.availability &&
+    !microdata.availability &&
+    !prestashop.availability &&
+    !woocommerce.availability
+  )
     fallback.availability = availabilityFromText(text);
   const releaseDate = findReleaseDate(text);
   if (releaseDate) fallback.releaseDate = releaseDate;
   const stockAlertUrl = findStockAlertUrl($, main, url);
   if (stockAlertUrl) fallback.stockAlertUrl = stockAlertUrl;
 
-  return mergeResults(jsonLd, microdata, prestashop, og, fallback);
+  return mergeResults(jsonLd, microdata, prestashop, woocommerce, og, fallback);
 }
 
 export const genericAdapter: RetailerAdapter = {
