@@ -153,6 +153,7 @@ model Release {
   extensionProducts Product[]     @relation("ProductExtension")
   cards             Card[]
   chaseCards        ChaseCard[]
+  binders           CardBinder[]
   createdAt         DateTime      @default(now())
   updatedAt         DateTime      @updatedAt
 
@@ -355,34 +356,37 @@ model MarketPrice {
 /// d'environ 24 h lu à l'ouverture d'une page ; l'historique quotidien est réservé aux
 /// cartes suivies (ChaseCard, même id TCGdex).
 model Card {
-  id                  String    @id /// id TCGdex (ex. "me06-130")
+  id                  String         @id /// id TCGdex (ex. "me06-130")
   releaseId           String
-  release             Release   @relation(fields: [releaseId], references: [id], onDelete: Cascade)
+  release             Release        @relation(fields: [releaseId], references: [id], onDelete: Cascade)
   localId             String /// numéro dans l'extension (ex. "130", "TG05")
   number              Int? /// partie numérique du numéro, pour le tri
   name                String
   /// Pas de nom français dans TCGdex : `name` est le nom anglais.
-  nameMissing         Boolean   @default(false)
+  nameMissing         Boolean        @default(false)
   /// Image TCGdex sans suffixe (/low.webp, /high.webp) ; anglaise si la française manque.
   imageUrl            String?
   rarity              String?
   illustrator         String?
   category            String? /// Pokémon, Dresseur, Énergie
-  types               String[]  @default([])
-  dexIds              Int[]     @default([])
+  types               String[]       @default([])
+  dexIds              Int[]          @default([])
   /// Variantes existantes : normal, reverse, holo, firstEdition.
-  variants            String[]  @default([])
-  priceTrend          Decimal?  @db.Decimal(10, 2)
-  priceLow            Decimal?  @db.Decimal(10, 2)
-  priceAvg30          Decimal?  @db.Decimal(10, 2)
-  priceAvg7           Decimal?  @db.Decimal(10, 2)
-  priceAvg1           Decimal?  @db.Decimal(10, 2)
+  variants            String[]       @default([])
+  priceTrend          Decimal?       @db.Decimal(10, 2)
+  priceLow            Decimal?       @db.Decimal(10, 2)
+  priceAvg30          Decimal?       @db.Decimal(10, 2)
+  priceAvg7           Decimal?       @db.Decimal(10, 2)
+  priceAvg1           Decimal?       @db.Decimal(10, 2)
   priceAt             DateTime?
   /// Produit Cardmarket de la carte (via TCGdex) : cote quotidienne tirée du guide des prix.
   cardmarketId        Int?
   /// Dernière recherche de l'id Cardmarket (évite de redemander une carte sans cote).
   cardmarketCheckedAt DateTime?
-  updatedAt           DateTime  @updatedAt
+  updatedAt           DateTime       @updatedAt
+  owned               OwnedCard[]
+  binderEntries       BinderCard[]
+  showcaseEntries     ShowcaseCard[]
 
   @@index([releaseId, number])
   @@index([name])
@@ -483,4 +487,74 @@ model MarketListing {
   @@unique([source, externalId, productId])
   @@index([productId, firstSeenAt])
   @@index([firstSeenAt])
+}
+
+/// Cartes de la collection : une ligne par carte et par variante (normale, reverse…).
+model OwnedCard {
+  id            String   @id @default(cuid())
+  cardId        String
+  card          Card     @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  /// normal, reverse, holo, firstEdition
+  variant       String   @default("normal")
+  quantity      Int      @default(1)
+  purchasePrice Decimal? @db.Decimal(10, 2)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([cardId, variant])
+  @@index([createdAt])
+}
+
+/// Classeur de cartes : celui d'une extension (toutes ses cartes, possédées ou manquantes)
+/// ou un classeur personnel (cartes choisies une à une).
+model CardBinder {
+  id          String       @id @default(cuid())
+  name        String
+  description String?
+  /// Extension du classeur (null = classeur personnel).
+  releaseId   String?
+  release     Release?     @relation(fields: [releaseId], references: [id], onDelete: Cascade)
+  cards       BinderCard[]
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+}
+
+model BinderCard {
+  id       String     @id @default(cuid())
+  binderId String
+  binder   CardBinder @relation(fields: [binderId], references: [id], onDelete: Cascade)
+  cardId   String
+  card     Card       @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  position Int        @default(0)
+
+  @@unique([binderId, cardId])
+  @@index([binderId, position])
+}
+
+/// Vitrine : sélection de cartes à montrer, partageable par un lien public (slug secret).
+model Showcase {
+  id          String         @id @default(cuid())
+  title       String
+  description String?
+  /// Partie du lien public /vitrine/{slug} (aléatoire, impossible à deviner).
+  slug        String         @unique
+  /// Lien public actif.
+  public      Boolean        @default(false)
+  /// Afficher la cote des cartes sur la page publique.
+  showPrices  Boolean        @default(false)
+  cards       ShowcaseCard[]
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+}
+
+model ShowcaseCard {
+  id         String   @id @default(cuid())
+  showcaseId String
+  showcase   Showcase @relation(fields: [showcaseId], references: [id], onDelete: Cascade)
+  cardId     String
+  card       Card     @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  position   Int      @default(0)
+
+  @@unique([showcaseId, cardId])
+  @@index([showcaseId, position])
 }

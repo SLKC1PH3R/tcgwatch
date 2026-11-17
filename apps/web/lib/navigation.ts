@@ -163,8 +163,59 @@ export const NAV: NavEntry[] = [
   {
     label: 'Collection',
     icon: Vault,
-    href: '/collection',
     match: (p) => p.startsWith('/collection'),
+    groups: [
+      {
+        label: 'Produits scellés',
+        items: [
+          {
+            href: '/collection',
+            label: 'Tout mon scellé',
+            hint: 'Valeur, plus-value et achats',
+            active: (p, q) => p === '/collection' && !q.get('categorie'),
+          },
+        ],
+      },
+      {
+        label: 'Scellé par type',
+        compact: true,
+        items: PRICE_CATEGORIES.map((c) => ({
+          href: `/collection?categorie=${c.key}`,
+          label: c.label,
+          active: (p: string, q: URLSearchParams) =>
+            p === '/collection' && q.get('categorie') === c.key,
+        })),
+      },
+      {
+        label: 'Cartes',
+        items: [
+          {
+            href: '/collection/cartes',
+            label: 'Mes cartes',
+            hint: 'Valeur et avancement par extension',
+            active: exact('/collection/cartes'),
+          },
+          {
+            href: '/collection/cartes/ajout-rapide',
+            label: 'Ajout rapide',
+            hint: 'Toutes les cartes d’une extension, en quelques touchers',
+            active: exact('/collection/cartes/ajout-rapide'),
+          },
+          {
+            href: '/collection/cartes/classeurs',
+            label: 'Classeurs',
+            hint: 'Par extension ou personnels, 9 cartes par page',
+            active: (p) => p.startsWith('/collection/cartes/classeurs'),
+          },
+          {
+            href: '/collection/cartes/vitrines',
+            label: 'Vitrines',
+            hint: 'Tes plus belles cartes, à partager par un lien',
+            active: (p) => p.startsWith('/collection/cartes/vitrines'),
+          },
+        ],
+      },
+    ],
   },
   {
     label: 'Revendeurs',

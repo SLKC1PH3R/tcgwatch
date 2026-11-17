@@ -1,7 +1,13 @@
 import { Trash2 } from 'lucide-react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { formatDate, formatPercent, formatPrice } from '@tcgwatch/shared';
+import {
+  formatDate,
+  formatPercent,
+  formatPrice,
+  PRICE_CATEGORIES,
+  priceCategoryOf,
+} from '@tcgwatch/shared';
 import { AutoSubmitSelect } from '@/components/auto-submit-select';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
@@ -22,15 +28,20 @@ const SORTS = [
 ] as const;
 type Sort = (typeof SORTS)[number]['value'];
 
-type Props = { searchParams: Promise<{ tri?: string }> };
+type Props = { searchParams: Promise<{ tri?: string; categorie?: string }> };
 
 export default async function CollectionPage({ searchParams }: Props) {
-  const { tri } = await searchParams;
+  const { tri, categorie } = await searchParams;
+  const category = PRICE_CATEGORIES.find((c) => c.key === categorie);
   const sort: Sort = SORTS.find((s) => s.value === tri)?.value ?? 'plus-value';
-  const [{ rows, valuation: v }, products] = await Promise.all([
+  const [{ rows: allRows, valuation: v }, products] = await Promise.all([
     getCollection(),
     getProductOptions(),
   ]);
+  // Filtre par type (ETB, display…) : la valorisation en tête reste celle de tout le scellé.
+  const rows = category
+    ? allRows.filter((r) => priceCategoryOf(r.product.name, r.product.type)?.key === category.key)
+    : allRows;
   const positive = v.unrealizedGain >= 0;
   const quantity = rows.reduce((n, r) => n + r.quantity, 0);
   const sorted = [...rows].sort((a, b) => {
@@ -49,7 +60,7 @@ export default async function CollectionPage({ searchParams }: Props) {
   return (
     <>
       <PageHeader
-        title="Ma collection"
+        title={category ? `Ma collection · ${category.label}` : 'Ma collection'}
         description="Valeur estimée au dernier prix marché connu, à défaut au meilleur prix boutique."
         actions={
           <>
@@ -118,6 +129,7 @@ export default async function CollectionPage({ searchParams }: Props) {
             {quantity > 1 ? 's' : ''}
           </h2>
           <form>
+            {category && <input type="hidden" name="categorie" value={category.key} />}
             <AutoSubmitSelect
               name="tri"
               value={sort}
@@ -134,7 +146,9 @@ export default async function CollectionPage({ searchParams }: Props) {
         </div>
         {rows.length === 0 ? (
           <p className="py-10 text-center text-sm text-muted-foreground">
-            Votre collection est vide.
+            {category
+              ? `Aucun produit « ${category.label} » dans ta collection.`
+              : 'Votre collection est vide.'}
           </p>
         ) : (
           <div className="relative overflow-x-auto">

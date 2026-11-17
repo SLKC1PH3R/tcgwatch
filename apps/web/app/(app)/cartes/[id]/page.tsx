@@ -1,4 +1,4 @@
-import { Bell, ChevronLeft, ChevronRight, ExternalLink, Plus, Trash2 } from 'lucide-react';
+import { Bell, ChevronLeft, ChevronRight, ExternalLink, Minus, Plus, Trash2 } from 'lucide-react';
 import { Fragment } from 'react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
@@ -16,6 +16,8 @@ import { getCardPage } from '@/lib/data/cards';
 import type { LocalCard } from '@/lib/data/encyclopedia';
 import { PERIODS, periodOf, periodStart } from '@/lib/data/history';
 import { cn } from '@/lib/utils';
+import { prisma } from '@tcgwatch/db';
+import { adjustOwnedCardAction } from '../../collection/cartes/actions';
 import { followCardAction, setCardAlertAction, unfollowCardAction } from '../actions';
 
 type Props = {
@@ -33,6 +35,19 @@ export default async function CardPage({ params, searchParams }: Props) {
   const tcgdexId = decodeURIComponent(id);
   const card = await getCardPage(tcgdexId);
   if (!card) notFound();
+  const owned = card.local
+    ? await prisma.ownedCard.findMany({
+        where: { cardId: tcgdexId },
+        select: { variant: true, quantity: true },
+      })
+    : [];
+  const ownedBy = Object.fromEntries(owned.map((o) => [o.variant, o.quantity]));
+  const variants = [
+    ...new Set([
+      ...(card.local?.variants.length ? card.local.variants : ['normal']),
+      ...owned.map((o) => o.variant),
+    ]),
+  ].filter((v) => VARIANT_LABELS[v]);
   const period = periodOf(periode);
   const since = periodStart(period.days);
   const history = card.history.filter((h) => h.day >= since);
@@ -107,6 +122,46 @@ export default async function CardPage({ params, searchParams }: Props) {
             />
           ) : (
             <div className="aspect-[63/88] w-full rounded-xl border bg-muted" />
+          )}
+          {card.local && (
+            <div className="space-y-2 rounded-xl border bg-card p-3">
+              <p className="text-sm font-semibold">Dans ma collection</p>
+              <ul className="space-y-1.5">
+                {variants.map((v) => (
+                  <li key={v} className="flex items-center justify-between gap-2 text-sm">
+                    <span className="text-muted-foreground">{VARIANT_LABELS[v]}</span>
+                    <span className="flex items-center gap-1">
+                      <form action={adjustOwnedCardAction.bind(null, tcgdexId, -1, v)}>
+                        <Button
+                          type="submit"
+                          size="icon"
+                          variant="ghost"
+                          className="size-7"
+                          disabled={!ownedBy[v]}
+                          aria-label={`Retirer une ${VARIANT_LABELS[v]}`}
+                        >
+                          <Minus />
+                        </Button>
+                      </form>
+                      <span className="w-6 text-center font-bold tabular-nums">
+                        {ownedBy[v] ?? 0}
+                      </span>
+                      <form action={adjustOwnedCardAction.bind(null, tcgdexId, 1, v)}>
+                        <Button
+                          type="submit"
+                          size="icon"
+                          variant="ghost"
+                          className="size-7"
+                          aria-label={`Ajouter une ${VARIANT_LABELS[v]}`}
+                        >
+                          <Plus />
+                        </Button>
+                      </form>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
           )}
           {card.local && <CardFacts card={card.local} />}
           <a

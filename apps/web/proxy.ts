@@ -5,7 +5,8 @@ import { NextResponse, type NextRequest } from 'next/server';
  * La validation réelle (session en base, expiration) est faite côté serveur par requireUser().
  */
 // /cards : illustrations de la page de connexion (fichiers statiques de public/).
-const PUBLIC_PATHS = ['/connexion', '/inscription', '/api/health', '/cards'];
+// /vitrine : vitrines de cartes partagées par lien (seulement celles rendues publiques).
+const PUBLIC_PATHS = ['/connexion', '/inscription', '/api/health', '/cards', '/vitrine'];
 
 export function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
