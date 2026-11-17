@@ -3,13 +3,36 @@ import {
   CardmarketGuideProvider,
   CardNexusProvider,
   createMarketProviders,
+  type MarketQuote,
   TcgdexChaseCardProvider,
 } from '@tcgwatch/market';
 import { todayUtc } from '@tcgwatch/shared';
 import type { WorkerContext } from '../context';
 import { applyCardPrices, resolveCardmarketIds, snapshotMarketIndex } from './card-prices';
 import { selectChaseCards } from './chase-cards';
+import { linkSealedProducts } from './sealed-links';
 import { checkCardThresholds, checkMarketMoves } from './price-alerts';
+
+/** Enregistre les cotes du jour (un relevé par produit, source et jour). */
+export async function saveQuotes(results: MarketQuote[]) {
+  for (const q of results) {
+    await prisma.marketPrice.upsert({
+      where: { productId_source_date: { productId: q.productId, source: q.source, date: q.date } },
+      update: {
+        price: q.price,
+        currency: q.currency,
+        median: q.median ?? null,
+        listingCount: q.listingCount ?? null,
+        low: q.low ?? null,
+        trend: q.trend ?? null,
+        avg1: q.avg1 ?? null,
+        avg7: q.avg7 ?? null,
+        avg30: q.avg30 ?? null,
+      },
+      create: q,
+    });
+  }
+}
 
 /**
  * Relevé quotidien du marché secondaire :
@@ -29,6 +52,7 @@ export async function runMarketJob(ctx: WorkerContext) {
       type: true,
       cardmarketId: true,
       releaseDate: true,
+      extensionId: true,
     },
   });
   const sets = (
@@ -38,29 +62,22 @@ export async function runMarketJob(ctx: WorkerContext) {
     })
   ).map((r) => ({ tcgdexId: r.tcgdexId!, nameFr: r.nameFr }));
 
+  // Produits scellés reliés à Cardmarket par leur extension (avant le relevé du guide).
+  const guide = providers.find((p) => p instanceof CardmarketGuideProvider);
+  if (guide) {
+    try {
+      const linked = await linkSealedProducts(guide, products);
+      ctx.logger.info({ linked }, 'Produits scellés liés à Cardmarket (par extension)');
+    } catch (err) {
+      ctx.logger.error({ err }, 'Échec du rapprochement des produits scellés avec Cardmarket');
+    }
+  }
+
   let quotes = 0;
   for (const provider of providers) {
     try {
       const results = await provider.fetchQuotes(products, { sets });
-      for (const q of results) {
-        await prisma.marketPrice.upsert({
-          where: {
-            productId_source_date: { productId: q.productId, source: q.source, date: q.date },
-          },
-          update: {
-            price: q.price,
-            currency: q.currency,
-            median: q.median ?? null,
-            listingCount: q.listingCount ?? null,
-            low: q.low ?? null,
-            trend: q.trend ?? null,
-            avg1: q.avg1 ?? null,
-            avg7: q.avg7 ?? null,
-            avg30: q.avg30 ?? null,
-          },
-          create: q,
-        });
-      }
+      await saveQuotes(results);
       quotes += results.length;
       if (provider instanceof CardmarketGuideProvider && provider.rejected > 0) {
         ctx.logger.info(
@@ -73,7 +90,8 @@ export async function runMarketJob(ctx: WorkerContext) {
         let linked = 0;
         for (const [productId, cardmarketId] of provider.cardmarketLinks()) {
           const p = products.find((x) => x.id === productId);
-          if (!p || p.cardmarketId === cardmarketId) continue;
+          // Un lien déjà posé (par extension ou plus tôt) est gardé.
+          if (!p || p.cardmarketId) continue;
           await prisma.product.update({ where: { id: productId }, data: { cardmarketId } });
           p.cardmarketId = cardmarketId;
           linked++;
@@ -111,14 +129,10 @@ export async function runMarketJob(ctx: WorkerContext) {
 
   // Cote du jour de toutes les cartes (guide Cardmarket) puis indice du marché.
   let cardPrices = 0;
-  const guideProvider = providers.find((p) => p instanceof CardmarketGuideProvider);
-  if (guideProvider) {
+  if (guide) {
     try {
       const ids = await resolveCardmarketIds(ctx, ctx.env.CARD_CARDMARKET_LOOKUPS);
-      cardPrices = await applyCardPrices(
-        await guideProvider.priceGuide(),
-        await guideProvider.singlesList(),
-      );
+      cardPrices = await applyCardPrices(await guide.priceGuide(), await guide.singlesList());
       await snapshotMarketIndex(date);
       ctx.logger.info({ ...ids, cardPrices }, 'Cotes Cardmarket des cartes mises à jour');
     } catch (err) {

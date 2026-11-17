@@ -9,6 +9,7 @@
  *   pnpm --filter @tcgwatch/worker check-once discover [slug]  # découverte des fiches revendeurs
  *   pnpm --filter @tcgwatch/worker check-once market     # relevé du marché secondaire
  *   pnpm --filter @tcgwatch/worker check-once card-prices [n]  # cotes des cartes (n ids cherchés)
+ *   pnpm --filter @tcgwatch/worker check-once sealed-prices  # scellés reliés à Cardmarket + cotes
  *   pnpm --filter @tcgwatch/worker check-once all-now    # force le relevé de TOUS les listings
  *   pnpm --filter @tcgwatch/worker check-once retailers  # synchronise l'annuaire des revendeurs
  */
@@ -21,7 +22,8 @@ import { importPokecardex } from './jobs/import-pokecardex';
 import { importTcgdex } from './jobs/import-tcgdex';
 import { linkProductExtensions } from './jobs/link-extensions';
 import { applyCardPrices, resolveCardmarketIds, snapshotMarketIndex } from './jobs/card-prices';
-import { runMarketJob } from './jobs/market';
+import { runMarketJob, saveQuotes } from './jobs/market';
+import { linkSealedProducts } from './jobs/sealed-links';
 import { CardmarketGuideProvider } from '@tcgwatch/market';
 import { syncRetailers } from './jobs/sync-retailers';
 
@@ -65,13 +67,32 @@ try {
       ctx.logger.info({ ...ids, priced }, 'Cotes des cartes mises à jour');
       break;
     }
+    case 'sealed-prices': {
+      const guide = new CardmarketGuideProvider(true, ctx.env.CARDMARKET_PRICE_GUIDE_URL);
+      const products = await prisma.product.findMany({
+        select: {
+          id: true,
+          name: true,
+          type: true,
+          ean: true,
+          cardmarketId: true,
+          releaseDate: true,
+          extensionId: true,
+        },
+      });
+      const linked = await linkSealedProducts(guide, products);
+      const quotes = await guide.fetchQuotes(products);
+      await saveQuotes(quotes);
+      ctx.logger.info({ linked, quotes: quotes.length }, 'Cotes Cardmarket des produits scellés');
+      break;
+    }
     case 'retailers':
       await syncRetailers(ctx);
       break;
     default:
       ctx.logger.error(
         { command },
-        'Commande inconnue (listings | all-now | tcgdex | cards | link | pokecardex | discover | market | card-prices | retailers)',
+        'Commande inconnue (listings | all-now | tcgdex | cards | link | pokecardex | discover | market | card-prices | sealed-prices | retailers)',
       );
       process.exitCode = 1;
   }

@@ -87,6 +87,7 @@ const productSchema = z
     idProduct: z.number(),
     name: z.string(),
     categoryName: z.string().nullish(),
+    idExpansion: z.number().nullish(),
     dateAdded: z.string().nullish(),
   })
   .passthrough();
@@ -147,6 +148,97 @@ export function plausibleCardmarketMatch(
       break;
   }
   return true;
+}
+
+type SealedKind =
+  | 'display'
+  | 'half-display'
+  | 'etb'
+  | 'center-etb'
+  | 'bundle'
+  | 'booster'
+  | 'tripack'
+  | 'build-battle'
+  | 'build-stadium';
+
+/** Format d'un produit Cardmarket d'après la fin de son nom (« Pitch Black Booster Box »…). */
+function cardmarketKind(cm: CardmarketProduct): SealedKind | null {
+  const n = cm.name.trim();
+  if (/\bcase\b|\bset\b|display$/i.test(n)) return null;
+  if (/booster box \(18 boosters?\)$/i.test(n)) return 'half-display';
+  if (/booster box$/i.test(n)) return 'display';
+  if (/pok[ée]mon center elite trainer box$/i.test(n)) return 'center-etb';
+  if (/elite trainer box$/i.test(n)) return 'etb';
+  if (/booster bundle$/i.test(n)) return 'bundle';
+  if (/3-pack blister$/i.test(n)) return 'tripack';
+  if (/build & battle box$/i.test(n)) return 'build-battle';
+  if (/build & battle stadium(?: box)?$/i.test(n)) return 'build-stadium';
+  if (/(?<!sleeved )booster$/i.test(n) && /booster$/i.test(cm.categoryName ?? '')) return 'booster';
+  return null;
+}
+
+/** Format d'un produit local (nom français et type). */
+function localKind(local: { name: string; type?: string }): SealedKind | null {
+  const n = local.name;
+  // Pack loisir (« Fun Pack ») : cotes Cardmarket trop rares et erratiques, pas de lien.
+  if (/pack loisir|fun pack/i.test(n)) return null;
+  if (/stade strat[ée]gies et combats|build (?:&|and) battle stadium/i.test(n)) {
+    return 'build-stadium';
+  }
+  if (/strat[ée]gies et combats|build (?:&|and) battle/i.test(n)) return 'build-battle';
+  if (isBundle(n)) return 'bundle';
+  switch (local.type) {
+    case 'DISPLAY':
+      return isHalf(n) ? 'half-display' : 'display';
+    case 'ETB':
+      return /pok[ée]mon center/i.test(n) ? 'center-etb' : 'etb';
+    case 'BOOSTER':
+      // « Pack 6 boosters », « Packs 3 booster » : plusieurs boosters, pas un seul.
+      return /\b(?:[2-9]|1\d)\s*boosters?\b/i.test(n) ? null : 'booster';
+    case 'TRIPACK':
+      return 'tripack';
+  }
+  return null;
+}
+
+/**
+ * Produit Cardmarket d'un produit scellé, cherché parmi les produits de son extension sur
+ * Cardmarket (`candidates` : même `idExpansion`) : le seul de même format (display, demi-display,
+ * ETB, lot de boosters, booster, tripack…). Plusieurs possibles (ETB en deux versions, tripacks de
+ * Pokémon différents) ou aucun : pas de lien, plutôt qu'un prix faux.
+ */
+export function matchSealedProduct(
+  local: { name: string; type?: string },
+  candidates: CardmarketProduct[],
+): number | null {
+  const kind = localKind(local);
+  if (!kind) return null;
+  const found = candidates.filter((c) => cardmarketKind(c) === kind);
+  return found.length === 1 ? found[0]!.idProduct : null;
+}
+
+/**
+ * Extension Cardmarket de chaque extension locale, déduite de ses cartes déjà reliées à
+ * Cardmarket (`idExpansion` majoritaire de leurs produits).
+ */
+export function expansionsOfReleases(
+  cards: { releaseId: string; cardmarketId: number }[],
+  singles: Map<number, CardmarketSingle>,
+): Map<string, number> {
+  const votes = new Map<string, Map<number, number>>();
+  for (const c of cards) {
+    const exp = singles.get(c.cardmarketId)?.idExpansion;
+    if (!exp) continue;
+    const v = votes.get(c.releaseId) ?? new Map<number, number>();
+    v.set(exp, (v.get(exp) ?? 0) + 1);
+    votes.set(c.releaseId, v);
+  }
+  const out = new Map<string, number>();
+  for (const [releaseId, v] of votes) {
+    const [best] = [...v].sort((a, b) => b[1] - a[1]);
+    if (best) out.set(releaseId, best[0]);
+  }
+  return out;
 }
 
 const num = z.number().nullish();
@@ -224,7 +316,24 @@ export class CardmarketGuideProvider implements MarketPriceProvider {
   /** Produits écartés au dernier relevé (lien CardNexus jugé faux). */
   rejected = 0;
 
-  async productList(): Promise<Map<number, CardmarketProduct>> {
+  private products?: Promise<Map<number, CardmarketProduct>>;
+  private singles?: Promise<Map<number, CardmarketSingle>>;
+
+  /** Catalogue des produits scellés, téléchargé une seule fois par instance. */
+  productList(): Promise<Map<number, CardmarketProduct>> {
+    this.products ??= this.downloadProducts();
+    this.products.catch(() => (this.products = undefined));
+    return this.products;
+  }
+
+  /** Catalogue des cartes à l'unité (versions de chaque carte), une fois par instance. */
+  singlesList(): Promise<Map<number, CardmarketSingle>> {
+    this.singles ??= this.downloadSingles();
+    this.singles.catch(() => (this.singles = undefined));
+    return this.singles;
+  }
+
+  private async downloadProducts(): Promise<Map<number, CardmarketProduct>> {
     const res = await this.fetchImpl(this.productsUrl, {
       headers: { accept: 'application/json', 'user-agent': 'TCGWatch (self-hosted)' },
       signal: AbortSignal.timeout(120_000),
@@ -234,8 +343,7 @@ export class CardmarketGuideProvider implements MarketPriceProvider {
     return new Map(body.products.map((p) => [p.idProduct, p]));
   }
 
-  /** Catalogue des cartes à l'unité (versions de chaque carte). */
-  async singlesList(): Promise<Map<number, CardmarketSingle>> {
+  private async downloadSingles(): Promise<Map<number, CardmarketSingle>> {
     const res = await this.fetchImpl(CARDMARKET_SINGLES_URL, {
       headers: { accept: 'application/json', 'user-agent': 'TCGWatch (self-hosted)' },
       signal: AbortSignal.timeout(120_000),
