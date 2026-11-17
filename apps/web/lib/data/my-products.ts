@@ -53,6 +53,7 @@ export async function getMyProducts(): Promise<{ products: MyProduct[]; listings
       targetPrice: true,
       marketQuery: true,
       cardmarketName: true,
+      cardmarketCategory: true,
       extension: { select: { nameFr: true, setCode: true } },
       marketPrices: {
         where: { source: 'cardmarket' },
@@ -107,7 +108,10 @@ export async function getMyProducts(): Promise<{ products: MyProduct[]; listings
       query,
       customQuery: w.marketQuery,
       cardmarketLow,
-      links: marketplaceLinks(query, target, w.cardmarketName),
+      links: marketplaceLinks(query, target, {
+        name: w.cardmarketName,
+        category: w.cardmarketCategory,
+      }),
       verdict,
       listings: w.marketListings.length,
     });

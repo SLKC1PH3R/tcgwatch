@@ -1,6 +1,12 @@
 import { prisma } from '@tcgwatch/db';
 import { EbayClient, type EbayListing } from '@tcgwatch/market';
-import { formatPrice, marketSearchQuery, relevantMarketListing, toNumber } from '@tcgwatch/shared';
+import {
+  cardmarketUrl,
+  formatPrice,
+  marketSearchQuery,
+  relevantMarketListing,
+  toNumber,
+} from '@tcgwatch/shared';
 import type { WorkerContext } from '../context';
 import { dispatchAlert } from './dispatch';
 
@@ -133,6 +139,7 @@ export async function checkCardmarketDeals(ctx: WorkerContext, date: Date): Prom
       name: true,
       targetPrice: true,
       cardmarketName: true,
+      cardmarketCategory: true,
       marketPrices: {
         where: { source: 'cardmarket', date: { lte: date } },
         orderBy: { date: 'desc' },
@@ -159,9 +166,7 @@ export async function checkCardmarketDeals(ctx: WorkerContext, date: Date): Prom
       message: `Offres à partir de ${formatPrice(low)} (toutes langues), tendance ${formatPrice(
         toNumber(today.price),
       )} · bon prix ${formatPrice(target)}.`,
-      url: `https://www.cardmarket.com/fr/Pokemon/Products/Search?${new URLSearchParams({
-        searchString: p.cardmarketName ?? p.name,
-      })}`,
+      url: cardmarketUrl({ name: p.cardmarketName, category: p.cardmarketCategory }, p.name),
       priority: 'high',
       tags: ['shopping_cart'],
     });

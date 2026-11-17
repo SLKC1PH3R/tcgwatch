@@ -185,6 +185,8 @@ model Product {
   cardmarketId      Int?
   /// Nom du produit sur Cardmarket (anglais), pour la recherche sur le site.
   cardmarketName    String?
+  /// Catégorie Cardmarket (« Pokémon Display »…) : adresse de la fiche produit sur le site.
+  cardmarketCategory String?
   /// Mots-clés des recherches d'annonces (eBay, Leboncoin, Vinted) ; sinon le nom du produit.
   marketQuery       String?
   marketListings    MarketListing[]

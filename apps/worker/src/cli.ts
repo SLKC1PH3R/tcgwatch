@@ -83,6 +83,7 @@ try {
           releaseDate: true,
           extensionId: true,
           cardmarketName: true,
+          cardmarketCategory: true,
         },
       });
       const linked = await linkSealedProducts(guide, products);

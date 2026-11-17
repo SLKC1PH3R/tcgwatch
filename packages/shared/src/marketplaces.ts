@@ -84,6 +84,48 @@ export function relevantMarketListing(title: string, p: MarketProduct): boolean 
   return true;
 }
 
+/** Chemin des catégories de produits scellés Cardmarket dans les adresses du site. */
+const CARDMARKET_PATHS: Record<string, string> = {
+  'Pokémon Booster': 'Boosters',
+  'Pokémon Display': 'Booster-Boxes',
+  'Pokémon Elite Trainer Boxes': 'Elite-Trainer-Boxes',
+  'Pokémon Box Set': 'Box-Sets',
+  'Pokémon Tins': 'Tins',
+  'Pokémon Blisters': 'Blisters',
+  'Pokémon Theme Decks': 'Theme-Decks',
+  'Pokémon Trainer Kits': 'Trainer-Kits',
+};
+
+/** Nom Cardmarket → segment d'adresse : « Black & White Booster Box » → « Black-White-Booster-Box ». */
+export function cardmarketSlug(name: string): string {
+  return name
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/['’]/g, '')
+    .replace(/[^A-Za-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+export interface CardmarketRef {
+  name?: string | null;
+  category?: string | null;
+}
+
+/**
+ * Fiche Cardmarket du produit, offres en français (`language=2`) ; recherche sur le nom quand
+ * la catégorie n'a pas d'adresse connue.
+ */
+export function cardmarketUrl(ref: CardmarketRef, fallbackQuery: string): string {
+  const path = ref.category ? CARDMARKET_PATHS[ref.category] : undefined;
+  const slug = ref.name ? cardmarketSlug(ref.name) : '';
+  if (path && slug) {
+    return `https://www.cardmarket.com/fr/Pokemon/Products/${path}/${slug}?language=2`;
+  }
+  return `https://www.cardmarket.com/fr/Pokemon/Products/Search?${new URLSearchParams({
+    searchString: ref.name ?? fallbackQuery,
+  })}`;
+}
+
 export interface MarketplaceLink {
   key: 'leboncoin' | 'vinted' | 'ebay' | 'cardmarket';
   label: string;
@@ -93,12 +135,12 @@ export interface MarketplaceLink {
 /**
  * Recherches préremplies, les plus récentes d'abord, jusqu'au bon prix : Leboncoin (France
  * entière, remise en main propre possible), Vinted (neuf), eBay (neuf, France), Cardmarket
- * (fiche du produit en français quand le nom Cardmarket est connu).
+ * (fiche du produit, offres en français, quand le produit Cardmarket est connu).
  */
 export function marketplaceLinks(
   query: string,
   maxPrice: number | null,
-  cardmarketName?: string | null,
+  cardmarket?: CardmarketRef | null,
 ): MarketplaceLink[] {
   const max = maxPrice ? String(Math.round(maxPrice)) : null;
   const lbc = new URLSearchParams({ text: query, sort: 'time', order: 'desc' });
@@ -114,7 +156,6 @@ export function marketplaceLinks(
     LH_PrefLoc: '1',
   });
   if (max) ebay.set('_udhi', max);
-  const cm = new URLSearchParams({ searchString: cardmarketName ?? query });
   return [
     {
       key: 'leboncoin',
@@ -126,7 +167,7 @@ export function marketplaceLinks(
     {
       key: 'cardmarket',
       label: 'Cardmarket',
-      url: `https://www.cardmarket.com/fr/Pokemon/Products/Search?${cm}`,
+      url: cardmarketUrl(cardmarket ?? {}, query),
     },
   ];
 }

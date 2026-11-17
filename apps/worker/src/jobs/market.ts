@@ -55,6 +55,7 @@ export async function runMarketJob(ctx: WorkerContext) {
       releaseDate: true,
       extensionId: true,
       cardmarketName: true,
+      cardmarketCategory: true,
     },
   });
   const sets = (

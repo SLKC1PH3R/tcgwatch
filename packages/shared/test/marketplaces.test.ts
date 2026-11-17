@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { marketplaceLinks, marketSearchQuery, relevantMarketListing } from '../src/marketplaces';
+import {
+  cardmarketSlug,
+  cardmarketUrl,
+  marketplaceLinks,
+  marketSearchQuery,
+  relevantMarketListing,
+} from '../src/marketplaces';
 
 const etb = {
   name: 'Coffret Dresseur d’élite Méga-Évolution - Nuit Noire',
@@ -34,11 +40,33 @@ describe('places de marché', () => {
   });
 
   it('liens préremplis jusqu’au bon prix', () => {
-    const links = marketplaceLinks('ETB Nuit Noire', 130, 'Pitch Black Elite Trainer Box');
+    const links = marketplaceLinks('ETB Nuit Noire', 130, {
+      name: 'Pitch Black Elite Trainer Box',
+    });
     const by = Object.fromEntries(links.map((l) => [l.key, new URL(l.url)]));
     expect(by.leboncoin!.searchParams.get('price')).toBe('min-130');
     expect(by.vinted!.searchParams.get('price_to')).toBe('130');
     expect(by.ebay!.searchParams.get('_udhi')).toBe('130');
     expect(by.cardmarket!.searchParams.get('searchString')).toBe('Pitch Black Elite Trainer Box');
+  });
+
+  it('fiche Cardmarket directe, offres en français', () => {
+    expect(
+      cardmarketUrl({ name: 'Pitch Black Booster Box', category: 'Pokémon Display' }, 'x'),
+    ).toBe(
+      'https://www.cardmarket.com/fr/Pokemon/Products/Booster-Boxes/Pitch-Black-Booster-Box?language=2',
+    );
+    expect(cardmarketSlug('Black & White Booster Box')).toBe('Black-White-Booster-Box');
+    expect(cardmarketSlug('Roaring Skies: Storm Rider Theme Deck')).toBe(
+      'Roaring-Skies-Storm-Rider-Theme-Deck',
+    );
+    expect(cardmarketSlug("Champion's Path Elite Trainer Box")).toBe(
+      'Champions-Path-Elite-Trainer-Box',
+    );
+    expect(cardmarketSlug('Pokémon GO Booster')).toBe('Pokemon-GO-Booster');
+    // Catégorie sans adresse connue : recherche.
+    expect(cardmarketUrl({ name: 'Some Lot', category: 'Pokémon Lot' }, 'x')).toContain(
+      '/Products/Search?searchString=Some+Lot',
+    );
   });
 });

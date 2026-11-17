@@ -13,6 +13,7 @@ interface SealedRef {
   type: string;
   cardmarketId: number | null;
   cardmarketName?: string | null;
+  cardmarketCategory?: string | null;
   releaseDate: Date | null;
   extensionId: string | null;
 }
@@ -61,12 +62,20 @@ export async function linkSealedProducts(
     p.cardmarketId = match;
     linked++;
   }
-  // Nom Cardmarket (anglais) des produits liés : recherche sur le site depuis « Mes produits ».
+  // Nom (anglais) et catégorie Cardmarket des produits liés : lien direct vers leur fiche.
   for (const p of products) {
-    const name = p.cardmarketId ? (list.get(p.cardmarketId)?.name ?? null) : null;
-    if (name === (p.cardmarketName ?? null)) continue;
-    await prisma.product.update({ where: { id: p.id }, data: { cardmarketName: name } });
+    const cm = p.cardmarketId ? list.get(p.cardmarketId) : undefined;
+    const name = cm?.name ?? null;
+    const category = cm?.categoryName ?? null;
+    if (name === (p.cardmarketName ?? null) && category === (p.cardmarketCategory ?? null)) {
+      continue;
+    }
+    await prisma.product.update({
+      where: { id: p.id },
+      data: { cardmarketName: name, cardmarketCategory: category },
+    });
     p.cardmarketName = name;
+    p.cardmarketCategory = category;
   }
   return linked;
 }
