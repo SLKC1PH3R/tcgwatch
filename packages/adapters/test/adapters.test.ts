@@ -17,6 +17,7 @@ import {
   parseLeTempleDuJeu,
   parseGeneric,
   parsePhilibert,
+  philibertAdapter,
   parsePlayIn,
   parseSmyths,
 } from '../src';
@@ -128,6 +129,40 @@ describe('Philibert (fixtures réelles)', () => {
     expect(r.availability).toBe('OUT_OF_STOCK');
     expect(r.price).toBeNull();
     expect(r.title).toContain('Mewtwo');
+  });
+});
+
+describe('Philibert : stock réel (appel expedition_date)', () => {
+  const url =
+    'https://www.philibertnet.com/fr/pokemon/184016-pokemon-mega-symphonia-m1s-30-boosters-display-8800286278108.html';
+  const run = (stock: string) => {
+    const urls: string[] = [];
+    const ctx = {
+      fetchHtml: async (u: string) => {
+        urls.push(u);
+        return u === url ? fixture('philibert-in-stock') : stock;
+      },
+    };
+    return { urls, result: philibertAdapter.fetchListing(url, ctx) };
+  };
+
+  it('page en cache « Ajouter au panier » mais épuisé → rupture', async () => {
+    const { urls, result } = run('{"status":"out_of_stock","after_price_html":""}');
+    const r = await result;
+    expect(r.availability).toBe('OUT_OF_STOCK');
+    expect(r.price).toBe(79.95);
+    expect(urls[1]).toMatch(
+      /^https:\/\/www\.philibertnet\.com\/fr\/ajax\/product\/184016\/\d+\/expedition_date$/,
+    );
+  });
+
+  it('en stock confirmé', async () => {
+    const r = await run('{"status":"in_stock"}').result;
+    expect(r.availability).toBe('IN_STOCK');
+  });
+
+  it('réponse illisible → erreur (pas de faux retour en stock)', async () => {
+    await expect(run('<html>429 Too Many Requests</html>').result).rejects.toThrow(/illisible/);
   });
 });
 
