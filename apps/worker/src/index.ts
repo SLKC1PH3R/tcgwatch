@@ -9,6 +9,7 @@ import { importPokecardex } from './jobs/import-pokecardex';
 import { importTcgdex } from './jobs/import-tcgdex';
 import { linkProductExtensions } from './jobs/link-extensions';
 import { runMarketJob } from './jobs/market';
+import { runMarketListings } from './jobs/market-listings';
 import { syncRetailers } from './jobs/sync-retailers';
 
 /** Empêche deux exécutions simultanées d'une même tâche planifiée. */
@@ -42,6 +43,7 @@ async function main() {
       discoveryCron: env.DISCOVERY_ENABLED ? env.DISCOVERY_CRON : 'désactivé',
       marketCron: env.MARKET_CRON,
       historyCron: env.HISTORY_CRON,
+      ebayCron: env.EBAY_CLIENT_ID ? env.EBAY_CRON : 'désactivé (pas de clés)',
       playwright: env.PLAYWRIGHT_ENABLED,
       notifications: ctx.notifier.enabled,
     },
@@ -85,6 +87,11 @@ async function main() {
   }
   if (env.DISCOVERY_ENABLED) {
     tasks.push(cron.schedule(env.DISCOVERY_CRON, discoveryJob, { timezone, name: 'discovery' }));
+  }
+  // Annonces eBay de « Mes produits » (API officielle, seulement si les clés sont fournies).
+  if (env.EBAY_CLIENT_ID && env.EBAY_CLIENT_SECRET) {
+    const ebayJob = exclusive(ctx, 'ebay', () => runMarketListings(ctx));
+    tasks.push(cron.schedule(env.EBAY_CRON, ebayJob, { timezone, name: 'ebay' }));
   }
 
   // Annuaire des revendeurs : nouveaux sites et métadonnées à jour à chaque démarrage.

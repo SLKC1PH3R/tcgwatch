@@ -677,6 +677,7 @@ const ALERT_STYLE: Record<string, { label: string; className: string }> = {
   RELEASE_DATE: { label: 'Date de sortie', className: 'text-info' },
   MARKET_MOVE: { label: 'Variation marché', className: 'text-warning' },
   CARD_PRICE: { label: 'Carte', className: 'text-chart-2' },
+  MARKET_DEAL: { label: 'Bon prix', className: 'text-success' },
 };
 
 /** « il y a 12 min », « il y a 3 h », puis la date. */

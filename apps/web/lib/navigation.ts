@@ -44,7 +44,8 @@ export interface NavEntry {
 
 const exact = (href: string) => (path: string) => path === href;
 const isProductSheet = (p: string) =>
-  /^\/produits\/[^/]+$/.test(p) && !['/produits/prix', '/produits/bons-plans'].includes(p);
+  /^\/produits\/[^/]+$/.test(p) &&
+  !['/produits/prix', '/produits/bons-plans', '/produits/mes-produits'].includes(p);
 
 export const NAV: NavEntry[] = [
   { label: 'Accueil', icon: LayoutDashboard, href: '/', match: (p) => p === '/' },
@@ -67,6 +68,12 @@ export const NAV: NavEntry[] = [
             label: 'Produits suivis',
             hint: 'Stock et meilleur prix chez chaque revendeur',
             active: (p) => p === '/produits' || isProductSheet(p),
+          },
+          {
+            href: '/produits/mes-produits',
+            label: 'Mes produits',
+            hint: 'Ton bon prix, les annonces et les alertes',
+            active: exact('/produits/mes-produits'),
           },
           {
             href: '/retours-en-stock',

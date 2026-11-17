@@ -12,6 +12,7 @@ interface SealedRef {
   name: string;
   type: string;
   cardmarketId: number | null;
+  cardmarketName?: string | null;
   releaseDate: Date | null;
   extensionId: string | null;
 }
@@ -59,6 +60,13 @@ export async function linkSealedProducts(
     await prisma.product.update({ where: { id: p.id }, data: { cardmarketId: match } });
     p.cardmarketId = match;
     linked++;
+  }
+  // Nom Cardmarket (anglais) des produits liés : recherche sur le site depuis « Mes produits ».
+  for (const p of products) {
+    const name = p.cardmarketId ? (list.get(p.cardmarketId)?.name ?? null) : null;
+    if (name === (p.cardmarketName ?? null)) continue;
+    await prisma.product.update({ where: { id: p.id }, data: { cardmarketName: name } });
+    p.cardmarketName = name;
   }
   return linked;
 }

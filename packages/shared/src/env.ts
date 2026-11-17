@@ -75,6 +75,16 @@ const schema = z.object({
     .default('https://downloads.s3.cardmarket.com/productCatalog/priceGuide/price_guide_6.json'),
   /** Cartes dont l'id Cardmarket est cherché sur TCGdex à chaque relevé (une fois par carte). */
   CARD_CARDMARKET_LOOKUPS: z.coerce.number().int().min(0).default(3000),
+  /**
+   * Annonces eBay (API officielle Browse, compte développeur gratuit) pour « Mes produits ».
+   * Sans clés, la recherche eBay est désactivée (les liens de recherche restent).
+   */
+  EBAY_CLIENT_ID: optionalString,
+  EBAY_CLIENT_SECRET: optionalString,
+  EBAY_CRON: z.string().default('*/20 * * * *'),
+  /** Remise en main propre : code postal et rayon (km) des annonces « à retirer sur place ». */
+  EBAY_PICKUP_POSTCODE: optionalString,
+  EBAY_PICKUP_RADIUS_KM: z.coerce.number().int().positive().default(50),
   POKETRACE_API_KEY: optionalString,
   POKETRACE_API_URL: z.string().url().default('https://api.poketrace.com'),
 

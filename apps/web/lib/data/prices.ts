@@ -67,14 +67,14 @@ async function marketQuotes() {
 const BUYABLE: Availability[] = ['IN_STOCK', 'PREORDER'];
 
 /** Tous les produits scellés avec leur cote et leur meilleure offre en boutique. */
-export async function getSealedPrices(): Promise<SealedPrice[]> {
+export async function getSealedPrices(ids?: string[]): Promise<SealedPrice[]> {
   const serieSelect = { select: { id: true, name: true, order: true } } as const;
   const releaseSelect = {
     select: { nameFr: true, setCode: true, releaseDate: true, serie: true, serieRef: serieSelect },
   } as const;
   const [products, quotes] = await Promise.all([
     prisma.product.findMany({
-      where: { type: { not: 'AUTRE' } },
+      where: ids ? { id: { in: ids } } : { type: { not: 'AUTRE' } },
       select: {
         id: true,
         name: true,

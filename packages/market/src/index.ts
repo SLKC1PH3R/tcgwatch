@@ -8,3 +8,4 @@ export * from './cardnexus';
 export * from './cardmarket';
 export * from './opening';
 export * from './pokemontcg';
+export * from './ebay';

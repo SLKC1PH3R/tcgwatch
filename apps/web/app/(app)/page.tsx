@@ -18,6 +18,7 @@ const ALERT_STYLE = {
   NEW_LOW: { label: 'Plus bas historique', className: 'text-success' },
   MARKET_MOVE: { label: 'Variation marché', className: 'text-warning' },
   CARD_PRICE: { label: 'Carte', className: 'text-chart-2' },
+  MARKET_DEAL: { label: 'Bon prix', className: 'text-success' },
 } as const;
 
 const month = new Intl.DateTimeFormat('fr-FR', { month: 'short', timeZone: 'UTC' });

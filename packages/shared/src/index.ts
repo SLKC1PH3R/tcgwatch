@@ -5,3 +5,4 @@ export * from './dates';
 export * from './search';
 export * from './history';
 export * from './shipping';
+export * from './marketplaces';

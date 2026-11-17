@@ -11,6 +11,7 @@
  *   pnpm --filter @tcgwatch/worker check-once card-prices [n]  # cotes des cartes (n ids cherchés)
  *   pnpm --filter @tcgwatch/worker check-once sealed-prices  # scellés reliés à Cardmarket + cotes
  *   pnpm --filter @tcgwatch/worker check-once card-images [set]  # images manquantes (pokemontcg.io)
+ *   pnpm --filter @tcgwatch/worker check-once ebay       # annonces eBay de « Mes produits »
  *   pnpm --filter @tcgwatch/worker check-once all-now    # force le relevé de TOUS les listings
  *   pnpm --filter @tcgwatch/worker check-once retailers  # synchronise l'annuaire des revendeurs
  */
@@ -26,6 +27,7 @@ import { applyCardPrices, resolveCardmarketIds, snapshotMarketIndex } from './jo
 import { runMarketJob, saveQuotes } from './jobs/market';
 import { linkSealedProducts } from './jobs/sealed-links';
 import { fillCardImages } from './jobs/card-images';
+import { runMarketListings } from './jobs/market-listings';
 import { CardmarketGuideProvider } from '@tcgwatch/market';
 import { syncRetailers } from './jobs/sync-retailers';
 
@@ -80,6 +82,7 @@ try {
           cardmarketId: true,
           releaseDate: true,
           extensionId: true,
+          cardmarketName: true,
         },
       });
       const linked = await linkSealedProducts(guide, products);
@@ -103,13 +106,17 @@ try {
       ctx.logger.info({ releases: releases.length, filled }, 'Images des cartes complétées');
       break;
     }
+    case 'ebay':
+      if (!ctx.env.EBAY_CLIENT_ID) ctx.logger.warn('EBAY_CLIENT_ID / EBAY_CLIENT_SECRET absents');
+      await runMarketListings(ctx);
+      break;
     case 'retailers':
       await syncRetailers(ctx);
       break;
     default:
       ctx.logger.error(
         { command },
-        'Commande inconnue (listings | all-now | tcgdex | cards | link | pokecardex | discover | market | card-prices | sealed-prices | card-images | retailers)',
+        'Commande inconnue (listings | all-now | tcgdex | cards | link | pokecardex | discover | market | card-prices | sealed-prices | card-images | ebay | retailers)',
       );
       process.exitCode = 1;
   }

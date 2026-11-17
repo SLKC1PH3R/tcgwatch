@@ -10,6 +10,7 @@ import { todayUtc } from '@tcgwatch/shared';
 import type { WorkerContext } from '../context';
 import { applyCardPrices, resolveCardmarketIds, snapshotMarketIndex } from './card-prices';
 import { selectChaseCards } from './chase-cards';
+import { checkCardmarketDeals } from './market-listings';
 import { linkSealedProducts } from './sealed-links';
 import { checkCardThresholds, checkMarketMoves } from './price-alerts';
 
@@ -53,6 +54,7 @@ export async function runMarketJob(ctx: WorkerContext) {
       cardmarketId: true,
       releaseDate: true,
       extensionId: true,
+      cardmarketName: true,
     },
   });
   const sets = (
@@ -105,6 +107,8 @@ export async function runMarketJob(ctx: WorkerContext) {
 
   // Alertes de variation du prix marché sur 7 jours (MARKET_MOVE_ALERT_PCT, 0 = désactivées).
   const moves = await checkMarketMoves(ctx, date, ctx.env.MARKET_MOVE_ALERT_PCT);
+  // « Mes produits » : cote Cardmarket passée sous le bon prix.
+  const deals = await checkCardmarketDeals(ctx, date);
 
   await selectChaseCards(ctx);
   const cards = await prisma.chaseCard.findMany({ select: { id: true, tcgdexId: true } });
@@ -145,7 +149,7 @@ export async function runMarketJob(ctx: WorkerContext) {
 
   ctx.status.lastMarketRun = new Date();
   ctx.logger.info(
-    { quotes, cardQuotes, cardPrices, moves, cardAlerts },
+    { quotes, cardQuotes, cardPrices, moves, deals, cardAlerts },
     'Relevé du marché secondaire terminé',
   );
 }
