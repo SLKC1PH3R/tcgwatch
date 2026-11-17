@@ -52,7 +52,7 @@ export async function SeriesBoard({ mode }: { mode: SeriesMode }) {
           <a
             key={s.id}
             href={`#serie-${s.id}`}
-            className="rounded-full border px-3 py-1 text-xs font-medium transition-colors hover:bg-accent"
+            className="inline-flex h-8 items-center rounded-full border px-3.5 text-sm font-medium transition-colors hover:bg-accent"
           >
             {s.name}
           </a>

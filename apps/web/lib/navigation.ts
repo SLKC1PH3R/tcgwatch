@@ -1,0 +1,206 @@
+import {
+  BookOpen,
+  Calculator,
+  CalendarDays,
+  ChartLine,
+  LayoutDashboard,
+  Package,
+  Store,
+  Vault,
+  type LucideIcon,
+} from 'lucide-react';
+import { PRICE_CATEGORIES } from '@tcgwatch/shared';
+
+/**
+ * Plan du site : une seule source pour le menu principal (ordinateur), le menu mobile
+ * et le fil d'Ariane des pages.
+ */
+
+export interface NavLink {
+  href: string;
+  label: string;
+  /** Une ligne d'explication sous le libellé, dans les sous-menus. */
+  hint?: string;
+  /** Actif quand ce test passe (sinon : chemin identique). */
+  active?: (path: string, params: URLSearchParams) => boolean;
+}
+
+export interface NavGroup {
+  label?: string;
+  /** Liens affichés en pastilles compactes (ex. types de produit). */
+  compact?: boolean;
+  items: NavLink[];
+}
+
+export interface NavEntry {
+  label: string;
+  icon: LucideIcon;
+  /** Lien direct (entrée sans sous-menu). */
+  href?: string;
+  /** Section à laquelle appartient la page courante. */
+  match: (path: string) => boolean;
+  groups?: NavGroup[];
+}
+
+const exact = (href: string) => (path: string) => path === href;
+const isProductSheet = (p: string) =>
+  /^\/produits\/[^/]+$/.test(p) && !['/produits/prix', '/produits/bons-plans'].includes(p);
+
+export const NAV: NavEntry[] = [
+  { label: 'Accueil', icon: LayoutDashboard, href: '/', match: (p) => p === '/' },
+  {
+    label: 'Calendrier',
+    icon: CalendarDays,
+    href: '/calendrier',
+    match: (p) => p.startsWith('/calendrier'),
+  },
+  {
+    label: 'Produits',
+    icon: Package,
+    match: (p) => p.startsWith('/produits') || p.startsWith('/retours-en-stock'),
+    groups: [
+      {
+        label: 'Suivi',
+        items: [
+          {
+            href: '/produits',
+            label: 'Produits suivis',
+            hint: 'Stock et meilleur prix chez chaque revendeur',
+            active: (p) => p === '/produits' || isProductSheet(p),
+          },
+          {
+            href: '/retours-en-stock',
+            label: 'Retours en stock',
+            hint: 'Les dernières remises en vente',
+            active: (p) => p.startsWith('/retours-en-stock'),
+          },
+          {
+            href: '/produits/bons-plans',
+            label: 'Bons plans',
+            hint: 'Offres sous la cote ou sous le prix public',
+            active: exact('/produits/bons-plans'),
+          },
+        ],
+      },
+      {
+        label: 'Prix par type',
+        compact: true,
+        items: [
+          { href: '/produits/prix', label: 'Tous les types', active: exact('/produits/prix') },
+          ...PRICE_CATEGORIES.map((c) => ({
+            href: `/produits/prix/${c.key}`,
+            label: c.label,
+            hint: c.title,
+            active: exact(`/produits/prix/${c.key}`),
+          })),
+          {
+            href: '/produits/prix/cartes',
+            label: 'Cartes à l’unité',
+            hint: 'Cote des cartes',
+            active: exact('/produits/prix/cartes'),
+          },
+        ],
+      },
+    ],
+  },
+  {
+    label: 'Encyclopédie',
+    icon: BookOpen,
+    match: (p) => ['/series', '/extensions', '/cartes'].some((h) => p.startsWith(h)),
+    groups: [
+      {
+        items: [
+          {
+            href: '/series',
+            label: 'Par produit',
+            hint: 'Séries, extensions et leurs produits scellés',
+            active: (p, q) =>
+              p === '/series' || (p.startsWith('/extensions') && q.get('onglet') !== 'cartes'),
+          },
+          {
+            href: '/series/cartes',
+            label: 'Par cartes',
+            hint: 'Valeur des cartes de chaque extension',
+            active: (p, q) =>
+              p === '/series/cartes' ||
+              p.startsWith('/cartes') ||
+              (p.startsWith('/extensions') && q.get('onglet') === 'cartes'),
+          },
+        ],
+      },
+    ],
+  },
+  {
+    label: 'Marché',
+    icon: ChartLine,
+    match: (p) => p.startsWith('/marche'),
+    groups: [
+      {
+        items: [
+          {
+            href: '/marche',
+            label: 'Prix du marché',
+            hint: 'Cote des produits et des cartes phares',
+            active: (p) => p.startsWith('/marche') && !p.startsWith('/marche/indice'),
+          },
+          {
+            href: '/marche/indice',
+            label: 'Indice du marché',
+            hint: 'Tendance globale, plus fortes hausses et baisses',
+            active: (p) => p.startsWith('/marche/indice'),
+          },
+        ],
+      },
+    ],
+  },
+  {
+    label: 'Collection',
+    icon: Vault,
+    href: '/collection',
+    match: (p) => p.startsWith('/collection'),
+  },
+  {
+    label: 'Revendeurs',
+    icon: Store,
+    href: '/revendeurs',
+    match: (p) => p.startsWith('/revendeurs'),
+  },
+  {
+    label: 'Calculateurs',
+    icon: Calculator,
+    match: (p) => p.startsWith('/calculateurs'),
+    groups: [
+      {
+        items: [
+          {
+            href: '/calculateurs/rentabilite',
+            label: 'Rentabilité d’une ouverture',
+            hint: 'Ouvrir un produit ou le garder scellé ?',
+            active: (p) => p.startsWith('/calculateurs/rentabilite'),
+          },
+          {
+            href: '/calculateurs/budget',
+            label: 'Quoi acheter avec mon budget ?',
+            hint: 'Les meilleurs achats pour une somme donnée',
+            active: (p) => p.startsWith('/calculateurs/budget'),
+          },
+        ],
+      },
+    ],
+  },
+];
+
+export function isLinkActive(link: NavLink, path: string, params: URLSearchParams) {
+  return link.active ? link.active(path, params) : path === link.href;
+}
+
+/** Section et sous-page courantes, pour le fil d'Ariane. */
+export function currentLocation(path: string, params: URLSearchParams) {
+  const entry = NAV.find((e) => e.match(path));
+  if (!entry?.groups) return null;
+  for (const group of entry.groups) {
+    const link = group.items.find((l) => isLinkActive(l, path, params));
+    if (link) return { entry, group, link };
+  }
+  return { entry, group: undefined, link: undefined };
+}

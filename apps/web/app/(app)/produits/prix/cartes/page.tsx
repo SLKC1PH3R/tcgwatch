@@ -111,7 +111,7 @@ export default async function CardPricesPage({ searchParams }: Props) {
       href={to}
       aria-current={active ? 'true' : undefined}
       className={cn(
-        'rounded-full border px-3 py-1 text-xs font-medium transition-colors hover:bg-accent',
+        'inline-flex h-8 items-center rounded-full border px-3.5 text-sm font-medium transition-colors hover:bg-accent',
         active && 'border-primary bg-primary text-primary-foreground hover:bg-primary/90',
       )}
     >
@@ -216,7 +216,7 @@ export default async function CardPricesPage({ searchParams }: Props) {
                 <li key={c.id}>
                   <Link
                     href={`/cartes/${encodeURIComponent(c.id)}`}
-                    className="flex items-center gap-3 px-2 py-2 transition-colors hover:bg-accent/40"
+                    className="flex items-center gap-3 rounded-lg px-4 py-2.5 transition-colors hover:bg-accent/60"
                   >
                     <span className="w-8 shrink-0 text-right text-sm font-semibold text-muted-foreground tabular-nums">
                       {i + 4}
@@ -280,7 +280,7 @@ export default async function CardPricesPage({ searchParams }: Props) {
                   <li key={c.id}>
                     <Link
                       href={`/cartes/${encodeURIComponent(c.id)}`}
-                      className="flex items-center gap-3 px-2 py-1.5 text-sm transition-colors hover:bg-accent/40"
+                      className="flex items-center gap-3 rounded-lg px-4 py-2 text-sm transition-colors hover:bg-accent/60"
                     >
                       <span className="w-6 text-right text-muted-foreground tabular-nums">
                         #{i + 1}
@@ -333,7 +333,7 @@ function MoveList({ title, moves }: { title: string; moves: { c: PricedCard; cha
             <li key={c.id}>
               <Link
                 href={`/cartes/${encodeURIComponent(c.id)}`}
-                className="flex items-center gap-3 px-2 py-1.5 text-sm transition-colors hover:bg-accent/40"
+                className="flex items-center gap-3 rounded-lg px-4 py-2 text-sm transition-colors hover:bg-accent/60"
               >
                 <span className="min-w-0 flex-1">
                   <span className="block truncate font-medium">

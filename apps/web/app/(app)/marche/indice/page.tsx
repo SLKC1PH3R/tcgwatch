@@ -234,7 +234,7 @@ export default async function MarketIndexPage() {
                   <li key={x.id}>
                     <Link
                       href={`/extensions/${encodeURIComponent(x.tcgdexId)}?onglet=cartes`}
-                      className="flex items-center gap-3 px-2 py-1.5 text-sm transition-colors hover:bg-accent/40"
+                      className="flex items-center gap-3 rounded-lg px-4 py-2 text-sm transition-colors hover:bg-accent/60"
                     >
                       <span className="w-6 text-right text-muted-foreground tabular-nums">
                         {i + 1}
@@ -370,7 +370,7 @@ function CardRows({
 }) {
   if (cards.length === 0)
     return (
-      <p className="px-2 py-4 text-sm text-muted-foreground">Cotes des cartes en cours d’import.</p>
+      <p className="px-4 py-4 text-sm text-muted-foreground">Cotes des cartes en cours d’import.</p>
     );
   return (
     <ol className="divide-y">
@@ -378,7 +378,7 @@ function CardRows({
         <li key={c.id}>
           <Link
             href={`/cartes/${encodeURIComponent(c.id)}`}
-            className="flex items-center gap-3 px-2 py-1.5 text-sm transition-colors hover:bg-accent/40"
+            className="flex items-center gap-3 rounded-lg px-4 py-2 text-sm transition-colors hover:bg-accent/60"
           >
             {rank && (
               <span className="w-6 text-right text-muted-foreground tabular-nums">{i + 1}</span>
@@ -403,7 +403,7 @@ function CardRows({
 function SealedRows({ rows }: { rows: SealedPrice[] }) {
   if (rows.length === 0)
     return (
-      <p className="px-2 py-4 text-sm text-muted-foreground">Pas encore assez d’historique.</p>
+      <p className="px-4 py-4 text-sm text-muted-foreground">Pas encore assez d’historique.</p>
     );
   return (
     <ol className="divide-y">
@@ -411,7 +411,7 @@ function SealedRows({ rows }: { rows: SealedPrice[] }) {
         <li key={p.id}>
           <Link
             href={`/produits/${p.id}`}
-            className="flex items-center gap-3 px-2 py-1.5 text-sm transition-colors hover:bg-accent/40"
+            className="flex items-center gap-3 rounded-lg px-4 py-2 text-sm transition-colors hover:bg-accent/60"
           >
             <Thumb src={p.image} className="size-9 shrink-0" />
             <span className="min-w-0 flex-1 truncate font-medium">{p.name}</span>

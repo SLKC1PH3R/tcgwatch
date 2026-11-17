@@ -104,7 +104,7 @@ export default async function MarketPage({
                     href={p.value === 'recent' ? '/marche' : `/marche?periode=${p.value}`}
                     aria-current={period === p.value ? 'page' : undefined}
                     className={cn(
-                      'rounded-full border px-3 py-1 text-xs font-medium transition-colors hover:bg-accent',
+                      'inline-flex h-8 items-center rounded-full border px-3.5 text-sm font-medium transition-colors hover:bg-accent',
                       period === p.value &&
                         'border-primary bg-primary text-primary-foreground hover:bg-primary/90',
                     )}

@@ -254,7 +254,7 @@ export default async function BudgetPage({ searchParams }: Props) {
   return (
     <>
       <PageHeader
-        title="Que acheter en Pokémon avec votre budget ?"
+        title="Quoi acheter en Pokémon avec votre budget ?"
         description="Indiquez combien vous voulez dépenser et ce que vous cherchez : trois idées d’achat au prix du jour (meilleure offre chez les revendeurs suivis, sinon cote du marché), avec tout ce qui rentre dans votre budget."
       />
 
@@ -269,7 +269,7 @@ export default async function BudgetPage({ searchParams }: Props) {
                   href={href({ budget: String(b) })}
                   aria-current={b === budget ? 'true' : undefined}
                   className={cn(
-                    'rounded-full border px-3 py-1 text-xs font-medium transition-colors hover:bg-accent',
+                    'inline-flex h-8 items-center rounded-full border px-3.5 text-sm font-medium transition-colors hover:bg-accent',
                     b === budget &&
                       'border-primary bg-primary text-primary-foreground hover:bg-primary/90',
                   )}

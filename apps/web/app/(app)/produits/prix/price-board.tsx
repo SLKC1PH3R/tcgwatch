@@ -67,14 +67,18 @@ export async function PriceBoard({
     const qs = q.toString();
     return qs ? `${basePath}?${qs}` : basePath;
   };
-  const chip = (label: string, to: string, active: boolean) => (
+  // Filtre (série) en jaune, tri en blanc : deux réglages différents, deux styles différents.
+  const chip = (label: string, to: string, active: boolean, kind: 'filter' | 'sort' = 'filter') => (
     <Link
       key={to + label}
       href={to}
       aria-current={active ? 'true' : undefined}
       className={cn(
-        'rounded-full border px-3 py-1 text-xs font-medium transition-colors hover:bg-accent',
-        active && 'border-primary bg-primary text-primary-foreground hover:bg-primary/90',
+        'inline-flex h-8 items-center rounded-full border px-3.5 text-sm font-medium transition-colors hover:bg-accent',
+        active &&
+          (kind === 'filter'
+            ? 'border-primary bg-primary text-primary-foreground hover:bg-primary/90'
+            : 'border-foreground bg-foreground text-background hover:bg-foreground/90'),
       )}
     >
       {label}
@@ -119,13 +123,19 @@ export async function PriceBoard({
         />
       </div>
 
-      <div className="mb-6 flex flex-wrap items-center gap-x-4 gap-y-2">
-        <nav aria-label="Séries" className="flex flex-wrap gap-1.5">
-          {chip('Toutes les séries', href({ serie: undefined }), !serie)}
+      <div className="mb-6 flex flex-col gap-3 rounded-2xl border bg-card p-4">
+        <nav aria-label="Séries" className="flex flex-wrap items-center gap-1.5">
+          <span className="mr-1 w-20 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+            Série
+          </span>
+          {chip('Toutes', href({ serie: undefined }), !serie)}
           {series.map((s) => chip(s.name, href({ serie: s.id }), serie === s.id))}
         </nav>
-        <nav aria-label="Tri" className="flex flex-wrap gap-1.5">
-          {SORTS.map((s) => chip(s.label, href({ tri: s.key }), s.key === sort))}
+        <nav aria-label="Tri" className="flex flex-wrap items-center gap-1.5">
+          <span className="mr-1 w-20 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+            Trier par
+          </span>
+          {SORTS.map((s) => chip(s.label, href({ tri: s.key }), s.key === sort, 'sort'))}
         </nav>
       </div>
 

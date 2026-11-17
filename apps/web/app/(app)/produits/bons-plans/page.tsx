@@ -104,7 +104,7 @@ export default async function DealsPage({ searchParams }: Props) {
       href={to}
       aria-current={active ? 'true' : undefined}
       className={cn(
-        'rounded-full border px-3 py-1 text-xs font-medium transition-colors hover:bg-accent',
+        'inline-flex h-8 items-center rounded-full border px-3.5 text-sm font-medium transition-colors hover:bg-accent',
         active && 'border-primary bg-primary text-primary-foreground hover:bg-primary/90',
       )}
     >
