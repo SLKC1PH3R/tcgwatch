@@ -129,7 +129,7 @@ try {
         );
       }
       for (const c of chats) {
-        ctx.logger.info({ type: c.type, name: c.name }, `TELEGRAM_CHAT_ID=${c.id}`);
+        ctx.logger.info({ type: c.type, chat: c.name }, `TELEGRAM_CHAT_ID=${c.id}`);
       }
       break;
     }
