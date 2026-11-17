@@ -5,8 +5,18 @@ export interface Notification {
   message: string;
   /** Lien ouvert au clic (fiche produit). */
   url?: string;
+  /** Texte du lien sur Telegram (« Voir la fiche » par défaut). */
+  linkLabel?: string;
   priority?: 'min' | 'low' | 'default' | 'high' | 'urgent';
   tags?: string[];
+}
+
+interface TelegramChat {
+  id: number;
+  type: string;
+  title?: string;
+  first_name?: string;
+  last_name?: string;
 }
 
 export interface NotifierConfig {
@@ -85,14 +95,43 @@ export class Notifier {
     }
   }
 
+  /**
+   * Conversations récentes du bot (Telegram getUpdates) : retrouver l'identifiant du chat
+   * après avoir écrit au bot. Ne marche que si le bot n'a pas de webhook.
+   */
+  async telegramChats(): Promise<{ id: string; name: string; type: string }[]> {
+    if (!this.config.telegramBotToken) return [];
+    const res = await this.fetchImpl(
+      `https://api.telegram.org/bot${this.config.telegramBotToken}/getUpdates`,
+      { signal: AbortSignal.timeout(10_000) },
+    );
+    if (!res.ok) throw new Error(`Telegram getUpdates : HTTP ${res.status}`);
+    const data = (await res.json()) as {
+      result?: {
+        message?: { chat?: TelegramChat };
+        channel_post?: { chat?: TelegramChat };
+        my_chat_member?: { chat?: TelegramChat };
+      }[];
+    };
+    const chats = new Map<string, { id: string; name: string; type: string }>();
+    for (const u of data.result ?? []) {
+      const chat = u.message?.chat ?? u.channel_post?.chat ?? u.my_chat_member?.chat;
+      if (!chat) continue;
+      const name =
+        chat.title ?? ([chat.first_name, chat.last_name].filter(Boolean).join(' ') || '?');
+      chats.set(String(chat.id), { id: String(chat.id), name, type: chat.type });
+    }
+    return [...chats.values()];
+  }
+
   private async sendTelegram(n: Notification): Promise<boolean> {
     if (!this.telegramEnabled) return false;
     const escape = (s: string) =>
-      s.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c]!);
+      s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
     const text = [
       `<b>${escape(n.title)}</b>`,
       escape(n.message),
-      n.url ? `<a href="${n.url}">Voir la fiche</a>` : '',
+      n.url ? `<a href="${escape(n.url)}">${escape(n.linkLabel ?? 'Voir la fiche')}</a>` : '',
     ]
       .filter(Boolean)
       .join('\n');

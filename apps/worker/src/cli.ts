@@ -14,6 +14,8 @@
  *   pnpm --filter @tcgwatch/worker check-once ebay       # annonces eBay de « Mes produits »
  *   pnpm --filter @tcgwatch/worker check-once all-now    # force le relevé de TOUS les listings
  *   pnpm --filter @tcgwatch/worker check-once retailers  # synchronise l'annuaire des revendeurs
+ *   pnpm --filter @tcgwatch/worker check-once telegram   # identifiant du chat Telegram du bot
+ *   pnpm --filter @tcgwatch/worker check-once notify-test  # notification de test (ntfy, Telegram)
  */
 import { prisma } from '@tcgwatch/db';
 import { createContext } from './context';
@@ -114,10 +116,39 @@ try {
     case 'retailers':
       await syncRetailers(ctx);
       break;
+    case 'telegram': {
+      if (!ctx.env.TELEGRAM_BOT_TOKEN) {
+        ctx.logger.error('TELEGRAM_BOT_TOKEN absent : crée le bot avec @BotFather');
+        process.exitCode = 1;
+        break;
+      }
+      const chats = await ctx.notifier.telegramChats();
+      if (chats.length === 0) {
+        ctx.logger.warn(
+          'Aucune conversation : envoie un message (/start) à ton bot dans Telegram, puis relance',
+        );
+      }
+      for (const c of chats) {
+        ctx.logger.info({ type: c.type, name: c.name }, `TELEGRAM_CHAT_ID=${c.id}`);
+      }
+      break;
+    }
+    case 'notify-test': {
+      const sent = await ctx.notifier.send({
+        title: '🔔 Test TCGWatch',
+        message: 'Les alertes arrivent bien ici : retours en stock, bons prix, annonces.',
+        url: ctx.env.APP_URL,
+        linkLabel: 'Ouvrir TCGWatch',
+        tags: ['bell'],
+      });
+      ctx.logger.info(sent, 'Notification de test');
+      if (!sent.ntfy && !sent.telegram) process.exitCode = 1;
+      break;
+    }
     default:
       ctx.logger.error(
         { command },
-        'Commande inconnue (listings | all-now | tcgdex | cards | link | pokecardex | discover | market | card-prices | sealed-prices | card-images | ebay | retailers)',
+        'Commande inconnue (listings | all-now | tcgdex | cards | link | pokecardex | discover | market | card-prices | sealed-prices | card-images | ebay | retailers | telegram | notify-test)',
       );
       process.exitCode = 1;
   }

@@ -67,6 +67,18 @@ describe('Notifier', () => {
     expect(body.text).toContain('<b>Prix &lt;cible&gt;</b>');
   });
 
+  it('échappe le lien des messages Telegram', async () => {
+    const { calls, fetchImpl } = capture();
+    const n = new Notifier(
+      { telegramBotToken: '123:abc', telegramChatId: '42' },
+      logger,
+      fetchImpl,
+    );
+    await n.send({ title: 't', message: 'm', url: 'https://www.ebay.fr/sch/i.html?a=1&b=2' });
+    const body = JSON.parse(String(calls[0]!.init.body)) as { text: string };
+    expect(body.text).toContain('<a href="https://www.ebay.fr/sch/i.html?a=1&amp;b=2">');
+  });
+
   it('renvoie false si ntfy répond en erreur', async () => {
     const fetchImpl = vi.fn(
       async () => new Response('', { status: 500 }),
