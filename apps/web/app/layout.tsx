@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import '@fontsource-variable/manrope';
 import '@fontsource-variable/unbounded';
+import '@fontsource-variable/archivo/wdth.css';
 import './globals.css';
 
 export const metadata: Metadata = {

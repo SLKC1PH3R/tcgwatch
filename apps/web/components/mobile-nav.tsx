@@ -5,12 +5,13 @@ import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { BrandLogo } from '@/components/brand-logo';
 import { Button } from '@/components/ui/button';
 import { NAV, isLinkActive } from '@/lib/navigation';
 import { cn } from '@/lib/utils';
 
 /** Menu mobile : panneau plein écran, sections dépliables (ouverte : celle de la page). */
-export function MobileNav() {
+export function MobileNav({ footer }: { footer?: React.ReactNode }) {
   const path = usePathname();
   const params = useSearchParams();
   const [open, setOpen] = useState(false);
@@ -63,9 +64,7 @@ export function MobileNav() {
             className="fixed inset-0 z-50 flex flex-col bg-background lg:hidden"
           >
             <div className="flex items-center justify-between border-b border-border/60 px-4 py-3">
-              <span className="font-display text-xl font-extrabold tracking-tight">
-                TCG<span className="text-primary">Watch</span>
-              </span>
+              <BrandLogo />
               <Button
                 ref={closeRef}
                 type="button"
@@ -164,6 +163,7 @@ export function MobileNav() {
                 })}
               </ul>
             </nav>
+            {footer}
           </div>,
           document.body,
         )}

@@ -156,3 +156,9 @@
     }
   }
 }
+
+/* Logo « TCG WATCH » : Archivo élargi (125 %), embarqué via @fontsource. */
+@utility font-wordmark {
+  font-family: 'Archivo Variable', 'Unbounded Variable', ui-sans-serif, system-ui, sans-serif;
+  font-stretch: 125%;
+}

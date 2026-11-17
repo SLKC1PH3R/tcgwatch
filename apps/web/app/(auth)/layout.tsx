@@ -1,3 +1,4 @@
+import { BrandLogo } from '@/components/brand-logo';
 import Image from 'next/image';
 import { Suspense } from 'react';
 import { CardRain } from './card-rain';
@@ -23,9 +24,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         <Suspense>
           <CardRain />
         </Suspense>
-        <span className="relative font-display text-xl font-extrabold tracking-tight">
-          TCG<span className="text-primary">Watch</span>
-        </span>
+        <BrandLogo className="relative" />
         <div className="relative flex justify-center" aria-hidden>
           <div className="relative h-96 w-[22rem]">
             <div className="absolute top-10 left-0 h-72 w-52 -rotate-12 rounded-2xl bg-border p-1.5">
@@ -52,9 +51,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
       <section className="flex items-center justify-center px-4 py-12">
         <div className="w-full max-w-sm space-y-6">
           <div className="text-center lg:hidden">
-            <span className="font-display text-2xl font-extrabold tracking-tight">
-              TCG<span className="text-primary">Watch</span>
-            </span>
+            <BrandLogo size="lg" />
             <p className="mt-1 text-sm text-muted-foreground">
               Suivi des produits scellés Pokémon TCG
             </p>

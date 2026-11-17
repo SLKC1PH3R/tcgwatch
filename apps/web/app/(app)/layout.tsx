@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { Suspense } from 'react';
 import { Button } from '@/components/ui/button';
 import { requireUser } from '@/lib/auth';
+import { BrandLogo } from '@/components/brand-logo';
 import { MainNav } from '@/components/main-nav';
 import { MobileNav } from '@/components/mobile-nav';
 import { PageTrail } from '@/components/page-trail';
@@ -17,12 +18,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         {/* Pleine largeur : logo à gauche, menu centré, recherche et compte à droite.
             Les colonnes latérales ne descendent jamais sous leur contenu : faute de place,
             le menu se décale un peu plutôt que de déborder. */}
-        <div className="flex w-full flex-wrap items-center gap-x-5 gap-y-3 px-4 py-3 md:px-8 md:py-4 2xl:grid 2xl:grid-cols-[minmax(max-content,1fr)_auto_minmax(max-content,1fr)]">
-          <Link
-            href="/"
-            className="font-display text-xl font-extrabold tracking-tight text-foreground 2xl:justify-self-start"
-          >
-            TCG<span className="text-primary">Watch</span>
+        <div className="flex w-full flex-wrap items-center gap-x-3 gap-y-3 px-4 py-3 sm:gap-x-5 md:px-8 md:py-4 2xl:grid 2xl:grid-cols-[minmax(max-content,1fr)_auto_minmax(max-content,1fr)]">
+          <Link href="/" aria-label="TCGWatch, accueil" className="2xl:justify-self-start">
+            <BrandLogo compact />
           </Link>
           {/* Menu ordinateur ; sur mobile, il s'ouvre en plein écran depuis le bouton Menu. */}
           <div className="order-last hidden w-full lg:block 2xl:order-none 2xl:w-auto">
@@ -30,9 +28,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               <MainNav />
             </Suspense>
           </div>
-          <div className="ml-auto flex min-w-0 items-center gap-2 2xl:justify-self-end">
+          <div className="ml-auto flex min-w-0 items-center gap-1.5 sm:gap-2 2xl:justify-self-end">
             <Suspense>
-              <SearchBox className="w-36 sm:w-56 xl:w-48 2xl:w-56" />
+              <SearchBox className="w-32 sm:w-56 xl:w-48 2xl:w-56" />
             </Suspense>
             <span
               className="hidden max-w-40 truncate text-sm text-muted-foreground xl:inline"
@@ -40,13 +38,29 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             >
               {user.name ?? user.email}
             </span>
-            <form action={logoutAction}>
+            {/* Sur mobile, la déconnexion est en bas du menu plein écran. */}
+            <form action={logoutAction} className="hidden lg:block">
               <Button type="submit" variant="ghost" size="icon" aria-label="Se déconnecter">
                 <LogOut />
               </Button>
             </form>
             <Suspense>
-              <MobileNav />
+              <MobileNav
+                footer={
+                  <form
+                    action={logoutAction}
+                    className="flex items-center justify-between gap-3 border-t border-border/60 px-4 py-3"
+                  >
+                    <span className="min-w-0 truncate text-sm text-muted-foreground">
+                      {user.name ?? user.email}
+                    </span>
+                    <Button type="submit" variant="outline" size="sm">
+                      <LogOut />
+                      Se déconnecter
+                    </Button>
+                  </form>
+                }
+              />
             </Suspense>
           </div>
         </div>
