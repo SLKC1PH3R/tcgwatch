@@ -63,7 +63,8 @@ export async function getCardPage(tcgdexId: string) {
     name: live?.name ?? local?.name ?? tracked!.name,
     rarity: live?.rarity ?? local?.rarity ?? tracked?.rarity ?? null,
     image:
-      tcgdexAsset(live?.image ?? local?.imageUrl ?? undefined, '/high.webp') ??
+      // Image locale d'abord : vérifiée (ou reprise de pokemontcg.io quand TCGdex n'en a pas).
+      tcgdexAsset(local?.imageUrl ?? live?.image ?? undefined, '/high.webp') ??
       tracked?.imageUrl ??
       null,
     setId: live?.set?.id ?? local?.release.tcgdexId ?? null,

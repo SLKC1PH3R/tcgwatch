@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { pokemonTcgLargeImage } from './pokemontcg';
 
 /** Client minimal de l'API TCGdex (gratuite, sans clé) — https://tcgdex.dev */
 export const TCGDEX_BASE_URL = 'https://api.tcgdex.net/v2/fr';
@@ -235,7 +236,12 @@ export function tcgdexAsset(
   base: string | undefined,
   suffix: '.png' | '.webp' | '/high.webp' | '/low.webp',
 ) {
-  return base ? `${base}${suffix}` : undefined;
+  if (!base) return undefined;
+  // Image d'une autre source (pokemontcg.io, quand TCGdex n'en a pas) : URL complète.
+  if (!base.startsWith('https://assets.tcgdex.net/')) {
+    return suffix === '/low.webp' ? base : pokemonTcgLargeImage(base);
+  }
+  return `${base}${suffix}`;
 }
 
 /** "me06" → "ME06", "sv03.5" → "SV03.5" */

@@ -1,6 +1,7 @@
 import { load } from 'cheerio';
 import { mergeResults, parseJsonLdFrom, parseMicrodata, parseOpenGraph } from '../jsonld';
 import { parsePrestaShop } from '../prestashop';
+import { parseShopify } from '../shopify';
 import { parseWooCommerce } from '../woocommerce';
 import {
   availabilityFromText,
@@ -13,7 +14,7 @@ import type { ListingResult, RetailerAdapter } from '../types';
 /**
  * Adaptateur générique : JSON-LD schema.org Product/Offer, puis microdonnées schema.org
  * (itemprop), puis structure PrestaShop
- * (très courante chez les boutiques de jeux), puis WooCommerce, puis OpenGraph, puis heuristiques textuelles.
+ * (très courante chez les boutiques de jeux), puis WooCommerce, puis Shopify (objet produit), puis OpenGraph, puis heuristiques textuelles.
  */
 export function parseGeneric(html: string, url: string): ListingResult {
   const $ = load(html);
@@ -21,6 +22,7 @@ export function parseGeneric(html: string, url: string): ListingResult {
   const microdata = parseMicrodata($, url);
   const prestashop = parsePrestaShop($);
   const woocommerce = parseWooCommerce($);
+  const shopify = parseShopify($);
   const og = parseOpenGraph($, url);
   const main = $('main').first().length ? $('main').first() : $('body');
   const text = visibleText($, main);
@@ -30,7 +32,8 @@ export function parseGeneric(html: string, url: string): ListingResult {
     !jsonLd.availability &&
     !microdata.availability &&
     !prestashop.availability &&
-    !woocommerce.availability
+    !woocommerce.availability &&
+    !shopify.availability
   )
     fallback.availability = availabilityFromText(text);
   const releaseDate = findReleaseDate(text);
@@ -38,7 +41,7 @@ export function parseGeneric(html: string, url: string): ListingResult {
   const stockAlertUrl = findStockAlertUrl($, main, url);
   if (stockAlertUrl) fallback.stockAlertUrl = stockAlertUrl;
 
-  return mergeResults(jsonLd, microdata, prestashop, woocommerce, og, fallback);
+  return mergeResults(jsonLd, microdata, prestashop, woocommerce, shopify, og, fallback);
 }
 
 export const genericAdapter: RetailerAdapter = {

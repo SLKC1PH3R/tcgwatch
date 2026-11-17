@@ -88,6 +88,7 @@ export default async function ProductPage({ params, searchParams }: Props) {
     boosters && price ? price / boosters : null;
   const bestPerBooster = perBooster(product.best?.price);
   const msrpPerBooster = perBooster(product.msrp);
+  const bestPrice = product.best ? (product.best.delivered ?? product.best.price) : null;
   const categories = [
     ...new Set(product.listings.map((l) => l.category).filter((c): c is string => !!c)),
   ];
@@ -150,9 +151,7 @@ export default async function ProductPage({ params, searchParams }: Props) {
           <div className="grid gap-3 sm:grid-cols-3">
             <HeroStat
               label="Meilleur prix"
-              value={formatPrice(
-                product.best ? (product.best.delivered ?? product.best.price) : null,
-              )}
+              value={formatPrice(bestPrice)}
               hint={
                 product.best
                   ? `${product.best.retailerName} · ${
@@ -188,22 +187,36 @@ export default async function ProductPage({ params, searchParams }: Props) {
                   .join(' · ') || 'aucun relevé'
               }
             />
-            <HeroStat
-              label="Marché / achat"
-              value={
-                history.ratio !== null
-                  ? history.ratio.toLocaleString('fr-FR', {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    })
-                  : '—'
-              }
-              hint={
-                history.owned > 0
-                  ? `sur ${history.owned} exemplaire${history.owned > 1 ? 's' : ''}`
-                  : 'pas dans la collection'
-              }
-            />
+            {history.ratio !== null ? (
+              <HeroStat
+                label="Marché / achat"
+                value={history.ratio.toLocaleString('fr-FR', {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}
+                valueClass={history.ratio >= 1 ? 'text-success' : 'text-destructive'}
+                hint={`${formatPrice(history.lastMarket)} marché · ${formatPrice(
+                  history.avgPurchase,
+                )} payé · ${history.owned} ex.`}
+              />
+            ) : history.lastMarket !== null && bestPrice !== null ? (
+              <HeroStat
+                label="Marché / meilleur prix"
+                value={formatPercent(history.lastMarket / bestPrice - 1)}
+                valueClass={history.lastMarket >= bestPrice ? 'text-success' : undefined}
+                hint={`${formatPrice(history.lastMarket)} marché · ${formatPrice(bestPrice)} en boutique`}
+              />
+            ) : (
+              <HeroStat
+                label="Marché / achat"
+                value="—"
+                hint={
+                  history.owned > 0
+                    ? 'pas encore de prix marché'
+                    : 'pas de prix marché ou pas en vente'
+                }
+              />
+            )}
           </div>
 
           <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm sm:grid-cols-4">

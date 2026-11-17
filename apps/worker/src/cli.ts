@@ -10,6 +10,7 @@
  *   pnpm --filter @tcgwatch/worker check-once market     # relevé du marché secondaire
  *   pnpm --filter @tcgwatch/worker check-once card-prices [n]  # cotes des cartes (n ids cherchés)
  *   pnpm --filter @tcgwatch/worker check-once sealed-prices  # scellés reliés à Cardmarket + cotes
+ *   pnpm --filter @tcgwatch/worker check-once card-images [set]  # images manquantes (pokemontcg.io)
  *   pnpm --filter @tcgwatch/worker check-once all-now    # force le relevé de TOUS les listings
  *   pnpm --filter @tcgwatch/worker check-once retailers  # synchronise l'annuaire des revendeurs
  */
@@ -24,6 +25,7 @@ import { linkProductExtensions } from './jobs/link-extensions';
 import { applyCardPrices, resolveCardmarketIds, snapshotMarketIndex } from './jobs/card-prices';
 import { runMarketJob, saveQuotes } from './jobs/market';
 import { linkSealedProducts } from './jobs/sealed-links';
+import { fillCardImages } from './jobs/card-images';
 import { CardmarketGuideProvider } from '@tcgwatch/market';
 import { syncRetailers } from './jobs/sync-retailers';
 
@@ -86,13 +88,28 @@ try {
       ctx.logger.info({ linked, quotes: quotes.length }, 'Cotes Cardmarket des produits scellés');
       break;
     }
+    case 'card-images': {
+      // Toutes les extensions avec des cartes sans image, ou une seule (vérifiée sur TCGdex).
+      const set = process.argv[3];
+      const releases = await prisma.release.findMany({
+        where: set ? { tcgdexId: set } : { cards: { some: { imageUrl: null } } },
+        select: { id: true },
+      });
+      const filled = await fillCardImages(
+        ctx,
+        releases.map((r) => r.id),
+        { probe: Boolean(set) },
+      );
+      ctx.logger.info({ releases: releases.length, filled }, 'Images des cartes complétées');
+      break;
+    }
     case 'retailers':
       await syncRetailers(ctx);
       break;
     default:
       ctx.logger.error(
         { command },
-        'Commande inconnue (listings | all-now | tcgdex | cards | link | pokecardex | discover | market | card-prices | sealed-prices | retailers)',
+        'Commande inconnue (listings | all-now | tcgdex | cards | link | pokecardex | discover | market | card-prices | sealed-prices | card-images | retailers)',
       );
       process.exitCode = 1;
   }

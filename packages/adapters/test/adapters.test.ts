@@ -336,6 +336,27 @@ describe('WooCommerce sans JSON-LD (Maxi Rêves)', () => {
   });
 });
 
+describe('Shopify sans JSON-LD (Masterset)', () => {
+  const page = (available: boolean) => `<html><head>
+    <meta property="og:title" content="ETB - EB12.5 - Zénith Suprême">
+    <meta property="product:price:amount" content="64,90">
+    <script src="https://cdn.shopify.com/s/files/theme.js"></script></head><body><main>
+    <span class="product_badge sale_out">En rupture de stock</span>
+    <button type="submit" class="hidden">Ajouter au panier</button>
+    <script>var product = {"tags":["etb"],"price":6490,"price_min":6490,"price_max":6490,"available":${available},"price_varies":false};</script>
+    </main></body></html>`;
+
+  it("lit la rupture dans l'objet produit malgré le bouton « Ajouter au panier » caché", () => {
+    const r = parseGeneric(page(false), 'https://masterset.store/products/etb-eb12-5');
+    expect(r.availability).toBe('OUT_OF_STOCK');
+  });
+
+  it('en stock quand une variante est achetable', () => {
+    const r = parseGeneric(page(true), 'https://masterset.store/products/etb-eb12-5');
+    expect(r.availability).toBe('IN_STOCK');
+  });
+});
+
 describe('Le Temple du Jeu', () => {
   const page = (panier: string) => `<html><body><div class="designation">
     <h1 itemprop="name" class="jeu_titre">DUOPACK ZARUDE (Pokémon Q3 2026)</h1></div>

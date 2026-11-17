@@ -1,5 +1,6 @@
 import 'server-only';
 import { Prisma, prisma } from '@tcgwatch/db';
+import { tcgdexAsset } from '@tcgwatch/market';
 import {
   deliveredPrice,
   priceCategoryOf,
@@ -233,7 +234,7 @@ export function toPricedCard(c: {
     localId: c.localId,
     name: c.name,
     rarity: c.rarity,
-    image: c.imageUrl ? `${c.imageUrl}/low.webp` : null,
+    image: tcgdexAsset(c.imageUrl ?? undefined, '/low.webp') ?? null,
     price: toNumber(c.priceTrend) ?? 0,
     avg7: toNumber(c.priceAvg7),
     avg30: toNumber(c.priceAvg30),

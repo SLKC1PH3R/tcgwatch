@@ -1,6 +1,7 @@
 import { prisma } from '@tcgwatch/db';
 import { mergeSetCards, TcgdexClient, type MergedCard } from '@tcgwatch/market';
 import type { WorkerContext } from '../context';
+import { fillCardImages } from './card-images';
 
 /** Extensions récentes (ou à venir) dont la liste de cartes est relue chaque semaine. */
 const REFRESH_RECENT_DAYS = 180;
@@ -37,11 +38,12 @@ export async function importCards(
         },
       ],
     },
-    select: { id: true, tcgdexId: true, nameFr: true },
+    select: { id: true, tcgdexId: true, nameFr: true, releaseDate: true },
     orderBy: { releaseDate: { sort: 'desc', nulls: 'first' } },
   });
 
   const summary: CardImportSummary = { sets: 0, cards: 0, failed: 0 };
+  const imported: { id: string; recent: boolean }[] = [];
   for (const release of releases.slice(0, limit)) {
     try {
       // L'une après l'autre : TCGdex répond 503 quand les requêtes s'enchaînent trop vite.
@@ -55,13 +57,28 @@ export async function importCards(
       });
       summary.sets++;
       summary.cards += cards.length;
+      imported.push({
+        id: release.id,
+        recent: !release.releaseDate || release.releaseDate >= recent,
+      });
     } catch (err) {
       summary.failed++;
       ctx.logger.warn({ err, set: release.tcgdexId }, 'Import des cartes impossible');
     }
     await new Promise((r) => setTimeout(r, 500));
   }
-  ctx.logger.info({ ...summary, pending: releases.length }, 'Import des cartes terminé');
+  // Images absentes de TCGdex (ou annoncées mais pas encore publiées) : pokemontcg.io.
+  const images =
+    (await fillCardImages(
+      ctx,
+      imported.filter((r) => r.recent).map((r) => r.id),
+      { probe: true },
+    )) +
+    (await fillCardImages(
+      ctx,
+      imported.filter((r) => !r.recent).map((r) => r.id),
+    ));
+  ctx.logger.info({ ...summary, images, pending: releases.length }, 'Import des cartes terminé');
   return summary;
 }
 
@@ -85,7 +102,11 @@ async function upsertCards(releaseId: string, cards: MergedCard[]) {
     ON CONFLICT ("id") DO UPDATE SET
       "releaseId" = EXCLUDED."releaseId", "localId" = EXCLUDED."localId",
       "number" = EXCLUDED."number", "name" = EXCLUDED."name",
-      "nameMissing" = EXCLUDED."nameMissing", "imageUrl" = EXCLUDED."imageUrl",
+      "nameMissing" = EXCLUDED."nameMissing",
+      -- Image d'une autre source (TCGdex n'en a pas) : gardée tant que TCGdex n'en donne pas.
+      "imageUrl" = CASE WHEN EXCLUDED."imageUrl" IS NULL
+        AND "Card"."imageUrl" NOT LIKE 'https://assets.tcgdex.net/%'
+        THEN "Card"."imageUrl" ELSE EXCLUDED."imageUrl" END,
       "rarity" = EXCLUDED."rarity", "illustrator" = EXCLUDED."illustrator",
       "category" = EXCLUDED."category", "types" = EXCLUDED."types",
       "dexIds" = EXCLUDED."dexIds", "variants" = EXCLUDED."variants", "updatedAt" = NOW()`;
