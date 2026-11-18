@@ -73,7 +73,6 @@ export default async function DashboardPage() {
   const gainPositive = v.unrealizedGain >= 0;
   const today = todayUtc().getTime();
   const [next, ...later] = d.upcoming;
-  const index = d.sealedIndex;
 
   return (
     <div data-fit-screen className="flex flex-col gap-4 fit:min-h-0 fit:flex-1">
@@ -234,47 +233,52 @@ export default async function DashboardPage() {
           </CardContent>
         </Card>
 
-        {/* Prochaine sortie + indice du marché */}
-        <div className="flex flex-col gap-4 md:col-span-2 md:flex-row lg:col-span-3 lg:flex-col fit:min-h-0">
-          <Card className={cn('flex-1', tile)}>
-            <CardHeader className="items-center">
-              <CardTitle>Prochaine sortie</CardTitle>
-              <SeeAll href="/calendrier">Calendrier</SeeAll>
-            </CardHeader>
-            <CardContent className={cn('flex flex-col gap-1', tileBody)}>
-              {!next ? (
-                <Empty>Aucune sortie à venir connue.</Empty>
-              ) : (
-                <>
-                  <p className="font-display text-4xl leading-none font-extrabold text-primary">
-                    {countdown(next.date, today)}
-                  </p>
-                  <Link
-                    href={next.href}
-                    title={next.title}
-                    className="mt-1 truncate font-semibold hover:underline"
-                  >
-                    {next.title}
-                  </Link>
-                  <p className="text-sm text-muted-foreground">
-                    {longDate.format(next.date)}
-                    {next.msrp !== null ? ` · ${formatPrice(next.msrp)}` : ''}
-                  </p>
-                  {later.length > 0 && (
-                    <ul className="mt-2 flex flex-col gap-1.5 border-t border-border/60 pt-2">
-                      {later.slice(0, 3).map((e) => (
-                        <li
-                          key={`${e.kind}-${e.id}`}
-                          className="flex items-center justify-between gap-2 text-sm"
-                        >
+        {/* Prochaine sortie (toute la colonne) + les suivantes */}
+        <Card className={cn('md:col-span-2 lg:col-span-3', tile)}>
+          <CardHeader className="items-center">
+            <CardTitle>Prochaine sortie</CardTitle>
+            <SeeAll href="/calendrier">Calendrier</SeeAll>
+          </CardHeader>
+          <CardContent className={cn('flex flex-col gap-1.5', tileBody)}>
+            {!next ? (
+              <Empty>Aucune sortie à venir connue.</Empty>
+            ) : (
+              <>
+                <p className="font-display text-5xl leading-none font-extrabold text-primary xl:text-6xl">
+                  {countdown(next.date, today)}
+                </p>
+                <Link
+                  href={next.href}
+                  title={next.title}
+                  className="mt-2 line-clamp-2 shrink-0 text-lg leading-snug font-bold hover:underline"
+                >
+                  {next.title}
+                </Link>
+                <p className="text-sm text-muted-foreground">
+                  {longDate.format(next.date)}
+                  {next.msrp !== null ? ` · ${formatPrice(next.msrp)}` : ''}
+                </p>
+                {later.length > 0 && (
+                  <>
+                    <p className="mt-4 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                      Ensuite
+                    </p>
+                    <ul className="flex flex-col divide-y">
+                      {later.map((e) => (
+                        <li key={`${e.kind}-${e.id}`} className="flex items-center gap-3 py-2">
+                          <span className="flex w-11 shrink-0 flex-col items-center rounded-lg bg-secondary py-1 leading-none">
+                            <span className="text-[0.65rem] font-semibold text-muted-foreground uppercase">
+                              {month.format(e.date)}
+                            </span>
+                            <span className="font-display text-base font-bold">
+                              {String(e.date.getUTCDate()).padStart(2, '0')}
+                            </span>
+                          </span>
                           <Link
                             href={e.href}
                             title={e.title}
-                            className="min-w-0 truncate hover:underline"
+                            className="line-clamp-2 min-w-0 flex-1 text-sm leading-snug font-semibold hover:underline"
                           >
-                            <span className="text-muted-foreground">
-                              {String(e.date.getUTCDate()).padStart(2, '0')} {month.format(e.date)}
-                            </span>{' '}
                             {e.title}
                           </Link>
                           <span className="shrink-0 text-xs font-bold text-primary tabular-nums">
@@ -283,40 +287,12 @@ export default async function DashboardPage() {
                         </li>
                       ))}
                     </ul>
-                  )}
-                </>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card className={cn('flex-1', tile)}>
-            <CardHeader className="items-center">
-              <CardTitle>Indice du scellé · 30 j</CardTitle>
-              <SeeAll href="/marche/indice">Détail</SeeAll>
-            </CardHeader>
-            <CardContent className={cn('flex flex-col gap-1', tileBody)}>
-              <p
-                className={cn(
-                  'font-display text-4xl leading-none font-extrabold tabular-nums',
-                  index.all.change === null
-                    ? 'text-muted-foreground'
-                    : index.all.change >= 0
-                      ? 'text-success'
-                      : 'text-destructive',
+                  </>
                 )}
-              >
-                {formatPercent(index.all.change)}
-              </p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Displays {formatPercent(index.displays.change)} · ETB{' '}
-                {formatPercent(index.etb.change)}
-              </p>
-              <p className="text-sm text-muted-foreground">
-                {index.all.count} produits cotés · {formatPrice(index.all.value)}
-              </p>
-            </CardContent>
-          </Card>
-        </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Derniers retours en stock */}
         <Card className={cn('md:col-span-2 lg:col-span-6', tile)}>

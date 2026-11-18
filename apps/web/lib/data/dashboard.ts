@@ -2,7 +2,6 @@ import 'server-only';
 import { KEPT_DAILY, prisma } from '@tcgwatch/db';
 import { priceChange } from '@tcgwatch/market';
 import { toNumber, type ProductTypeKey } from '@tcgwatch/shared';
-import { familyStats } from '../market-stats';
 import { getCollection, getCollectionHistory } from './collection';
 import { findDeals } from './deals';
 import { getSealedPrices } from './prices';
@@ -171,7 +170,7 @@ export async function getDashboard() {
     collectionHistory,
     sealed,
   ] = await Promise.all([
-    getUpcomingEvents(6),
+    getUpcomingEvents(10),
     getRecentRestocks(),
     getActiveAlerts(),
     getCollection(),
@@ -181,8 +180,6 @@ export async function getDashboard() {
     getCollectionHistory(365),
     getSealedPrices(),
   ]);
-  const displays = sealed.filter((p) => p.category?.key === 'display');
-  const etbs = sealed.filter((p) => p.category?.key === 'etb');
   return {
     upcoming,
     restocks,
@@ -197,10 +194,5 @@ export async function getDashboard() {
     deals: findDeals(sealed)
       .sort((a, b) => b.discount - a.discount)
       .slice(0, 5),
-    sealedIndex: {
-      all: familyStats([...displays, ...etbs]),
-      displays: familyStats(displays),
-      etb: familyStats(etbs),
-    },
   };
 }
