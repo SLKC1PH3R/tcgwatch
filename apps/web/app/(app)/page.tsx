@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { formatPercent, formatPrice, todayUtc } from '@tcgwatch/shared';
 import { Thumb } from '@/components/thumb';
-import { CollectionBackdrop, CollectionPeak } from '@/components/collection-peak';
+import { CollectionMetric } from '@/components/collection-metric';
 import { TabPanels } from '@/components/tab-panels';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -102,7 +102,6 @@ export default async function DashboardPage() {
             tile,
           )}
         >
-          <CollectionBackdrop />
           <CardHeader className="items-center">
             <CardTitle>Ma collection</CardTitle>
             <SeeAll href="/collection">Voir la collection</SeeAll>
@@ -110,14 +109,16 @@ export default async function DashboardPage() {
           <CardContent className="flex flex-col gap-4 fit:min-h-0 fit:flex-1">
             {/* D'un bord à l'autre de la carte : la marge intérieure est annulée. */}
             <div className="-mx-6 flex fit:min-h-0 fit:flex-1">
-              <CollectionPeak
+              <CollectionMetric
                 history={d.collectionHistory}
                 value={v.estimatedValue}
+                gain={`${gainPositive ? '+' : ''}${formatPrice(v.unrealizedGain)}`}
+                percent={formatPercent(v.ratio !== null ? Math.abs(v.ratio - 1) : null).replace(
+                  /^[+-]/,
+                  '',
+                )}
                 trend={gainPositive ? 'up' : 'down'}
-                caption={`${gainPositive ? '+' : ''}${formatPrice(v.unrealizedGain)} (${formatPercent(
-                  v.ratio !== null ? v.ratio - 1 : null,
-                )}) de plus-value`}
-                note={`Investi ${formatPrice(v.totalCost)}`}
+                className="min-h-[400px]! rounded-none! border-0! shadow-none! fit:min-h-0! fit:flex-1"
               />
             </div>
 
