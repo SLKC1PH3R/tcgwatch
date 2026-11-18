@@ -15,6 +15,7 @@ import {
   type PricedCard,
   type SealedPrice,
 } from '@/lib/data/prices';
+import { familyStats } from '@/lib/market-stats';
 
 export const metadata: Metadata = { title: 'Indice du marché' };
 
@@ -53,16 +54,6 @@ async function sealedHistory() {
     FROM "MarketPrice" m JOIN "Product" p ON p.id = m."productId"
     WHERE m.source = 'cardmarket' AND m.date > CURRENT_DATE - ${HISTORY_DAYS}::int
     GROUP BY m.date ORDER BY m.date`;
-}
-
-function familyStats(rows: SealedPrice[]) {
-  const quoted = rows.filter((p) => p.market !== null);
-  const value = quoted.reduce((s, p) => s + p.market!, 0);
-  // Variation sur 30 jours à périmètre constant (produits cotés aux deux dates).
-  const both = quoted.filter((p) => p.change30 !== null);
-  const now = both.reduce((s, p) => s + p.market!, 0);
-  const then = both.reduce((s, p) => s + p.market! / (1 + p.change30!), 0);
-  return { value, count: quoted.length, change: then > 0 ? now / then - 1 : null };
 }
 
 export default async function MarketIndexPage() {

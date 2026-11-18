@@ -7,13 +7,11 @@ import { Thumb } from '@/components/thumb';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { getSealedPrices, type SealedPrice } from '@/lib/data/prices';
+import { findDeals, MIN_DISCOUNT, type Deal } from '@/lib/data/deals';
+import { getSealedPrices } from '@/lib/data/prices';
 import { cn } from '@/lib/utils';
 
 export const metadata: Metadata = { title: 'Bons plans' };
-
-/** Remise minimale pour parler de bon plan (sous la cote ou sous le prix public). */
-const MIN_DISCOUNT = 0.03;
 
 const FILTERS = [
   { key: 'tous', label: 'Tous' },
@@ -28,17 +26,6 @@ const SORTS = [
   { key: 'recents', label: 'Plus récents' },
 ] as const;
 
-interface Deal {
-  p: SealedPrice;
-  offer: number;
-  vsMarket: number | null;
-  vsMsrp: number | null;
-  /** Meilleure remise des deux références. */
-  discount: number;
-}
-
-const discountVs = (offer: number, ref: number | null) => (ref && ref > 0 ? 1 - offer / ref : null);
-
 type Props = { searchParams: Promise<{ filtre?: string; tri?: string; categorie?: string }> };
 
 /**
@@ -52,15 +39,7 @@ export default async function DealsPage({ searchParams }: Props) {
   const sort = SORTS.find((s) => s.key === q.tri)?.key ?? 'remise';
   const category = PRICE_CATEGORIES.find((c) => c.key === q.categorie);
 
-  const deals: Deal[] = (await getSealedPrices())
-    .filter((p) => p.bestOffer !== null && p.bestUrl)
-    .map((p) => {
-      const offer = p.bestOffer!;
-      const vsMarket = discountVs(offer, p.market);
-      const vsMsrp = discountVs(offer, p.msrp);
-      return { p, offer, vsMarket, vsMsrp, discount: Math.max(vsMarket ?? -1, vsMsrp ?? -1) };
-    })
-    .filter((d) => d.discount >= MIN_DISCOUNT);
+  const deals = findDeals(await getSealedPrices());
 
   const shown = deals
     .filter((d) => !category || d.p.category?.key === category.key)

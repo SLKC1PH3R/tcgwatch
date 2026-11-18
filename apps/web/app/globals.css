@@ -3,6 +3,8 @@
 
 /* Thème sombre unique : la variante dark: reste valide pour les composants existants. */
 @custom-variant dark (&:where(html, html *));
+/* Écran assez grand (large et haut) pour afficher une page « plein écran » sans défiler. */
+@custom-variant fit (@media (min-width: 64rem) and (min-height: 42rem));
 
 :root {
   /* Direction « Holo Rare » : nuit profonde, accent jaune, reflets holographiques. */

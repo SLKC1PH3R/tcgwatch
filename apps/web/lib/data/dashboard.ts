@@ -1,9 +1,64 @@
 import 'server-only';
 import { KEPT_DAILY, prisma } from '@tcgwatch/db';
 import { priceChange } from '@tcgwatch/market';
-import { toNumber } from '@tcgwatch/shared';
+import { toNumber, type ProductTypeKey } from '@tcgwatch/shared';
+import { familyStats } from '../market-stats';
 import { getCollection, getCollectionHistory } from './collection';
+import { findDeals } from './deals';
+import { getSealedPrices } from './prices';
 import { getUpcomingEvents } from './releases';
+
+/** Libellés courts pour la répartition de la collection. */
+const TYPE_SHORT: Record<ProductTypeKey, string> = {
+  ETB: 'ETB',
+  DISPLAY: 'Displays',
+  TRIPACK: 'Tripacks',
+  BOOSTER: 'Boosters',
+  BLISTER: 'Blisters',
+  COFFRET: 'Coffrets',
+  UPC: 'UPC',
+  MINI_TIN: 'Mini Tins',
+  POKEBOX: 'Pokébox',
+  DECK: 'Decks',
+  AUTRE: 'Autres',
+};
+
+/**
+ * Répartition de la valeur de la collection par type de produit (valeur estimée, à défaut prix
+ * d'achat). Les plus petits types au-delà de `max` sont regroupés dans « Autres ».
+ */
+function breakdownByType(
+  rows: {
+    product: { type: string };
+    quantity: number;
+    purchasePrice: number;
+    unitValue: number | null;
+  }[],
+  max = 5,
+) {
+  const byType = new Map<string, number>();
+  for (const r of rows) {
+    const v = (r.unitValue ?? r.purchasePrice) * r.quantity;
+    byType.set(r.product.type, (byType.get(r.product.type) ?? 0) + v);
+  }
+  const total = [...byType.values()].reduce((a, b) => a + b, 0);
+  if (total <= 0) return [];
+  const sorted = [...byType.entries()].sort(([, a], [, b]) => b - a);
+  const head = sorted.slice(0, max - 1);
+  const tail = sorted.slice(max - 1);
+  const parts = head.map(([type, value]) => ({
+    key: type,
+    label: TYPE_SHORT[type as ProductTypeKey] ?? type,
+    value,
+  }));
+  if (tail.length === 1) {
+    const [type, value] = tail[0]!;
+    parts.push({ key: type, label: TYPE_SHORT[type as ProductTypeKey] ?? type, value });
+  } else if (tail.length > 1) {
+    parts.push({ key: 'REST', label: 'Autres', value: tail.reduce((s, [, v]) => s + v, 0) });
+  }
+  return parts.map((p) => ({ ...p, share: p.value / total }));
+}
 
 export async function getRecentRestocks(limit = 6) {
   return prisma.alertEvent.findMany({
@@ -114,6 +169,7 @@ export async function getDashboard() {
     trackedCount,
     lastCheck,
     collectionHistory,
+    sealed,
   ] = await Promise.all([
     getUpcomingEvents(6),
     getRecentRestocks(),
@@ -123,7 +179,10 @@ export async function getDashboard() {
     prisma.listing.count({ where: { state: { not: 'PAUSED' } } }),
     prisma.listing.aggregate({ _max: { lastCheckedAt: true } }),
     getCollectionHistory(365),
+    getSealedPrices(),
   ]);
+  const displays = sealed.filter((p) => p.category?.key === 'display');
+  const etbs = sealed.filter((p) => p.category?.key === 'etb');
   return {
     upcoming,
     restocks,
@@ -134,5 +193,14 @@ export async function getDashboard() {
     moves,
     trackedCount,
     lastCheckedAt: lastCheck._max.lastCheckedAt,
+    breakdown: breakdownByType(collection.rows),
+    deals: findDeals(sealed)
+      .sort((a, b) => b.discount - a.discount)
+      .slice(0, 5),
+    sealedIndex: {
+      all: familyStats([...displays, ...etbs]),
+      displays: familyStats(displays),
+      etb: familyStats(etbs),
+    },
   };
 }

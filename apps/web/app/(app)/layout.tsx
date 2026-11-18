@@ -13,7 +13,9 @@ import { logoutAction } from '../(auth)/actions';
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const user = await requireUser();
   return (
-    <div className="min-h-dvh">
+    // Une page qui porte data-fit-screen (l'accueil) occupe exactement la hauteur de l'écran
+    // sur un écran assez grand : en-tête + contenu, sans défilement de la page.
+    <div className="flex min-h-dvh flex-col fit:has-[[data-fit-screen]]:h-dvh">
       <header className="sticky top-0 z-20 border-b border-border/60 bg-background/80 backdrop-blur-md">
         {/* Pleine largeur : logo à gauche, menu centré, recherche et compte à droite.
             Les colonnes latérales ne descendent jamais sous leur contenu : faute de place,
@@ -65,7 +67,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           </div>
         </div>
       </header>
-      <main className="mx-auto w-full max-w-7xl px-4 py-6 md:px-8 md:py-10">
+      <main className="mx-auto w-full max-w-7xl px-4 py-6 md:px-8 md:py-10 fit:has-[[data-fit-screen]]:flex fit:has-[[data-fit-screen]]:min-h-0 fit:has-[[data-fit-screen]]:max-w-[1680px] fit:has-[[data-fit-screen]]:flex-1 fit:has-[[data-fit-screen]]:flex-col fit:has-[[data-fit-screen]]:py-5">
         <Suspense>
           <PageTrail />
         </Suspense>
