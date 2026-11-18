@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { formatPercent, formatPrice, todayUtc } from '@tcgwatch/shared';
 import { Thumb } from '@/components/thumb';
-import { CollectionPeak } from '@/components/collection-peak';
+import { CollectionBackdrop, CollectionPeak } from '@/components/collection-peak';
 import { TabPanels } from '@/components/tab-panels';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -96,7 +96,13 @@ export default async function DashboardPage() {
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-12 fit:min-h-0 fit:flex-1 fit:grid-rows-[minmax(0,1fr)_minmax(0,1fr)] [&>*]:min-w-0">
         {/* Performance de la collection (carte PeakChart) + répartition par type */}
-        <Card className={cn('overflow-hidden md:col-span-2 lg:col-span-4 lg:row-span-2', tile)}>
+        <Card
+          className={cn(
+            'relative isolate overflow-hidden md:col-span-2 lg:col-span-4 lg:row-span-2',
+            tile,
+          )}
+        >
+          <CollectionBackdrop />
           <CardHeader className="items-center">
             <CardTitle>Ma collection</CardTitle>
             <SeeAll href="/collection">Voir la collection</SeeAll>

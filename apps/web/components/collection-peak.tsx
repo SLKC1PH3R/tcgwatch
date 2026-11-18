@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { formatPrice } from '@tcgwatch/shared';
-import { PeakChart } from '@/components/ui/peak-chart';
+import { PeakChart, PeakField } from '@/components/ui/peak-chart';
 
 type Point = { day: string; value: number; invested: number };
 
@@ -15,10 +15,27 @@ const CARD_RATIO = 696 / 540;
 /** Même seuil que la variante Tailwind `fit` (accueil plein écran). */
 const FIT_QUERY = '(min-width: 64rem) and (min-height: 42rem)';
 
-/** Reflet holographique posé sur la lueur du graphique (teinte seule, la luminosité reste). */
+/** Reflet holographique posé sur la lueur (teinte seule, la luminosité reste). */
 const HOLO = 'linear-gradient(135deg, #ffd43b, #ff6b9a, #8b7cff, #4fd1ff, #6ee7a0)';
-const EDGE_FADE =
-  'linear-gradient(to right, transparent, #000 15%, #000 85%, transparent), linear-gradient(to bottom, transparent, #000 15%, #000 85%, transparent)';
+const ACCENT = '#8b7cff';
+
+/**
+ * Fond de la carte « Ma collection » : la lueur du graphique étirée sur toute la carte, avec le
+ * reflet holo multicolore. À placer dans une carte `relative isolate` ; le contenu passe au-dessus.
+ */
+export function CollectionBackdrop() {
+  return (
+    <div aria-hidden className="pointer-events-none absolute inset-0 -z-10">
+      <PeakField accent={ACCENT} />
+      <div
+        className="absolute inset-0"
+        style={{ background: HOLO, mixBlendMode: 'color', opacity: 0.75 }}
+      />
+      {/* Assombrit le bas pour garder la répartition lisible. */}
+      <div className="absolute inset-0 bg-gradient-to-b from-transparent from-55% to-black/55" />
+    </div>
+  );
+}
 
 const dayLabel = new Intl.DateTimeFormat('fr-FR', {
   day: 'numeric',
@@ -84,44 +101,30 @@ export function CollectionPeak({
       style={width ? undefined : { minHeight: 280 }}
     >
       {width > 0 && (
-        // Le graphique est fondu dans la carte (pas de carte posée dessus) ; `isolate` limite le
-        // mélange des couleurs à cette zone.
-        <div className="relative isolate">
-          <PeakChart
-            width={width}
-            data={data.length > 1 ? data : [value, value]}
-            labels={labels}
-            value={Math.round(value)}
-            valueSuffix={' €'}
-            title="Valeur estimée"
-            caption={caption}
-            updatedText={note}
-            trend={trend}
-            periods={PERIOD_NAMES}
-            period={period}
-            onPeriodChange={setPeriod}
-            periodLabel="Période"
-            accent="#8b7cff"
-            locale="fr-FR"
-            font="'Manrope Variable', ui-sans-serif, system-ui, sans-serif"
-            formatValue={(v) => formatPrice(v)}
-            blend
-            fade={0.12}
-          />
-          <div
-            aria-hidden
-            className="pointer-events-none absolute inset-0"
-            style={{
-              background: HOLO,
-              mixBlendMode: 'color',
-              opacity: 0.75,
-              maskImage: EDGE_FADE,
-              WebkitMaskImage: EDGE_FADE,
-              maskComposite: 'intersect',
-              WebkitMaskComposite: 'source-in',
-            }}
-          />
-        </div>
+        // La lueur est peinte par CollectionBackdrop sur toute la carte : ici, seulement la courbe,
+        // la grille et les textes.
+        <PeakChart
+          width={width}
+          data={data.length > 1 ? data : [value, value]}
+          labels={labels}
+          value={Math.round(value)}
+          valueSuffix={' €'}
+          title="Valeur estimée"
+          caption={caption}
+          updatedText={note}
+          trend={trend}
+          periods={PERIOD_NAMES}
+          period={period}
+          onPeriodChange={setPeriod}
+          periodLabel="Période"
+          accent={ACCENT}
+          locale="fr-FR"
+          font="'Manrope Variable', ui-sans-serif, system-ui, sans-serif"
+          formatValue={(v) => formatPrice(v)}
+          blend
+          fade={0.12}
+          fieldOpacity={0}
+        />
       )}
     </div>
   );

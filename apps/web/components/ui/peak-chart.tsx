@@ -547,6 +547,60 @@ function frameAt(t: number, loop: number): Frame {
 }
 
 /** Screen compositing plus a soft fade on the four edges of the card area of the canvas. */
+/** Any accent other than the one the artwork is painted in hue-shifts (and re-saturates) the canvas. */
+function tintFor(accent: string) {
+  const a = hslOf(accent),
+    b = hslOf(BASE_ACCENT);
+  if (!a || !b) return undefined;
+  let d = a[0] - b[0];
+  if (d > 180) d -= 360;
+  if (d < -180) d += 360;
+  const k = b[1] > 0 ? a[1] / b[1] : 1;
+  if (Math.abs(d) < 0.5 && Math.abs(k - 1) < 0.02) return undefined;
+  return `hue-rotate(${d.toFixed(1)}deg) saturate(${k.toFixed(3)})`;
+}
+
+/**
+ * The chart's glow field on its own, stretched over its positioned parent: lets a surface (a whole
+ * card, say) carry the glow while a `PeakChart` with `fieldOpacity={0}` draws the curve and text on top.
+ */
+export function PeakField({
+  accent = BASE_ACCENT,
+  resolution = 600,
+  style,
+}: {
+  accent?: string;
+  /** Width in pixels the field is painted at before being stretched (it is a soft blur). */
+  resolution?: number;
+  style?: React.CSSProperties;
+}) {
+  const ref = React.useRef<HTMLCanvasElement>(null);
+  React.useEffect(() => {
+    const canvas = ref.current;
+    const ctx = canvas?.getContext('2d');
+    if (!canvas || !ctx) return;
+    const { rest } = buildField(resolution, 11);
+    canvas.width = rest.width;
+    canvas.height = rest.height;
+    ctx.drawImage(rest, 0, 0);
+  }, [resolution]);
+  return (
+    <canvas
+      ref={ref}
+      aria-hidden
+      style={{
+        position: 'absolute',
+        inset: 0,
+        width: '100%',
+        height: '100%',
+        pointerEvents: 'none',
+        filter: tintFor(accent),
+        ...style,
+      }}
+    />
+  );
+}
+
 function blendMask(bx: number, by: number, f: number): React.CSSProperties {
   const h = `linear-gradient(to right, transparent ${bx}px, #000 ${bx + f}px, #000 calc(100% - ${bx + f}px), transparent calc(100% - ${bx}px))`;
   const v = `linear-gradient(to bottom, transparent ${by}px, #000 ${by + f}px, #000 calc(100% - ${by + f}px), transparent calc(100% - ${by}px))`;
@@ -999,18 +1053,7 @@ export function PeakChart({
     live.current.kick();
   };
 
-  // Any accent other than the one the artwork is painted in hue-shifts (and re-saturates) the canvas.
-  const tint = (() => {
-    const a = hslOf(accent),
-      b = hslOf(BASE_ACCENT);
-    if (!a || !b) return undefined;
-    let d = a[0] - b[0];
-    if (d > 180) d -= 360;
-    if (d < -180) d += 360;
-    const k = b[1] > 0 ? a[1] / b[1] : 1;
-    if (Math.abs(d) < 0.5 && Math.abs(k - 1) < 0.02) return undefined;
-    return `hue-rotate(${d.toFixed(1)}deg) saturate(${k.toFixed(3)})`;
-  })();
+  const tint = tintFor(accent);
 
   const px = (n: number) => `${(n * u).toFixed(3)}px`;
   const textBase: React.CSSProperties = {
