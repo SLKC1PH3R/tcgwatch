@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { formatPercent, formatPrice, todayUtc } from '@tcgwatch/shared';
 import { Thumb } from '@/components/thumb';
-import { CollectionMetric } from '@/components/collection-metric';
+import { CollectionPeak } from '@/components/collection-peak';
 import { TabPanels } from '@/components/tab-panels';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -96,31 +96,21 @@ export default async function DashboardPage() {
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-12 fit:min-h-0 fit:flex-1 fit:grid-rows-[minmax(0,1fr)_minmax(0,1fr)] [&>*]:min-w-0">
         {/* Performance de la collection (carte PeakChart) + répartition par type */}
-        <Card
-          className={cn(
-            'relative isolate overflow-hidden md:col-span-2 lg:col-span-4 lg:row-span-2',
-            tile,
-          )}
-        >
+        <Card className={cn('overflow-hidden md:col-span-2 lg:col-span-4 lg:row-span-2', tile)}>
           <CardHeader className="items-center">
             <CardTitle>Ma collection</CardTitle>
             <SeeAll href="/collection">Voir la collection</SeeAll>
           </CardHeader>
           <CardContent className="flex flex-col gap-4 fit:min-h-0 fit:flex-1">
-            {/* D'un bord à l'autre de la carte : la marge intérieure est annulée. */}
-            <div className="-mx-6 flex fit:min-h-0 fit:flex-1">
-              <CollectionMetric
-                history={d.collectionHistory}
-                value={v.estimatedValue}
-                gain={`${gainPositive ? '+' : ''}${formatPrice(v.unrealizedGain)}`}
-                percent={formatPercent(v.ratio !== null ? Math.abs(v.ratio - 1) : null).replace(
-                  /^[+-]/,
-                  '',
-                )}
-                trend={gainPositive ? 'up' : 'down'}
-                className="min-h-[400px]! rounded-none! border-0! shadow-none! fit:min-h-0! fit:flex-1"
-              />
-            </div>
+            <CollectionPeak
+              history={d.collectionHistory}
+              value={v.estimatedValue}
+              trend={gainPositive ? 'up' : 'down'}
+              caption={`${gainPositive ? '+' : ''}${formatPrice(v.unrealizedGain)} (${formatPercent(
+                v.ratio !== null ? v.ratio - 1 : null,
+              )}) de plus-value`}
+              note={`Investi ${formatPrice(v.totalCost)}`}
+            />
 
             {d.breakdown.length > 0 && (
               <div className="flex shrink-0 flex-col gap-2.5 border-t border-border/60 pt-3">

@@ -137,15 +137,6 @@ export interface PeakChartProps {
   locale?: string;
   /** Accessible label of the period dropdown. */
   periodLabel?: string;
-  /**
-   * Blend the chart into whatever it sits on instead of drawing a card: no outer halo, no rounded
-   * card edge, the glow is composited with `screen` (its black areas disappear) and the edges fade out.
-   */
-  blend?: boolean;
-  /** Edge fade width in blend mode, as a fraction of the card width. */
-  fade?: number;
-  /** Strength of the glow field (0..1). Lower it to let the surface underneath show through. */
-  fieldOpacity?: number;
   /** Extra class name on the outer element. */
   className?: string;
   /** Extra inline styles on the outer element. */
@@ -546,73 +537,6 @@ function frameAt(t: number, loop: number): Frame {
   return f;
 }
 
-/** Screen compositing plus a soft fade on the four edges of the card area of the canvas. */
-/** Any accent other than the one the artwork is painted in hue-shifts (and re-saturates) the canvas. */
-function tintFor(accent: string) {
-  const a = hslOf(accent),
-    b = hslOf(BASE_ACCENT);
-  if (!a || !b) return undefined;
-  let d = a[0] - b[0];
-  if (d > 180) d -= 360;
-  if (d < -180) d += 360;
-  const k = b[1] > 0 ? a[1] / b[1] : 1;
-  if (Math.abs(d) < 0.5 && Math.abs(k - 1) < 0.02) return undefined;
-  return `hue-rotate(${d.toFixed(1)}deg) saturate(${k.toFixed(3)})`;
-}
-
-/**
- * The chart's glow field on its own, stretched over its positioned parent: lets a surface (a whole
- * card, say) carry the glow while a `PeakChart` with `fieldOpacity={0}` draws the curve and text on top.
- */
-export function PeakField({
-  accent = BASE_ACCENT,
-  resolution = 600,
-  style,
-}: {
-  accent?: string;
-  /** Width in pixels the field is painted at before being stretched (it is a soft blur). */
-  resolution?: number;
-  style?: React.CSSProperties;
-}) {
-  const ref = React.useRef<HTMLCanvasElement>(null);
-  React.useEffect(() => {
-    const canvas = ref.current;
-    const ctx = canvas?.getContext('2d');
-    if (!canvas || !ctx) return;
-    const { rest } = buildField(resolution, 11);
-    canvas.width = rest.width;
-    canvas.height = rest.height;
-    ctx.drawImage(rest, 0, 0);
-  }, [resolution]);
-  return (
-    <canvas
-      ref={ref}
-      aria-hidden
-      style={{
-        position: 'absolute',
-        inset: 0,
-        width: '100%',
-        height: '100%',
-        pointerEvents: 'none',
-        filter: tintFor(accent),
-        ...style,
-      }}
-    />
-  );
-}
-
-function blendMask(bx: number, by: number, f: number): React.CSSProperties {
-  const h = `linear-gradient(to right, transparent ${bx}px, #000 ${bx + f}px, #000 calc(100% - ${bx + f}px), transparent calc(100% - ${bx}px))`;
-  const v = `linear-gradient(to bottom, transparent ${by}px, #000 ${by + f}px, #000 calc(100% - ${by + f}px), transparent calc(100% - ${by}px))`;
-  return {
-    mixBlendMode: 'screen',
-    maskImage: `${h}, ${v}`,
-    WebkitMaskImage: `${h}, ${v}`,
-    maskComposite: 'intersect',
-    WebkitMaskComposite: 'source-in',
-  };
-}
-
 /* ---------- component ---------- */
 
 export function PeakChart({
@@ -636,9 +560,6 @@ export function PeakChart({
   formatValue,
   font = 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
   locale = 'en-US',
-  blend = false,
-  fade = 0.14,
-  fieldOpacity = 1,
   periodLabel = 'Period',
   className,
   style,
@@ -686,8 +607,6 @@ export function PeakChart({
     decimals,
     loop,
     locale,
-    blend,
-    fieldOpacity,
     kick: () => {},
   });
   // Props read by the render loop: synced after each render (never written during render).
@@ -699,8 +618,6 @@ export function PeakChart({
     L.decimals = decimals;
     L.loop = loop;
     L.locale = locale;
-    L.blend = blend;
-    L.fieldOpacity = fieldOpacity;
   });
 
   // data changes morph the line
@@ -846,17 +763,13 @@ export function PeakChart({
       ctx.setTransform(s, 0, 0, s, bx, by);
       ctx.imageSmoothingEnabled = true;
       ctx.imageSmoothingQuality = 'high';
-      if (!L.blend) ctx.drawImage(halo, -BX, -BY, CW + 2 * BX, CH + 2 * BY);
+      ctx.drawImage(halo, -BX, -BY, CW + 2 * BX, CH + 2 * BY);
       ctx.save();
-      if (L.blend) {
-        ctx.beginPath();
-        ctx.rect(0, 0, CW, CH);
-      } else roundRect();
+      roundRect();
       ctx.clip();
-      ctx.globalAlpha = L.fieldOpacity;
       ctx.drawImage(field, 0, 0, CW, CH);
       if (F.breath > 0.001) {
-        ctx.globalAlpha = F.breath * L.fieldOpacity;
+        ctx.globalAlpha = F.breath;
         ctx.drawImage(bright, 0, 0, CW, CH);
       }
       if (F.grid > 0.001) {
@@ -1053,7 +966,18 @@ export function PeakChart({
     live.current.kick();
   };
 
-  const tint = tintFor(accent);
+  // Any accent other than the one the artwork is painted in hue-shifts (and re-saturates) the canvas.
+  const tint = (() => {
+    const a = hslOf(accent),
+      b = hslOf(BASE_ACCENT);
+    if (!a || !b) return undefined;
+    let d = a[0] - b[0];
+    if (d > 180) d -= 360;
+    if (d < -180) d += 360;
+    const k = b[1] > 0 ? a[1] / b[1] : 1;
+    if (Math.abs(d) < 0.5 && Math.abs(k - 1) < 0.02) return undefined;
+    return `hue-rotate(${d.toFixed(1)}deg) saturate(${k.toFixed(3)})`;
+  })();
 
   const px = (n: number) => `${(n * u).toFixed(3)}px`;
   const textBase: React.CSSProperties = {
@@ -1090,14 +1014,7 @@ export function PeakChart({
       <canvas
         ref={canvasRef}
         aria-hidden
-        style={{
-          position: 'absolute',
-          left: 0,
-          top: 0,
-          pointerEvents: 'none',
-          filter: tint,
-          ...(blend ? blendMask(Math.ceil(BX * u), Math.ceil(BY * u), fade * width) : {}),
-        }}
+        style={{ position: 'absolute', left: 0, top: 0, pointerEvents: 'none', filter: tint }}
       />
       {/* chart hover surface */}
       <div
