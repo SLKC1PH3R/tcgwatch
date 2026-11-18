@@ -1,4 +1,4 @@
-import { ArrowLeft, ExternalLink, Search } from 'lucide-react';
+import { ArrowLeft, BellPlus, BellRing, ExternalLink, Search } from 'lucide-react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
@@ -146,6 +146,21 @@ export default async function ProductPage({ params, searchParams }: Props) {
             <h1 className="font-display text-3xl leading-tight font-bold tracking-tight text-balance sm:text-4xl">
               {product.name}
             </h1>
+            <div className="pt-2">
+              {product.targetPrice === null ? (
+                <Button asChild size="sm">
+                  <Link href={`/produits/mes-produits?ajouter=${product.id}#ajouter`}>
+                    <BellPlus /> Ajouter aux suivis
+                  </Link>
+                </Button>
+              ) : (
+                <Button asChild size="sm" variant="secondary">
+                  <Link href={`/produits/mes-produits#p-${product.id}`}>
+                    <BellRing /> Dans mes suivis · bon prix {formatPrice(product.targetPrice)}
+                  </Link>
+                </Button>
+              )}
+            </div>
           </div>
 
           <div className="grid gap-3 sm:grid-cols-3">

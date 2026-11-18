@@ -5,6 +5,7 @@ import { prisma } from '@tcgwatch/db';
 import {
   formatPercent,
   formatPrice,
+  marketSearchQuery,
   PRODUCT_TYPE_LABELS,
   type ProductTypeKey,
 } from '@tcgwatch/shared';
@@ -38,7 +39,7 @@ const VERDICT: Record<Verdict, { label: string; variant: 'success' | 'warning' |
 
 const fmtInput = (n: number | null) => (n === null ? '' : String(n).replace('.', ','));
 
-type Props = { searchParams: Promise<{ erreur?: string }> };
+type Props = { searchParams: Promise<{ erreur?: string; ajouter?: string }> };
 
 /**
  * Mes produits : les produits à acheter au « bon prix » choisi (ex. ETB à 55 € de prix public,
@@ -47,15 +48,24 @@ type Props = { searchParams: Promise<{ erreur?: string }> };
  * Cardmarket. Alertes dès qu'une source passe sous le bon prix.
  */
 export default async function MyProductsPage({ searchParams }: Props) {
-  const { erreur } = await searchParams;
+  const { erreur, ajouter } = await searchParams;
   const [{ products, listings }, options] = await Promise.all([
     getMyProducts(),
     prisma.product.findMany({
       where: { targetPrice: null },
-      select: { id: true, name: true, type: true },
+      select: {
+        id: true,
+        name: true,
+        type: true,
+        marketQuery: true,
+        extension: { select: { nameFr: true, setCode: true } },
+      },
       orderBy: { name: 'asc' },
     }),
   ]);
+  // Venu du bouton « Ajouter aux suivis » d'une fiche : produit présélectionné, nom de
+  // recherche prérempli (modifiable), curseur sur le bon prix.
+  const preselected = options.find((o) => o.id === ajouter);
   const ebay = Boolean(process.env.EBAY_CLIENT_ID && process.env.EBAY_CLIENT_SECRET);
   const good = products.filter((p) => p.verdict === 'shop' || p.verdict === 'cardmarket');
   const fresh = listings.filter((l) => !l.auction && l.total <= l.target);
@@ -85,7 +95,10 @@ export default async function MyProductsPage({ searchParams }: Props) {
         />
       </div>
 
-      <Card className="mb-8">
+      <Card
+        id="ajouter"
+        className={cn('mb-8 scroll-mt-24', preselected && 'border-primary ring-1 ring-primary')}
+      >
         <CardHeader>
           <CardTitle>Ajouter un produit</CardTitle>
           <CardDescription>
@@ -96,12 +109,18 @@ export default async function MyProductsPage({ searchParams }: Props) {
         </CardHeader>
         <CardContent>
           <form
+            key={preselected?.id ?? 'new'}
             action={saveMyProductAction}
             className="grid gap-3 md:grid-cols-[minmax(0,2fr)_8rem_minmax(0,1fr)_auto] md:items-end"
           >
             <div className="min-w-0 space-y-1.5">
               <Label htmlFor="mp-product">Produit</Label>
-              <NativeSelect id="mp-product" name="productId" required defaultValue="">
+              <NativeSelect
+                id="mp-product"
+                name="productId"
+                required
+                defaultValue={preselected?.id ?? ''}
+              >
                 <option value="" disabled>
                   Choisir…
                 </option>
@@ -124,11 +143,17 @@ export default async function MyProductsPage({ searchParams }: Props) {
                 inputMode="decimal"
                 required
                 placeholder="130"
+                autoFocus={Boolean(preselected)}
               />
             </div>
             <div className="min-w-0 space-y-1.5">
-              <Label htmlFor="mp-query">Mots-clés (facultatif)</Label>
-              <Input id="mp-query" name="marketQuery" placeholder="ETB Nuit Noire" />
+              <Label htmlFor="mp-query">Nom de recherche (facultatif)</Label>
+              <Input
+                id="mp-query"
+                name="marketQuery"
+                placeholder="ETB Nuit Noire"
+                defaultValue={preselected ? marketSearchQuery(preselected) : undefined}
+              />
             </div>
             <Button type="submit">Ajouter</Button>
           </form>
