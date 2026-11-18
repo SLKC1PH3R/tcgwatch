@@ -26,17 +26,23 @@ RUN pnpm --filter @tcgwatch/db generate \
   && pnpm --filter @tcgwatch/worker build \
   && pnpm --filter @tcgwatch/worker deploy --prod /out \
   && cp -r packages/db/prisma /out/prisma \
-  && cp packages/db/prisma.config.ts /out/prisma.config.ts
+  && cp packages/db/prisma.config.ts /out/prisma.config.ts \
+  && node -p "require('./apps/worker/node_modules/playwright/package.json').version" > /playwright-version
 
 FROM node:24-bookworm-slim AS runner
 ENV NODE_ENV=production PLAYWRIGHT_BROWSERS_PATH=/ms-playwright WORKER_HEALTH_PORT=3001
 WORKDIR /app
-COPY --from=build /out ./
 # Chromium + dépendances système, pour les sites rendus en JavaScript (Cultura, Smyths…).
+# Installé AVANT le code : la couche reste en cache tant que la version de Playwright ne
+# change pas (sinon ~7 min de paquets et de téléchargement à chaque déploiement).
+COPY --from=build /playwright-version /tmp/playwright-version
 RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-certificates \
-  && node node_modules/playwright/cli.js install --with-deps --only-shell chromium \
-  && rm -rf /var/lib/apt/lists/* \
-  && chown -R node:node /app /ms-playwright
+  && npx -y "playwright@$(cat /tmp/playwright-version)" install --with-deps --only-shell chromium \
+  && rm -rf /var/lib/apt/lists/* /root/.npm /tmp/playwright-version \
+  && chown -R node:node /ms-playwright && chown node:node /app
+# --chown à la copie : un `chown -R` sur node_modules recopie chaque fichier dans une
+# nouvelle couche (très long, sans aucune sortie dans les logs de build).
+COPY --from=build --chown=node:node /out ./
 COPY --chmod=755 docker/worker-entrypoint.sh /usr/local/bin/worker-entrypoint
 USER node
 EXPOSE 3001
