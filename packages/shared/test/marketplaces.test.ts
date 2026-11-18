@@ -4,6 +4,7 @@ import {
   cardmarketUrl,
   marketplaceLinks,
   marketSearchQuery,
+  plausibleMarketPrice,
   relevantMarketListing,
 } from '../src/marketplaces';
 
@@ -37,6 +38,35 @@ describe('places de marché', () => {
     expect(relevantMarketListing('Display Nuit Noire 36 boosters', etb)).toBe(false);
     expect(relevantMarketListing('Demi display Nuit Noire 18 boosters', half)).toBe(true);
     expect(relevantMarketListing('Display Nuit Noire 36 boosters', half)).toBe(false);
+  });
+
+  it('boîtes abîmées et boosters à l’unité écartés (annonces eBay réelles)', () => {
+    const display = {
+      name: 'Boite de boosters Nuit Noire',
+      type: 'DISPLAY',
+      extension: etb.extension,
+    };
+    expect(
+      relevantMarketListing(
+        'Booster POKÉMON - ME 05 Nuit Noire - 1 Booster zeraora sortie de display - FR',
+        display,
+      ),
+    ).toBe(false);
+    expect(relevantMarketListing('Lot de 10 boosters Nuit Noire display', display)).toBe(false);
+    expect(relevantMarketListing('Display 36 boosters Nuit Noire ME05 FR', display)).toBe(true);
+    expect(
+      relevantMarketListing('ETB Nuit Noire ME05 Pokémon JCC FR (Défaut trou dans le Scellé)', etb),
+    ).toBe(false);
+    expect(relevantMarketListing('ETB Nuit Noire boîte abîmée', etb)).toBe(false);
+    expect(relevantMarketListing('ETB Nuit Noire jamais ouvert, sans défaut, FR', etb)).toBe(true);
+    expect(
+      relevantMarketListing(
+        "ETB ME05 NUIT NOIRE POKEMON COFFRET DRESSEUR D'ÉLITE SCELLAGE PARFAIT",
+        etb,
+      ),
+    ).toBe(true);
+    expect(plausibleMarketPrice(13.61, 180)).toBe(false);
+    expect(plausibleMarketPrice(72.46, 130)).toBe(true);
   });
 
   it('liens préremplis jusqu’au bon prix', () => {

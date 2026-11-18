@@ -49,6 +49,17 @@ export function marketSearchQuery(p: MarketProduct): string {
 const OFF_TOPIC =
   /\b(vide|empty|sans boosters?|lots? de cartes|proxy|fake|japonais|japanese|jap|jpn|chinois|chinese|coreen|korean|english|anglais|classeur|carte seule|promo seule|repack|replique)\b/;
 
+/** Boîte abîmée ou ouverte : on ne veut qu'un état irréprochable. */
+const DAMAGED =
+  /\b(defauts?|abimee?s?|trous?|trouee?|dechiree?|enfoncee?|cabossee?|ecrasee?|ouverte?s?|descellee?s?|reconditionnee?|sans film|etat moyen|mauvais etat|occasion)\b/;
+/** Tournures rassurantes qui contiennent un mot « abîmé » : retirées avant le test. */
+const REASSURING =
+  /\b(sans (?:aucun )?defauts?|aucun defaut|jamais ouverte?s?|non ouverte?s?|pas ouverte?s?)\b/g;
+
+/** Booster vendu à l'unité, même « sortie de display ». */
+const SINGLE_BOOSTER =
+  /\b(?:1|un) boosters?\b|\bboosters? seuls?\b|\bsortie? (?:de|d une) display\b|\bissue? (?:de|d une) display\b/;
+
 /** Mots qui doivent figurer dans le titre selon le format. */
 const TYPE_TERMS: Record<string, RegExp> = {
   ETB: /\b(etb|coffret dresseur|dresseur d elite|elite trainer)\b/,
@@ -66,6 +77,13 @@ const STOP = new Set(['de', 'du', 'des', 'la', 'le', 'les', 'et', 'l', 'd', 'a',
 export function relevantMarketListing(title: string, p: MarketProduct): boolean {
   const t = fold(title).replace(/[^a-z0-9]+/g, ' ');
   if (OFF_TOPIC.test(t)) return false;
+  if (DAMAGED.test(t.replace(REASSURING, ' '))) return false;
+  if (['DISPLAY', 'ETB', 'UPC'].includes(p.type) && SINGLE_BOOSTER.test(t)) return false;
+  if (p.type === 'DISPLAY') {
+    // « 10 boosters », « lot de 6 boosters » : pas une display (18 ou 36).
+    const counts = [...t.matchAll(/\b(\d+) boosters?\b/g)].map((m) => Number(m[1]));
+    if (counts.some((n) => n !== 18 && n !== 36)) return false;
+  }
   const terms = TYPE_TERMS[p.type];
   if (terms && !terms.test(t)) return false;
   if (p.type === 'DISPLAY' && isHalfDisplay(p.name) !== /\b(demi|18 boosters?)\b/.test(t)) {
@@ -82,6 +100,14 @@ export function relevantMarketListing(title: string, p: MarketProduct): boolean 
     if (!hasWords && !hasCode) return false;
   }
   return true;
+}
+
+/**
+ * Prix d'annonce crédible pour le produit : sous 40 % du bon prix, c'est presque toujours une
+ * pièce détachée (booster seul, boîte vide, accessoire) et pas le produit scellé.
+ */
+export function plausibleMarketPrice(total: number, target: number): boolean {
+  return total >= target * 0.4;
 }
 
 /** Chemin des catégories de produits scellés Cardmarket dans les adresses du site. */

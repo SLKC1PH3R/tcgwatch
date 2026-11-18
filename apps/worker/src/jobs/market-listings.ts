@@ -4,6 +4,7 @@ import {
   cardmarketUrl,
   formatPrice,
   marketSearchQuery,
+  plausibleMarketPrice,
   relevantMarketListing,
   toNumber,
 } from '@tcgwatch/shared';
@@ -62,7 +63,12 @@ export async function runMarketListings(ctx: WorkerContext): Promise<void> {
         );
       }
 
-      for (const l of listings.filter((x) => relevantMarketListing(x.title, p))) {
+      const relevant = listings.filter(
+        (x) =>
+          relevantMarketListing(x.title, p) &&
+          plausibleMarketPrice(x.price + (x.shipping ?? 0), target),
+      );
+      for (const l of relevant) {
         const key = { source: 'ebay', externalId: l.externalId, productId: p.id };
         const existing = await prisma.marketListing.findUnique({
           where: { source_externalId_productId: key },
