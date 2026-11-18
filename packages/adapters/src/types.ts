@@ -25,6 +25,11 @@ export interface ListingResult {
   category?: string;
   /** Lien vers le dispositif d'alerte de stock du site, s'il existe. */
   stockAlertUrl?: string;
+  /**
+   * La boutique prévient que le film plastique des boîtes sera incisé (anti-revente) ou vend
+   * la boîte descellée.
+   */
+  sealCut?: boolean;
 }
 
 export interface FetchOptions {

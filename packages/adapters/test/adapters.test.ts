@@ -23,6 +23,7 @@ import {
   resetPhilibertStockList,
   parsePlayIn,
   parseSmyths,
+  detectSealCut,
 } from '../src';
 
 const fixture = (name: string) =>
@@ -191,6 +192,25 @@ describe('Philibert : stock réel (rayon « en stock » puis expedition_date)', 
 
   it('rayon et appel de stock illisibles → erreur (pas de faux retour en stock)', async () => {
     await expect(run('<html>429</html>', '<html>429</html>').result).rejects.toThrow(/illisible/);
+  });
+});
+
+describe('Film plastique incisé / boîte descellée', () => {
+  it('avertissement de la fiche Philibert (fixture réelle)', () => {
+    expect(detectSealCut(fixture('philibert-seal-cut'))).toBe(true);
+  });
+
+  it('fiches ordinaires : pas d’avertissement', () => {
+    expect(detectSealCut(fixture('philibert-in-stock'))).toBe(false);
+    expect(detectSealCut(fixture('philibert-preorder'))).toBe(false);
+    expect(detectSealCut(fixture('playin-in-stock'))).toBe(false);
+  });
+
+  it('formulations', () => {
+    const page = (t: string) => `<html><body><p>${t}</p></body></html>`;
+    expect(detectSealCut(page('Le film plastique sera incisé avant expédition.'))).toBe(true);
+    expect(detectSealCut(page('Boîte descellée, contenu intact.'))).toBe(true);
+    expect(detectSealCut(page('Produit scellé sous film plastique.'))).toBe(false);
   });
 });
 

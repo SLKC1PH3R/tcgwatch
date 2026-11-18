@@ -1,5 +1,6 @@
 import {
   AdapterError,
+  detectSealCut,
   getAdapterByKey,
   type FetchContext,
   type ListingResult,
@@ -60,17 +61,23 @@ export async function checkListing(ctx: WorkerContext, listing: ListingWithRelat
     const adapter = getAdapterByKey(listing.retailer.adapterKey);
     // Sites qui refusent les requêtes HTTP simples : Chromium d'emblée, sans requête refusée avant.
     const browserFirst = listing.retailer.access === 'BROWSER';
+    // Page de la fiche gardée pour les avertissements (film incisé…), quel que soit l'adaptateur.
+    let pageHtml: string | undefined;
     const scoped: FetchContext = {
-      fetchHtml: (url, options) =>
-        ctx.fetcher.fetchHtml(url, {
+      fetchHtml: async (url, options) => {
+        const html = await ctx.fetcher.fetchHtml(url, {
           ...options,
           browser: options?.browser || browserFirst,
           minDelayMs: listing.retailer.minDelayMs,
-        }),
+        });
+        if (url === listing.url && pageHtml === undefined) pageHtml = html;
+        return html;
+      },
     };
     let result: ListingResult;
     try {
       result = await adapter.fetchListing(listing.url, scoped);
+      if (result.sealCut === undefined && pageHtml) result.sealCut = detectSealCut(pageHtml);
     } catch (err) {
       await recordFailure(ctx, listing, err);
       return;
@@ -220,12 +227,16 @@ function buildAlert(listing: ListingWithRelations, alert: DetectedAlert, result:
     url: listing.url,
     price: result.price,
   };
+  // Avertissement de la boutique, en tête du message pour qu'il saute aux yeux.
+  const warning = result.sealCut
+    ? '⚠️ !!! Film plastique des boîtes incisé sur ce produit !!!\n'
+    : '';
   switch (alert.type) {
     case 'BACK_IN_STOCK':
       return {
         ...base,
         title: `✅ Retour en stock : ${name}`,
-        message: `${where} — ${price}`,
+        message: `${warning}${where} — ${price}`,
         priority: 'high' as const,
         tags: ['white_check_mark'],
       };
@@ -233,7 +244,7 @@ function buildAlert(listing: ListingWithRelations, alert: DetectedAlert, result:
       return {
         ...base,
         title: `🆕 Précommande ouverte : ${name}`,
-        message: `${where} — ${price}`,
+        message: `${warning}${where} — ${price}`,
         priority: 'high' as const,
         tags: ['new'],
       };
@@ -241,7 +252,7 @@ function buildAlert(listing: ListingWithRelations, alert: DetectedAlert, result:
       return {
         ...base,
         title: `💶 Prix cible atteint : ${name}`,
-        message: `${where} — ${price} (${AVAILABILITY_LABELS[result.availability].toLowerCase()})`,
+        message: `${warning}${where} — ${price} (${AVAILABILITY_LABELS[result.availability].toLowerCase()})`,
         priority: 'urgent' as const,
         tags: ['moneybag'],
       };

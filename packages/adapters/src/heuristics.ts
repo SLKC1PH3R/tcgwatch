@@ -1,4 +1,4 @@
-import type { Cheerio, CheerioAPI } from 'cheerio';
+import { load, type Cheerio, type CheerioAPI } from 'cheerio';
 import type { AnyNode } from 'domhandler';
 import { parseFrenchDate, type Availability } from '@tcgwatch/shared';
 
@@ -83,4 +83,22 @@ export function visibleText($: CheerioAPI, scope: Cheerio<AnyNode>): string {
   const clone = scope.clone();
   clone.find('script, style, noscript, template, svg').remove();
   return clone.text().replace(/\s+/g, ' ').trim();
+}
+
+/** « le film plastique des boîtes sera incisé », « boîte descellée »… */
+const SEAL_CUT_PATTERNS = [
+  /film (?:plastique|protecteur|d['’]emballage)[^.]{0,160}?incis/i,
+  /incis\w*[^.]{0,80}?film (?:plastique|protecteur|d['’]emballage)/i,
+  /\bbo[iî]tes? (?:\w+ )?descell[ée]e?s?\b/i,
+];
+
+/**
+ * La fiche prévient-elle que la boîte sera vendue avec son film incisé (mesure anti-revente
+ * de certaines boutiques) ou descellée ? Cherché dans le texte visible de toute la page.
+ */
+export function detectSealCut(html: string): boolean {
+  const $ = load(html);
+  const text = visibleText($, $('body').length ? $('body') : $.root());
+  const title = $('title').text();
+  return SEAL_CUT_PATTERNS.some((re) => re.test(text) || re.test(title));
 }

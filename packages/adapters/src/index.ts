@@ -3,7 +3,7 @@ export * from './registry';
 export * from './fetcher';
 export * from './robots';
 export { parseJsonLd, mapSchemaAvailability, mergeResults, dedupeImages } from './jsonld';
-export { findReleaseDate, availabilityFromText } from './heuristics';
+export { findReleaseDate, availabilityFromText, detectSealCut } from './heuristics';
 export { genericAdapter, parseGeneric } from './adapters/generic';
 export { playInAdapter, parsePlayIn } from './adapters/playin';
 export {
