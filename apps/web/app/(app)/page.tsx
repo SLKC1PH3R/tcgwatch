@@ -102,15 +102,18 @@ export default async function DashboardPage() {
             <SeeAll href="/collection">Voir la collection</SeeAll>
           </CardHeader>
           <CardContent className="flex flex-col gap-4 fit:min-h-0 fit:flex-1">
-            <CollectionPeak
-              history={d.collectionHistory}
-              value={v.estimatedValue}
-              trend={gainPositive ? 'up' : 'down'}
-              caption={`${gainPositive ? '+' : ''}${formatPrice(v.unrealizedGain)} (${formatPercent(
-                v.ratio !== null ? v.ratio - 1 : null,
-              )}) de plus-value`}
-              note={`Investi ${formatPrice(v.totalCost)}`}
-            />
+            {/* D'un bord à l'autre de la carte : la marge intérieure est annulée. */}
+            <div className="-mx-6 flex fit:min-h-0 fit:flex-1">
+              <CollectionPeak
+                history={d.collectionHistory}
+                value={v.estimatedValue}
+                trend={gainPositive ? 'up' : 'down'}
+                caption={`${gainPositive ? '+' : ''}${formatPrice(v.unrealizedGain)} (${formatPercent(
+                  v.ratio !== null ? v.ratio - 1 : null,
+                )}) de plus-value`}
+                note={`Investi ${formatPrice(v.totalCost)}`}
+              />
+            </div>
 
             {d.breakdown.length > 0 && (
               <div className="flex shrink-0 flex-col gap-2.5 border-t border-border/60 pt-3">

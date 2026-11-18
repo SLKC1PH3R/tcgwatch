@@ -137,6 +137,15 @@ export interface PeakChartProps {
   locale?: string;
   /** Accessible label of the period dropdown. */
   periodLabel?: string;
+  /**
+   * Blend the chart into whatever it sits on instead of drawing a card: no outer halo, no rounded
+   * card edge, the glow is composited with `screen` (its black areas disappear) and the edges fade out.
+   */
+  blend?: boolean;
+  /** Edge fade width in blend mode, as a fraction of the card width. */
+  fade?: number;
+  /** Strength of the glow field (0..1). Lower it to let the surface underneath show through. */
+  fieldOpacity?: number;
   /** Extra class name on the outer element. */
   className?: string;
   /** Extra inline styles on the outer element. */
@@ -537,6 +546,19 @@ function frameAt(t: number, loop: number): Frame {
   return f;
 }
 
+/** Screen compositing plus a soft fade on the four edges of the card area of the canvas. */
+function blendMask(bx: number, by: number, f: number): React.CSSProperties {
+  const h = `linear-gradient(to right, transparent ${bx}px, #000 ${bx + f}px, #000 calc(100% - ${bx + f}px), transparent calc(100% - ${bx}px))`;
+  const v = `linear-gradient(to bottom, transparent ${by}px, #000 ${by + f}px, #000 calc(100% - ${by + f}px), transparent calc(100% - ${by}px))`;
+  return {
+    mixBlendMode: 'screen',
+    maskImage: `${h}, ${v}`,
+    WebkitMaskImage: `${h}, ${v}`,
+    maskComposite: 'intersect',
+    WebkitMaskComposite: 'source-in',
+  };
+}
+
 /* ---------- component ---------- */
 
 export function PeakChart({
@@ -560,6 +582,9 @@ export function PeakChart({
   formatValue,
   font = 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
   locale = 'en-US',
+  blend = false,
+  fade = 0.14,
+  fieldOpacity = 1,
   periodLabel = 'Period',
   className,
   style,
@@ -607,6 +632,8 @@ export function PeakChart({
     decimals,
     loop,
     locale,
+    blend,
+    fieldOpacity,
     kick: () => {},
   });
   // Props read by the render loop: synced after each render (never written during render).
@@ -618,6 +645,8 @@ export function PeakChart({
     L.decimals = decimals;
     L.loop = loop;
     L.locale = locale;
+    L.blend = blend;
+    L.fieldOpacity = fieldOpacity;
   });
 
   // data changes morph the line
@@ -763,13 +792,17 @@ export function PeakChart({
       ctx.setTransform(s, 0, 0, s, bx, by);
       ctx.imageSmoothingEnabled = true;
       ctx.imageSmoothingQuality = 'high';
-      ctx.drawImage(halo, -BX, -BY, CW + 2 * BX, CH + 2 * BY);
+      if (!L.blend) ctx.drawImage(halo, -BX, -BY, CW + 2 * BX, CH + 2 * BY);
       ctx.save();
-      roundRect();
+      if (L.blend) {
+        ctx.beginPath();
+        ctx.rect(0, 0, CW, CH);
+      } else roundRect();
       ctx.clip();
+      ctx.globalAlpha = L.fieldOpacity;
       ctx.drawImage(field, 0, 0, CW, CH);
       if (F.breath > 0.001) {
-        ctx.globalAlpha = F.breath;
+        ctx.globalAlpha = F.breath * L.fieldOpacity;
         ctx.drawImage(bright, 0, 0, CW, CH);
       }
       if (F.grid > 0.001) {
@@ -1014,7 +1047,14 @@ export function PeakChart({
       <canvas
         ref={canvasRef}
         aria-hidden
-        style={{ position: 'absolute', left: 0, top: 0, pointerEvents: 'none', filter: tint }}
+        style={{
+          position: 'absolute',
+          left: 0,
+          top: 0,
+          pointerEvents: 'none',
+          filter: tint,
+          ...(blend ? blendMask(Math.ceil(BX * u), Math.ceil(BY * u), fade * width) : {}),
+        }}
       />
       {/* chart hover surface */}
       <div

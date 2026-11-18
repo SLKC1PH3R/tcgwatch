@@ -15,6 +15,11 @@ const CARD_RATIO = 696 / 540;
 /** Même seuil que la variante Tailwind `fit` (accueil plein écran). */
 const FIT_QUERY = '(min-width: 64rem) and (min-height: 42rem)';
 
+/** Reflet holographique posé sur la lueur du graphique (teinte seule, la luminosité reste). */
+const HOLO = 'linear-gradient(135deg, #ffd43b, #ff6b9a, #8b7cff, #4fd1ff, #6ee7a0)';
+const EDGE_FADE =
+  'linear-gradient(to right, transparent, #000 15%, #000 85%, transparent), linear-gradient(to bottom, transparent, #000 15%, #000 85%, transparent)';
+
 const dayLabel = new Intl.DateTimeFormat('fr-FR', {
   day: 'numeric',
   month: 'short',
@@ -52,7 +57,7 @@ export function CollectionPeak({
     const measure = () => {
       const { width: w, height: h } = el.getBoundingClientRect();
       const byHeight = fit.matches && h > 0 ? h / CARD_RATIO : Infinity;
-      setWidth(Math.floor(Math.max(220, Math.min(w, byHeight, 520))));
+      setWidth(Math.floor(Math.max(220, Math.min(w, byHeight, 640))));
     };
     measure();
     const ro = new ResizeObserver(measure);
@@ -79,25 +84,44 @@ export function CollectionPeak({
       style={width ? undefined : { minHeight: 280 }}
     >
       {width > 0 && (
-        <PeakChart
-          width={width}
-          data={data.length > 1 ? data : [value, value]}
-          labels={labels}
-          value={Math.round(value)}
-          valueSuffix={' €'}
-          title="Valeur estimée"
-          caption={caption}
-          updatedText={note}
-          trend={trend}
-          periods={PERIOD_NAMES}
-          period={period}
-          onPeriodChange={setPeriod}
-          periodLabel="Période"
-          accent="#8b7cff"
-          locale="fr-FR"
-          font="'Manrope Variable', ui-sans-serif, system-ui, sans-serif"
-          formatValue={(v) => formatPrice(v)}
-        />
+        // Le graphique est fondu dans la carte (pas de carte posée dessus) ; `isolate` limite le
+        // mélange des couleurs à cette zone.
+        <div className="relative isolate">
+          <PeakChart
+            width={width}
+            data={data.length > 1 ? data : [value, value]}
+            labels={labels}
+            value={Math.round(value)}
+            valueSuffix={' €'}
+            title="Valeur estimée"
+            caption={caption}
+            updatedText={note}
+            trend={trend}
+            periods={PERIOD_NAMES}
+            period={period}
+            onPeriodChange={setPeriod}
+            periodLabel="Période"
+            accent="#8b7cff"
+            locale="fr-FR"
+            font="'Manrope Variable', ui-sans-serif, system-ui, sans-serif"
+            formatValue={(v) => formatPrice(v)}
+            blend
+            fade={0.12}
+          />
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-0"
+            style={{
+              background: HOLO,
+              mixBlendMode: 'color',
+              opacity: 0.75,
+              maskImage: EDGE_FADE,
+              WebkitMaskImage: EDGE_FADE,
+              maskComposite: 'intersect',
+              WebkitMaskComposite: 'source-in',
+            }}
+          />
+        </div>
       )}
     </div>
   );
