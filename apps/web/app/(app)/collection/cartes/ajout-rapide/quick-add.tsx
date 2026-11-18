@@ -4,6 +4,7 @@ import { Check, Minus } from 'lucide-react';
 import { useMemo, useState, useTransition } from 'react';
 import { SafeImg } from '@/components/safe-img';
 import { Button } from '@/components/ui/button';
+import { type CardFilters, filterCards, hasReverse, rarityCounts } from '@/lib/card-filters';
 import type { CollectionCard } from '@/lib/data/card-collection';
 import { cn } from '@/lib/utils';
 import { saveQuickAddAction } from '../actions';
@@ -33,7 +34,8 @@ export function QuickAdd({
   const [saved, setSaved] = useState<Counts>(() => initial(cards));
   const [counts, setCounts] = useState<Counts>(() => initial(cards));
   const [variant, setVariant] = useState<Variant>('normal');
-  const [filter, setFilter] = useState<(typeof FILTERS)[number]['key']>('toutes');
+  const [filter, setFilter] = useState<CardFilters['owned']>('toutes');
+  const [rarities, setRarities] = useState<CardFilters['rarities']>([]);
   const [message, setMessage] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -49,9 +51,16 @@ export function QuickAdd({
   const changes = Object.keys(changed.normal).length + Object.keys(changed.reverse).length;
   const total = (id: string) => (counts.normal[id] ?? 0) + (counts.reverse[id] ?? 0);
   const ownedCount = cards.filter((c) => total(c.id) > 0).length;
-  const shown = cards.filter((c) =>
-    filter === 'manquantes' ? total(c.id) === 0 : filter === 'possedees' ? total(c.id) > 0 : true,
+  const groups = useMemo(() => rarityCounts(cards), [cards]);
+  // En mode reverse, seules les cartes qui existent en reverse sont proposées.
+  const shown = filterCards(
+    cards,
+    { rarities, reverse: variant === 'reverse', owned: filter },
+    (c) => total(c.id),
   );
+  const reverseCount = useMemo(() => cards.filter(hasReverse).length, [cards]);
+  const toggleRarity = (key: CardFilters['rarities'][number]) =>
+    setRarities((r) => (r.includes(key) ? r.filter((k) => k !== key) : [...r, key]));
 
   const set = (id: string, n: number) => {
     setMessage(null);
@@ -93,7 +102,7 @@ export function QuickAdd({
                 variant === v ? 'bg-primary text-primary-foreground' : 'hover:bg-accent',
               )}
             >
-              {v === 'normal' ? 'Normale' : 'Reverse'}
+              {v === 'normal' ? 'Normale' : `Reverse (${reverseCount})`}
             </button>
           ))}
         </div>
@@ -133,6 +142,35 @@ export function QuickAdd({
             {pending ? 'Enregistrement…' : changes ? `Enregistrer (${changes})` : 'Enregistré'}
           </Button>
         </div>
+        {groups.length > 1 && (
+          <div role="group" aria-label="Rareté" className="flex w-full flex-wrap gap-1">
+            <button
+              type="button"
+              aria-pressed={rarities.length === 0}
+              onClick={() => setRarities([])}
+              className={cn(
+                'h-7 rounded-full border px-2.5 text-xs',
+                rarities.length === 0 && 'border-primary bg-primary/15 text-primary',
+              )}
+            >
+              Toutes raretés
+            </button>
+            {groups.map((g) => (
+              <button
+                key={g.key}
+                type="button"
+                aria-pressed={rarities.includes(g.key)}
+                onClick={() => toggleRarity(g.key)}
+                className={cn(
+                  'h-7 rounded-full border px-2.5 text-xs',
+                  rarities.includes(g.key) && 'border-primary bg-primary/15 text-primary',
+                )}
+              >
+                {g.label} <span className="text-muted-foreground tabular-nums">{g.count}</span>
+              </button>
+            ))}
+          </div>
+        )}
         {message && (
           <p role="status" className="w-full text-sm text-success">
             {message}
@@ -140,6 +178,11 @@ export function QuickAdd({
         )}
       </div>
 
+      {shown.length === 0 && (
+        <p className="py-8 text-center text-sm text-muted-foreground">
+          Aucune carte pour ces filtres.
+        </p>
+      )}
       <ul className="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8">
         {shown.map((c) => {
           const n = counts[variant][c.id] ?? 0;
@@ -175,7 +218,10 @@ export function QuickAdd({
                 </span>
               )}
               <div className="mt-1 flex items-center justify-between gap-1">
-                <span className="truncate text-[11px] text-muted-foreground">
+                <span
+                  className="truncate text-[11px] text-muted-foreground"
+                  title={c.rarity ?? undefined}
+                >
                   {c.localId} · {c.name}
                 </span>
                 {n > 0 && (

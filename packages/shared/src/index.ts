@@ -6,3 +6,4 @@ export * from './search';
 export * from './history';
 export * from './shipping';
 export * from './marketplaces';
+export * from './rarity';
