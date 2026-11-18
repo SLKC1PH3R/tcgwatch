@@ -93,6 +93,40 @@
   body {
     @apply bg-background text-foreground antialiased;
   }
+
+  /* Barres de défilement « Holo multicolore » : rail transparent, sans flèches, curseur fin au
+     dégradé de la carte Ma collection. Les pseudo-éléments servent Chrome, Edge et Safari ; Firefox,
+     qui ne les connaît pas, reçoit une barre fine et translucide. */
+  ::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+  }
+  ::-webkit-scrollbar-track {
+    background: rgb(255 255 255 / 0.04);
+    border-radius: 9999px;
+    margin: 4px;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, #ffd43b, #ff6b9a, #8b7cff, #4fd1ff, #6ee7a0);
+    border-radius: 9999px;
+  }
+  ::-webkit-scrollbar-thumb:horizontal {
+    background: linear-gradient(90deg, #ffd43b, #ff6b9a, #8b7cff, #4fd1ff, #6ee7a0);
+  }
+  ::-webkit-scrollbar-button {
+    display: none;
+    width: 0;
+    height: 0;
+  }
+  ::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+  @supports not selector(::-webkit-scrollbar) {
+    * {
+      scrollbar-width: thin;
+      scrollbar-color: rgb(139 124 255 / 0.7) transparent;
+    }
+  }
 }
 
 @layer components {
