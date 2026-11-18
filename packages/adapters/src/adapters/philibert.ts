@@ -7,7 +7,12 @@ import {
   findStockAlertUrl,
   visibleText,
 } from '../heuristics';
-import { AdapterError, type ListingResult, type RetailerAdapter } from '../types';
+import {
+  AdapterError,
+  type FetchContext,
+  type ListingResult,
+  type RetailerAdapter,
+} from '../types';
 
 /**
  * Philibert (philibertnet.com) — PrestaShop.
@@ -18,8 +23,9 @@ import { AdapterError, type ListingResult, type RetailerAdapter } from '../types
  *
  * La page est servie depuis un cache : le bouton « Ajouter au panier » peut y rester alors que
  * le produit est épuisé. Le site vérifie ensuite le stock réel par un appel JSON
- * (`/fr/ajax/product/{id}/{déclinaison}/expedition_date`, `status: "out_of_stock"`), que
- * TCGWatch fait aussi : c'est lui qui fait foi.
+ * (`/fr/ajax/product/{id}/{déclinaison}/expedition_date`, `status: "out_of_stock"`).
+ * TCGWatch confirme donc un produit « commandable » par le rayon filtré « en stock » (une
+ * requête par passage pour toutes les fiches), puis, s'il n'y figure pas, par cet appel.
  */
 export function parsePhilibert(html: string, url: string): ListingResult {
   const $ = load(html);
@@ -77,6 +83,56 @@ export function applyPhilibertStock(result: ListingResult, body: string): Listin
   return result;
 }
 
+/** Rayon Pokémon filtré « français » et « en stock » (commandable, précommandes comprises). */
+export const PHILIBERT_STOCK_URL =
+  'https://www.philibertnet.com/fr/212-pokemon/s-3/langues-francais/en_stock-oui';
+const STOCK_LIST_TTL_MS = 5 * 60_000;
+const STOCK_LIST_MAX_PAGES = 10;
+
+/** Identifiants des produits listés sur une page du rayon, et lien vers la page suivante. */
+export function parsePhilibertStockList(
+  html: string,
+  page: number,
+): { ids: string[]; hasNext: boolean } {
+  const $ = load(html);
+  const list = $('#product-list');
+  if (!list.length) throw new AdapterError('Philibert : liste « en stock » introuvable', 'PARSE');
+  const ids = new Set<string>();
+  list.find('a[href]').each((_, a) => {
+    const id = /\/(\d+)-[^/]+\.html(?:$|[?#])/.exec($(a).attr('href') ?? '')?.[1];
+    if (id) ids.add(id);
+  });
+  const hasNext = $(`a[href*="?p=${page + 1}"]`).length > 0;
+  return { ids: [...ids], hasNext };
+}
+
+let stockList: { at: number; ids: Set<string> } | null = null;
+
+/** Produits en stock du rayon (mis en cache quelques minutes : une lecture par passage). */
+async function inStockIds(ctx: FetchContext): Promise<Set<string> | null> {
+  if (stockList && Date.now() - stockList.at < STOCK_LIST_TTL_MS) return stockList.ids;
+  try {
+    const ids = new Set<string>();
+    for (let page = 1; page <= STOCK_LIST_MAX_PAGES; page++) {
+      const html = await ctx.fetchHtml(
+        page === 1 ? PHILIBERT_STOCK_URL : `${PHILIBERT_STOCK_URL}?p=${page}`,
+      );
+      const parsed = parsePhilibertStockList(html, page);
+      parsed.ids.forEach((id) => ids.add(id));
+      if (!parsed.hasNext) break;
+    }
+    stockList = { at: Date.now(), ids };
+    return ids;
+  } catch {
+    return null;
+  }
+}
+
+/** Pour les tests : oublie la liste en cache. */
+export function resetPhilibertStockList() {
+  stockList = null;
+}
+
 export const philibertAdapter: RetailerAdapter = {
   key: 'philibert',
   name: 'Philibert',
@@ -90,11 +146,21 @@ export const philibertAdapter: RetailerAdapter = {
     if (!ids || (result.availability !== 'IN_STOCK' && result.availability !== 'PREORDER')) {
       return result;
     }
+    // 1. Rayon « en stock » : une requête pour toutes les fiches Philibert du passage.
+    const listed = await inStockIds(ctx);
+    if (listed?.has(ids.pid)) return result;
+    // 2. Absent du rayon (ou rayon illisible) : stock réel de la fiche, comme le fait le site.
     const locale = new URL(url).pathname.split('/')[1] || 'fr';
     const stockUrl = new URL(
       `/${locale}/ajax/product/${ids.pid}/${ids.paid}/expedition_date`,
       url,
     ).toString();
-    return applyPhilibertStock(result, await ctx.fetchHtml(stockUrl));
+    try {
+      return applyPhilibertStock(result, await ctx.fetchHtml(stockUrl));
+    } catch (err) {
+      // Le rayon dit « pas en stock » : on le croit plutôt que le bouton d'une page en cache.
+      if (listed) return { ...result, availability: 'OUT_OF_STOCK' };
+      throw err;
+    }
   },
 };

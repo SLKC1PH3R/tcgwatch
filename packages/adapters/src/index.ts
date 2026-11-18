@@ -6,7 +6,13 @@ export { parseJsonLd, mapSchemaAvailability, mergeResults, dedupeImages } from '
 export { findReleaseDate, availabilityFromText } from './heuristics';
 export { genericAdapter, parseGeneric } from './adapters/generic';
 export { playInAdapter, parsePlayIn } from './adapters/playin';
-export { philibertAdapter, parsePhilibert } from './adapters/philibert';
+export {
+  philibertAdapter,
+  parsePhilibert,
+  parsePhilibertStockList,
+  PHILIBERT_STOCK_URL,
+  resetPhilibertStockList,
+} from './adapters/philibert';
 export { culturaAdapter, parseCultura } from './adapters/cultura';
 export { smythsAdapter, parseSmyths } from './adapters/smyths';
 export { fantasySphereAdapter, parseFantasySphere } from './adapters/fantasysphere';

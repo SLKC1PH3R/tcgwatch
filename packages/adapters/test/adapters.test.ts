@@ -17,7 +17,10 @@ import {
   parseLeTempleDuJeu,
   parseGeneric,
   parsePhilibert,
+  parsePhilibertStockList,
   philibertAdapter,
+  PHILIBERT_STOCK_URL,
+  resetPhilibertStockList,
   parsePlayIn,
   parseSmyths,
 } from '../src';
@@ -132,37 +135,62 @@ describe('Philibert (fixtures réelles)', () => {
   });
 });
 
-describe('Philibert : stock réel (appel expedition_date)', () => {
+describe('Philibert : stock réel (rayon « en stock » puis expedition_date)', () => {
   const url =
     'https://www.philibertnet.com/fr/pokemon/184016-pokemon-mega-symphonia-m1s-30-boosters-display-8800286278108.html';
-  const run = (stock: string) => {
+  const listWith = (id: string | null) =>
+    `<div class="row" id="product-list">${
+      id ? `<a href="/fr/pokemon/${id}-produit.html">x</a>` : ''
+    }</div>`;
+  const run = (list: string, stock: string) => {
+    resetPhilibertStockList();
     const urls: string[] = [];
     const ctx = {
       fetchHtml: async (u: string) => {
         urls.push(u);
-        return u === url ? fixture('philibert-in-stock') : stock;
+        if (u === url) return fixture('philibert-in-stock');
+        if (u === PHILIBERT_STOCK_URL) return list;
+        return stock;
       },
     };
     return { urls, result: philibertAdapter.fetchListing(url, ctx) };
   };
 
-  it('page en cache « Ajouter au panier » mais épuisé → rupture', async () => {
-    const { urls, result } = run('{"status":"out_of_stock","after_price_html":""}');
+  it('lit le rayon filtré (fixture réelle)', () => {
+    const r = parsePhilibertStockList(fixture('philibert-stock-list'), 1);
+    expect(r.ids).toEqual(['184181', '180045', '174866', '171424']);
+    expect(r.ids).not.toContain('159292'); // ETB Flamme Blanche épuisé
+    expect(r.hasNext).toBe(false);
+  });
+
+  it('listé dans le rayon « en stock » → en stock, sans appel de stock', async () => {
+    const { urls, result } = run(listWith('184016'), 'jamais lu');
+    expect((await result).availability).toBe('IN_STOCK');
+    expect(urls).toHaveLength(2);
+  });
+
+  it('absent du rayon et out_of_stock → rupture (page en cache trompeuse)', async () => {
+    const { urls, result } = run(listWith('1'), '{"status":"out_of_stock"}');
     const r = await result;
     expect(r.availability).toBe('OUT_OF_STOCK');
     expect(r.price).toBe(79.95);
-    expect(urls[1]).toMatch(
+    expect(urls[2]).toMatch(
       /^https:\/\/www\.philibertnet\.com\/fr\/ajax\/product\/184016\/\d+\/expedition_date$/,
     );
   });
 
-  it('en stock confirmé', async () => {
-    const r = await run('{"status":"in_stock"}').result;
+  it('absent du rayon mais en stock à la fiche → en stock', async () => {
+    const r = await run(listWith(null), '{"status":"in_stock"}').result;
     expect(r.availability).toBe('IN_STOCK');
   });
 
-  it('réponse illisible → erreur (pas de faux retour en stock)', async () => {
-    await expect(run('<html>429 Too Many Requests</html>').result).rejects.toThrow(/illisible/);
+  it('absent du rayon et appel de stock bloqué → rupture', async () => {
+    const r = await run(listWith('1'), '<html>429 Too Many Requests</html>').result;
+    expect(r.availability).toBe('OUT_OF_STOCK');
+  });
+
+  it('rayon et appel de stock illisibles → erreur (pas de faux retour en stock)', async () => {
+    await expect(run('<html>429</html>', '<html>429</html>').result).rejects.toThrow(/illisible/);
   });
 });
 
