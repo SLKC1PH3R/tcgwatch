@@ -1,7 +1,8 @@
 import Link from 'next/link';
 import { formatPercent, formatPrice, todayUtc } from '@tcgwatch/shared';
 import { Thumb } from '@/components/thumb';
-import { TrendChart } from '@/components/trend-chart';
+import { CollectionPeak } from '@/components/collection-peak';
+import { TabPanels } from '@/components/tab-panels';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { getDashboard } from '@/lib/data/dashboard';
@@ -37,6 +38,12 @@ const longDate = new Intl.DateTimeFormat('fr-FR', {
   timeZone: 'UTC',
 });
 const DAY_MS = 86_400_000;
+/** Montants arrondis à l'euro (légende de la répartition). */
+const euros = new Intl.NumberFormat('fr-FR', {
+  style: 'currency',
+  currency: 'EUR',
+  maximumFractionDigits: 0,
+});
 
 /**
  * Carte de l'accueil : sur un écran assez grand, elle prend la hauteur que lui donne la grille
@@ -87,77 +94,57 @@ export default async function DashboardPage() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-12 fit:min-h-0 fit:flex-1 fit:grid-rows-[minmax(0,1.2fr)_minmax(0,1fr)] [&>*]:min-w-0">
-        {/* Valeur de la collection + répartition par type */}
-        <Card className={cn('holo-frame md:col-span-2 lg:col-span-6', tile)}>
-          <CardContent className="flex flex-col gap-5 sm:flex-row fit:min-h-0 fit:flex-1">
-            <div className="flex min-w-0 flex-1 flex-col gap-2 fit:min-h-0">
-              <div className="flex items-baseline justify-between gap-3">
-                <p className="text-sm text-muted-foreground">Ma collection · valeur estimée</p>
-                <SeeAll href="/collection">Voir la collection</SeeAll>
-              </div>
-              <p className="font-display text-4xl font-extrabold tracking-tight tabular-nums xl:text-5xl">
-                {formatPrice(v.estimatedValue)}
-              </p>
-              <p className="text-sm text-muted-foreground">
-                Investi {formatPrice(v.totalCost)} ·{' '}
-                <span
-                  className={cn(
-                    'font-semibold',
-                    gainPositive ? 'text-success' : 'text-destructive',
-                  )}
-                >
-                  {gainPositive ? '+' : ''}
-                  {formatPrice(v.unrealizedGain)} (
-                  {formatPercent(v.ratio !== null ? v.ratio - 1 : null)})
-                </span>
-              </p>
-              {d.collectionHistory.length > 1 && (
-                <div className="mt-1 fit:min-h-20 fit:flex-1">
-                  <TrendChart
-                    data={d.collectionHistory}
-                    height="h-36 fit:h-full"
-                    series={[
-                      {
-                        key: 'value',
-                        label: 'Valeur estimée',
-                        color: 'var(--chart-2)',
-                        width: 2.5,
-                      },
-                      {
-                        key: 'invested',
-                        label: 'Total investi',
-                        color: 'var(--muted-foreground)',
-                        dashed: true,
-                        step: true,
-                      },
-                    ]}
-                  />
-                </div>
-              )}
-            </div>
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-12 fit:min-h-0 fit:flex-1 fit:grid-rows-[minmax(0,1fr)_minmax(0,1fr)] [&>*]:min-w-0">
+        {/* Performance de la collection (carte PeakChart) + répartition par type */}
+        <Card className={cn('overflow-hidden md:col-span-2 lg:col-span-4 lg:row-span-2', tile)}>
+          <CardHeader className="items-center">
+            <CardTitle>Ma collection</CardTitle>
+            <SeeAll href="/collection">Voir la collection</SeeAll>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-4 fit:min-h-0 fit:flex-1">
+            <CollectionPeak
+              history={d.collectionHistory}
+              value={v.estimatedValue}
+              trend={gainPositive ? 'up' : 'down'}
+              caption={`${gainPositive ? '+' : ''}${formatPrice(v.unrealizedGain)} (${formatPercent(
+                v.ratio !== null ? v.ratio - 1 : null,
+              )}) de plus-value`}
+              note={`Investi ${formatPrice(v.totalCost)}`}
+            />
 
             {d.breakdown.length > 0 && (
-              <div className="flex shrink-0 flex-col gap-3 sm:w-56 sm:border-l sm:border-border/60 sm:pl-5 fit:overflow-y-auto">
+              <div className="flex shrink-0 flex-col gap-2.5 border-t border-border/60 pt-3">
                 <p className="text-sm font-semibold text-muted-foreground">Répartition</p>
-                <ul className="flex flex-col gap-3">
+                <div
+                  className="flex h-2.5 gap-0.5 overflow-hidden rounded-full"
+                  role="img"
+                  aria-label={d.breakdown
+                    .map((b) => `${b.label} ${Math.round(b.share * 100)} %`)
+                    .join(', ')}
+                >
                   {d.breakdown.map((b, i) => (
-                    <li key={b.key} className="flex flex-col gap-1.5">
-                      <div className="flex items-baseline justify-between gap-2 text-sm">
-                        <span className="font-semibold">{b.label}</span>
-                        <span className="text-muted-foreground tabular-nums">
-                          {formatPrice(b.value)} · {Math.round(b.share * 100)} %
-                        </span>
-                      </div>
-                      <div className="h-2 overflow-hidden rounded-full bg-secondary">
-                        <div
-                          className="h-full rounded-full"
-                          style={{
-                            width: `${Math.max(2, b.share * 100)}%`,
-                            background: SHARE_COLORS[i % SHARE_COLORS.length],
-                          }}
-                        />
-                      </div>
+                    <span
+                      key={b.key}
+                      className="h-full"
+                      style={{
+                        flex: Math.max(0.02, b.share),
+                        background: SHARE_COLORS[i % SHARE_COLORS.length],
+                      }}
+                    />
+                  ))}
+                </div>
+                <ul className="grid grid-cols-[repeat(auto-fill,minmax(10.5rem,1fr))] gap-x-4 gap-y-1.5">
+                  {d.breakdown.map((b, i) => (
+                    <li key={b.key} className="flex min-w-0 items-center gap-2 text-sm">
+                      <span
+                        aria-hidden
+                        className="size-2.5 shrink-0 rounded-full"
+                        style={{ background: SHARE_COLORS[i % SHARE_COLORS.length] }}
+                      />
+                      <span className="font-semibold">{b.label}</span>
+                      <span className="ml-auto truncate text-muted-foreground tabular-nums">
+                        {euros.format(b.value)} · {Math.round(b.share * 100)} %
+                      </span>
                     </li>
                   ))}
                 </ul>
@@ -167,7 +154,7 @@ export default async function DashboardPage() {
         </Card>
 
         {/* Alertes actives */}
-        <Card className={cn('lg:col-span-3', tile)}>
+        <Card className={cn('lg:col-span-4', tile)}>
           <CardHeader className="items-center">
             <CardTitle>Alertes · {d.alerts.count}</CardTitle>
             {d.alerts.count > 0 && (
@@ -234,7 +221,7 @@ export default async function DashboardPage() {
         </Card>
 
         {/* Prochaine sortie (toute la colonne) + les suivantes */}
-        <Card className={cn('md:col-span-2 lg:col-span-3', tile)}>
+        <Card className={cn('lg:col-span-4', tile)}>
           <CardHeader className="items-center">
             <CardTitle>Prochaine sortie</CardTitle>
             <SeeAll href="/calendrier">Calendrier</SeeAll>
@@ -295,7 +282,7 @@ export default async function DashboardPage() {
         </Card>
 
         {/* Derniers retours en stock */}
-        <Card className={cn('md:col-span-2 lg:col-span-6', tile)}>
+        <Card className={cn('lg:col-span-4', tile)}>
           <CardHeader className="items-center">
             <CardTitle>Derniers retours en stock</CardTitle>
             <SeeAll href="/retours-en-stock">Tout voir</SeeAll>
@@ -350,91 +337,103 @@ export default async function DashboardPage() {
           </CardContent>
         </Card>
 
-        {/* Top variations 30 j */}
-        <Card className={cn('lg:col-span-3', tile)}>
-          <CardHeader>
-            <CardTitle>Top variations · 30 j</CardTitle>
-          </CardHeader>
-          <CardContent className={tileBody}>
-            {d.moves.length === 0 ? (
-              <Empty>Pas encore assez d’historique.</Empty>
-            ) : (
-              <ul className="divide-y">
-                {d.moves.map((m) => {
-                  const up = m.change > 0;
-                  return (
-                    <li
-                      key={`${m.kind}-${m.productId}`}
-                      className="flex items-center justify-between gap-3 py-2"
-                    >
-                      <div className="min-w-0">
-                        <Link
-                          href={`/produits/${m.productId}`}
-                          className="block truncate text-sm font-semibold hover:underline"
-                        >
-                          {m.name}
-                        </Link>
-                        <p className="truncate text-xs text-muted-foreground">
-                          {m.kind === 'marché' ? 'Marché' : 'Boutique'} · {formatPrice(m.before)} →{' '}
-                          {formatPrice(m.after)}
-                        </p>
-                      </div>
-                      <span
-                        className={cn(
-                          'shrink-0 rounded-md px-2 py-0.5 text-xs font-bold tabular-nums',
-                          up ? 'bg-success/15 text-success' : 'bg-destructive/15 text-destructive',
-                        )}
-                      >
-                        {formatPercent(m.change)}
-                      </span>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Bons plans */}
-        <Card className={cn('lg:col-span-3', tile)}>
-          <CardHeader className="items-center">
-            <CardTitle>Bons plans</CardTitle>
-            <SeeAll href="/produits/bons-plans">Tout voir</SeeAll>
-          </CardHeader>
-          <CardContent className={tileBody}>
-            {d.deals.length === 0 ? (
-              <Empty>Aucune offre sous la cote ou le prix public en ce moment.</Empty>
-            ) : (
-              <ul className="divide-y">
-                {d.deals.map((deal) => (
-                  <li key={deal.p.id} className="flex items-center justify-between gap-3 py-2">
-                    <div className="min-w-0">
-                      <Link
-                        href={`/produits/${deal.p.id}`}
-                        className="block truncate text-sm font-semibold hover:underline"
-                      >
-                        {deal.p.name}
-                      </Link>
-                      <p className="truncate text-xs text-muted-foreground">
-                        {deal.p.bestRetailer ?? '—'} ·{' '}
-                        <a
-                          href={deal.p.bestUrl!}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="font-semibold text-foreground hover:underline"
-                        >
-                          {formatPrice(deal.offer)}
-                        </a>
-                      </p>
-                    </div>
-                    <span className="shrink-0 rounded-md bg-success/15 px-2 py-0.5 text-xs font-bold text-success tabular-nums">
-                      −{Math.round(deal.discount * 100)} %
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </CardContent>
+        {/* Marché : top variations et bons plans, en onglets */}
+        <Card className={cn('lg:col-span-4', tile)}>
+          <TabPanels
+            bodyClassName={tileBody}
+            tabs={[
+              {
+                id: 'variations',
+                label: 'Variations · 30 j',
+                content: (
+                  <>
+                    {d.moves.length === 0 ? (
+                      <Empty>Pas encore assez d’historique.</Empty>
+                    ) : (
+                      <ul className="divide-y">
+                        {d.moves.map((m) => {
+                          const up = m.change > 0;
+                          return (
+                            <li
+                              key={`${m.kind}-${m.productId}`}
+                              className="flex items-center justify-between gap-3 py-2"
+                            >
+                              <div className="min-w-0">
+                                <Link
+                                  href={`/produits/${m.productId}`}
+                                  className="block truncate text-sm font-semibold hover:underline"
+                                >
+                                  {m.name}
+                                </Link>
+                                <p className="truncate text-xs text-muted-foreground">
+                                  {m.kind === 'marché' ? 'Marché' : 'Boutique'} ·{' '}
+                                  {formatPrice(m.before)} → {formatPrice(m.after)}
+                                </p>
+                              </div>
+                              <span
+                                className={cn(
+                                  'shrink-0 rounded-md px-2 py-0.5 text-xs font-bold tabular-nums',
+                                  up
+                                    ? 'bg-success/15 text-success'
+                                    : 'bg-destructive/15 text-destructive',
+                                )}
+                              >
+                                {formatPercent(m.change)}
+                              </span>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    )}
+                  </>
+                ),
+              },
+              {
+                id: 'bons-plans',
+                label: 'Bons plans',
+                href: '/produits/bons-plans',
+                content: (
+                  <>
+                    {d.deals.length === 0 ? (
+                      <Empty>Aucune offre sous la cote ou le prix public en ce moment.</Empty>
+                    ) : (
+                      <ul className="divide-y">
+                        {d.deals.map((deal) => (
+                          <li
+                            key={deal.p.id}
+                            className="flex items-center justify-between gap-3 py-2"
+                          >
+                            <div className="min-w-0">
+                              <Link
+                                href={`/produits/${deal.p.id}`}
+                                className="block truncate text-sm font-semibold hover:underline"
+                              >
+                                {deal.p.name}
+                              </Link>
+                              <p className="truncate text-xs text-muted-foreground">
+                                {deal.p.bestRetailer ?? '—'} ·{' '}
+                                <a
+                                  href={deal.p.bestUrl!}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="font-semibold text-foreground hover:underline"
+                                >
+                                  {formatPrice(deal.offer)}
+                                </a>
+                              </p>
+                            </div>
+                            <span className="shrink-0 rounded-md bg-success/15 px-2 py-0.5 text-xs font-bold text-success tabular-nums">
+                              −{Math.round(deal.discount * 100)} %
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </>
+                ),
+              },
+            ]}
+          />
         </Card>
       </div>
     </div>
