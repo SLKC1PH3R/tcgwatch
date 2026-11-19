@@ -3,6 +3,7 @@
 import { Plus, X } from 'lucide-react';
 import { useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
+import type { ProductOption } from '@/lib/data/products';
 import { CollectionForm } from './collection-form';
 
 /**
@@ -13,7 +14,7 @@ export function AddPurchaseDialog({
   products,
   today,
 }: {
-  products: { id: string; name: string }[];
+  products: ProductOption[];
   today: string;
 }) {
   const ref = useRef<HTMLDialogElement>(null);

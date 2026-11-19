@@ -183,11 +183,43 @@ export async function getProduct(id: string): Promise<ProductDTO | null> {
 }
 
 export async function getProductOptions() {
-  return prisma.product.findMany({
-    select: { id: true, name: true, type: true },
+  const rows = await prisma.product.findMany({
+    select: {
+      id: true,
+      name: true,
+      type: true,
+      imageUrl: true,
+      extension: {
+        select: {
+          id: true,
+          nameFr: true,
+          setCode: true,
+          imageUrl: true,
+          symbolUrl: true,
+          releaseDate: true,
+        },
+      },
+    },
     orderBy: { name: 'asc' },
   });
+  return rows.map((p) => ({
+    id: p.id,
+    name: p.name,
+    type: p.type,
+    image: p.imageUrl,
+    extension: p.extension
+      ? {
+          id: p.extension.id,
+          name: p.extension.nameFr,
+          setCode: p.extension.setCode,
+          logo: p.extension.imageUrl ?? p.extension.symbolUrl,
+          releaseDate: p.extension.releaseDate?.toISOString() ?? null,
+        }
+      : null,
+  }));
 }
+
+export type ProductOption = Awaited<ReturnType<typeof getProductOptions>>[number];
 
 /** Produits par identifiants (comparateur des formats d'une extension). */
 export async function getProductsByIds(ids: string[]): Promise<ProductDTO[]> {

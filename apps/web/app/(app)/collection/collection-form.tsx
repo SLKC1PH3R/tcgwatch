@@ -1,10 +1,12 @@
 'use client';
 
-import { useActionState, useRef } from 'react';
+import { useActionState, useRef, useState } from 'react';
 import { FormError, FormSuccess } from '@/components/form-message';
 import { Button } from '@/components/ui/button';
+import { ProductPicker } from '@/components/product-picker';
 import { Input, NativeSelect, Textarea } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import type { ProductOption } from '@/lib/data/products';
 import { addCollectionItemAction, type CollectionState } from './actions';
 
 export const CONDITION_LABELS = {
@@ -19,16 +21,19 @@ export function CollectionForm({
   today,
   onSuccess,
 }: {
-  products: { id: string; name: string }[];
+  products: ProductOption[];
   today: string;
   /** Après un enregistrement réussi (ex. fermer la fenêtre). */
   onSuccess?: () => void;
 }) {
   const formRef = useRef<HTMLFormElement>(null);
+  // Remonte le sélecteur après un enregistrement : plus de produit choisi.
+  const [round, setRound] = useState(0);
   const [state, action, pending] = useActionState<CollectionState, FormData>(async (prev, fd) => {
     const res = await addCollectionItemAction(prev, fd);
     if (res.success) {
       formRef.current?.reset();
+      setRound((n) => n + 1);
       onSuccess?.();
     }
     return res;
@@ -38,16 +43,7 @@ export function CollectionForm({
     <form ref={formRef} action={action} className="space-y-3">
       <div className="space-y-1.5">
         <Label htmlFor="c-product">Produit</Label>
-        <NativeSelect id="c-product" name="productId" required defaultValue="">
-          <option value="" disabled>
-            Choisir…
-          </option>
-          {products.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name}
-            </option>
-          ))}
-        </NativeSelect>
+        <ProductPicker key={round} id="c-product" products={products} />
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1.5">
