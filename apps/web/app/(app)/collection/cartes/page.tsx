@@ -1,6 +1,7 @@
 import { BookOpen, Plus, Sparkles } from 'lucide-react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { after } from 'next/server';
 import { formatPrice } from '@tcgwatch/shared';
 import { CollectionCardTile } from '@/components/collection-card';
 import { PageHeader } from '@/components/page-header';
@@ -8,12 +9,14 @@ import { SafeImg } from '@/components/safe-img';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { getCardCollection } from '@/lib/data/card-collection';
+import { refreshOwnedCardPrices } from '@/lib/data/extensions';
 
 export const metadata: Metadata = { title: 'Mes cartes' };
 
 /** Vue d'ensemble des cartes : valeur, avancement par extension, derniers ajouts. */
 export default async function MyCardsPage() {
   const { releases, latest, distinct, copies, value } = await getCardCollection();
+  after(() => refreshOwnedCardPrices().then(() => undefined));
 
   return (
     <>

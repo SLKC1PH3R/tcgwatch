@@ -33,6 +33,7 @@ function breakdownByType(
     purchasePrice: number;
     unitValue: number | null;
   }[],
+  cardsValue = 0,
   max = 5,
 ) {
   const byType = new Map<string, number>();
@@ -40,7 +41,8 @@ function breakdownByType(
     const v = (r.unitValue ?? r.purchasePrice) * r.quantity;
     byType.set(r.product.type, (byType.get(r.product.type) ?? 0) + v);
   }
-  const total = [...byType.values()].reduce((a, b) => a + b, 0);
+  const cards = cardsValue > 0 ? [{ key: 'CARDS', label: 'Cartes', value: cardsValue }] : [];
+  const total = [...byType.values()].reduce((a, b) => a + b, 0) + cardsValue;
   if (total <= 0) return [];
   const sorted = [...byType.entries()].sort(([, a], [, b]) => b - a);
   const head = sorted.slice(0, max - 1);
@@ -56,7 +58,9 @@ function breakdownByType(
   } else if (tail.length > 1) {
     parts.push({ key: 'REST', label: 'Autres', value: tail.reduce((s, [, v]) => s + v, 0) });
   }
-  return parts.map((p) => ({ ...p, share: p.value / total }));
+  return [...parts, ...cards]
+    .sort((a, b) => b.value - a.value)
+    .map((p) => ({ ...p, share: p.value / total }));
 }
 
 export async function getRecentRestocks(limit = 6) {
@@ -191,7 +195,7 @@ export async function getDashboard() {
     moves,
     trackedCount,
     lastCheckedAt: lastCheck._max.lastCheckedAt,
-    breakdown: breakdownByType(collection.rows),
+    breakdown: breakdownByType(collection.rows, collection.valuation.cards.value),
     deals: findDeals(sealed)
       .sort((a, b) => b.discount - a.discount)
       .slice(0, 5),

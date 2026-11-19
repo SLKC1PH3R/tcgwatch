@@ -226,3 +226,16 @@ export async function getExtensionDates(ext: Extension, products: ExtensionProdu
     })),
   };
 }
+
+/**
+ * Cartes possédées sans produit Cardmarket : reliées (et cotées) en tâche de fond, pour que la
+ * valeur de la collection en tienne compte. Ensuite, la cote quotidienne du worker suffit.
+ */
+export async function refreshOwnedCardPrices(): Promise<number> {
+  const owned = await prisma.ownedCard.findMany({
+    where: { card: { cardmarketId: null, cardmarketCheckedAt: null } },
+    select: { cardId: true },
+    distinct: ['cardId'],
+  });
+  return owned.length ? refreshCardPrices(owned.map((o) => o.cardId)) : 0;
+}

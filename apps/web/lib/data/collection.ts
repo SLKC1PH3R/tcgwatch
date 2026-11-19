@@ -17,14 +17,38 @@ export async function latestMarketPrices(): Promise<
   );
 }
 
+/**
+ * Cartes possédées valorisées à leur cote Cardmarket (tendance). Sans prix d'achat saisi, une
+ * carte compte pour 0 € investi : elle vient en général d'un booster déjà payé.
+ */
+async function getOwnedCardLines() {
+  const owned = await prisma.ownedCard.findMany({
+    select: {
+      cardId: true,
+      quantity: true,
+      purchasePrice: true,
+      createdAt: true,
+      card: { select: { priceTrend: true } },
+    },
+  });
+  return owned.map((o) => ({
+    cardId: o.cardId,
+    quantity: o.quantity,
+    paid: toNumber(o.purchasePrice) ?? 0,
+    price: toNumber(o.card.priceTrend) ?? 0,
+    createdAt: o.createdAt,
+  }));
+}
+
 export async function getCollection() {
-  const [items, market, products] = await Promise.all([
+  const [items, market, products, cardLines] = await Promise.all([
     prisma.collectionItem.findMany({
       include: { product: { select: { id: true, name: true, type: true, imageUrl: true } } },
       orderBy: [{ purchaseDate: 'desc' }, { createdAt: 'desc' }],
     }),
     latestMarketPrices(),
     getProducts(),
+    getOwnedCardLines(),
   ]);
 
   const retail = new Map<string, number>();
@@ -57,7 +81,7 @@ export async function getCollection() {
     };
   });
 
-  const valuation = valueCollection({
+  const sealed = valueCollection({
     lines: items.map((i) => ({
       productId: i.productId,
       quantity: i.quantity,
@@ -66,6 +90,25 @@ export async function getCollection() {
     marketPrice,
     retailPrice: retail,
   });
+
+  const cards = {
+    value: round(cardLines.reduce((s, l) => s + l.price * l.quantity, 0)),
+    cost: round(cardLines.reduce((s, l) => s + l.paid * l.quantity, 0)),
+    copies: cardLines.reduce((n, l) => n + l.quantity, 0),
+    distinct: new Set(cardLines.map((l) => l.cardId)).size,
+  };
+  // Valorisation de toute la collection : scellé + cartes.
+  const totalCost = round(sealed.totalCost + cards.cost);
+  const estimatedValue = round(sealed.estimatedValue + cards.value);
+  const valuation = {
+    ...sealed,
+    totalCost,
+    estimatedValue,
+    unrealizedGain: round(estimatedValue - totalCost),
+    ratio: totalCost > 0 ? estimatedValue / totalCost : null,
+    sealed,
+    cards,
+  };
 
   return { rows, valuation };
 }
@@ -83,10 +126,13 @@ export type CollectionPoint = {
  * quotidiens des boutiques (dernier prix connu à chaque date), à côté du total investi.
  */
 export async function getCollectionHistory(days = 365): Promise<CollectionPoint[]> {
-  const items = await prisma.collectionItem.findMany({
-    select: { productId: true, quantity: true, purchasePrice: true, purchaseDate: true },
-  });
-  if (items.length === 0) return [];
+  const [items, cardLines] = await Promise.all([
+    prisma.collectionItem.findMany({
+      select: { productId: true, quantity: true, purchasePrice: true, purchaseDate: true },
+    }),
+    getOwnedCardLines(),
+  ]);
+  if (items.length === 0 && cardLines.length === 0) return [];
   const ids = [...new Set(items.map((i) => i.productId))];
   const [market, daily] = await Promise.all([
     prisma.marketPrice.findMany({
@@ -124,7 +170,11 @@ export async function getCollectionHistory(days = 365): Promise<CollectionPoint[
   }
 
   const today = todayUtc();
-  const firstPurchase = Math.min(...items.map((i) => i.purchaseDate.getTime()));
+  // Cartes : comptées à partir de leur ajout, à leur cote actuelle (pas d'historique par carte).
+  const firstPurchase = Math.min(
+    ...items.map((i) => i.purchaseDate.getTime()),
+    ...cardLines.map((l) => l.createdAt.getTime()),
+  );
   const start = Math.max(firstPurchase, today.getTime() - days * 86_400_000);
   const lastMarket = new Map<string, number>();
   const lastRetail = new Map<string, number>();
@@ -151,6 +201,11 @@ export async function getCollectionHistory(days = 365): Promise<CollectionPoint[
       const paid = toNumber(i.purchasePrice)!;
       invested += paid * i.quantity;
       value += (lastMarket.get(i.productId) ?? lastRetail.get(i.productId) ?? paid) * i.quantity;
+    }
+    for (const l of cardLines) {
+      if (l.createdAt.getTime() > t + 86_399_999) continue;
+      invested += l.paid * l.quantity;
+      value += l.price * l.quantity;
     }
     points.push({ day: k, invested: round(invested), value: round(value) });
   }

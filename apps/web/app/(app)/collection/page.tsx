@@ -1,6 +1,7 @@
 import { Trash2 } from 'lucide-react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { after } from 'next/server';
 import {
   formatDate,
   formatPercent,
@@ -13,6 +14,7 @@ import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { getCollection } from '@/lib/data/collection';
+import { refreshOwnedCardPrices } from '@/lib/data/extensions';
 import { getProductOptions } from '@/lib/data/products';
 import { cn } from '@/lib/utils';
 import { deleteCollectionItemAction } from './actions';
@@ -42,6 +44,8 @@ export default async function CollectionPage({ searchParams }: Props) {
   const rows = category
     ? allRows.filter((r) => priceCategoryOf(r.product.name, r.product.type)?.key === category.key)
     : allRows;
+  // Cartes possédées pas encore cotées : reliées à Cardmarket après l'affichage.
+  after(() => refreshOwnedCardPrices().then(() => undefined));
   const positive = v.unrealizedGain >= 0;
   const quantity = rows.reduce((n, r) => n + r.quantity, 0);
   const sorted = [...rows].sort((a, b) => {
@@ -61,7 +65,7 @@ export default async function CollectionPage({ searchParams }: Props) {
     <>
       <PageHeader
         title={category ? `Ma collection · ${category.label}` : 'Ma collection'}
-        description="Valeur estimée au dernier prix marché connu, à défaut au meilleur prix boutique."
+        description="Scellé et cartes : le scellé au dernier prix marché connu (à défaut au meilleur prix boutique), les cartes à leur cote Cardmarket."
         actions={
           <>
             <Button asChild variant="outline">
@@ -81,6 +85,13 @@ export default async function CollectionPage({ searchParams }: Props) {
             <p className="font-display text-5xl font-extrabold tracking-tight tabular-nums md:text-6xl">
               {formatPrice(v.estimatedValue)}
             </p>
+            <p className="text-sm text-muted-foreground">
+              Scellé {formatPrice(v.sealed.estimatedValue)} ·{' '}
+              <Link href="/collection/cartes" className="hover:text-foreground hover:underline">
+                Cartes {formatPrice(v.cards.value)} ({v.cards.copies} carte
+                {v.cards.copies > 1 ? 's' : ''})
+              </Link>
+            </p>
             {v.estimatedFromRetail > 0 && (
               <p className="text-sm text-muted-foreground">
                 Dont {formatPrice(v.estimatedFromRetail)} estimés au prix boutique (pas de prix
@@ -96,6 +107,11 @@ export default async function CollectionPage({ searchParams }: Props) {
               <p className="font-display text-2xl font-bold tabular-nums">
                 {formatPrice(v.totalCost)}
               </p>
+              {v.cards.copies > 0 && (
+                <p className="text-xs text-muted-foreground">
+                  Cartes sans prix d’achat comptées 0 € (issues de boosters déjà payés)
+                </p>
+              )}
             </div>
             <div>
               <p className="text-xs text-muted-foreground">Plus-value latente</p>
