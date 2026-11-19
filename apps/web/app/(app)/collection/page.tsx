@@ -12,13 +12,14 @@ import {
 import { AutoSubmitSelect } from '@/components/auto-submit-select';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { getCollection } from '@/lib/data/collection';
 import { refreshOwnedCardPrices } from '@/lib/data/extensions';
 import { getProductOptions } from '@/lib/data/products';
 import { cn } from '@/lib/utils';
 import { deleteCollectionItemAction } from './actions';
-import { CollectionForm, CONDITION_LABELS } from './collection-form';
+import { AddPurchaseDialog } from './add-purchase-dialog';
+import { CONDITION_LABELS } from './collection-form';
 
 export const metadata: Metadata = { title: 'Ma collection' };
 
@@ -71,9 +72,7 @@ export default async function CollectionPage({ searchParams }: Props) {
             <Button asChild variant="outline">
               <a href="/api/collection/export">Exporter CSV</a>
             </Button>
-            <Button asChild>
-              <a href="#ajouter-achat">Ajouter un achat</a>
-            </Button>
+            <AddPurchaseDialog products={products} today={new Date().toISOString().slice(0, 10)} />
           </>
         }
       />
@@ -267,18 +266,6 @@ export default async function CollectionPage({ searchParams }: Props) {
             </table>
           </div>
         )}
-      </Card>
-
-      <Card id="ajouter-achat" className="max-w-2xl scroll-mt-24">
-        <CardHeader className="flex-col">
-          <CardTitle>Ajouter un achat</CardTitle>
-          <CardDescription>
-            Choisissez un produit du catalogue (importé automatiquement).
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <CollectionForm products={products} today={new Date().toISOString().slice(0, 10)} />
-        </CardContent>
       </Card>
     </>
   );

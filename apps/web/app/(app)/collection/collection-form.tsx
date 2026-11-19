@@ -17,14 +17,20 @@ export const CONDITION_LABELS = {
 export function CollectionForm({
   products,
   today,
+  onSuccess,
 }: {
   products: { id: string; name: string }[];
   today: string;
+  /** Après un enregistrement réussi (ex. fermer la fenêtre). */
+  onSuccess?: () => void;
 }) {
   const formRef = useRef<HTMLFormElement>(null);
   const [state, action, pending] = useActionState<CollectionState, FormData>(async (prev, fd) => {
     const res = await addCollectionItemAction(prev, fd);
-    if (res.success) formRef.current?.reset();
+    if (res.success) {
+      formRef.current?.reset();
+      onSuccess?.();
+    }
     return res;
   }, {});
 
