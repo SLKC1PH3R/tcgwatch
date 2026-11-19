@@ -148,9 +148,28 @@ function MenuPanel({
           groups.length > 1 ? 'w-[40rem] grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] gap-3' : 'w-80',
         )}
       >
-        {groups.map((g, i) => (
-          <MenuGroup key={i} group={g} path={path} params={params} />
-        ))}
+        {groups.length > 2 ? (
+          // Plus de deux groupes : les listes détaillées empilées à gauche, la grille compacte
+          // à droite (sinon le groupe suivant attend la fin de la grille, d'où un grand vide).
+          <>
+            <div className="flex flex-col gap-1">
+              {groups
+                .filter((g) => !g.compact)
+                .map((g, i) => (
+                  <MenuGroup key={i} group={g} path={path} params={params} />
+                ))}
+            </div>
+            <div className="flex flex-col gap-1">
+              {groups
+                .filter((g) => g.compact)
+                .map((g, i) => (
+                  <MenuGroup key={i} group={g} path={path} params={params} />
+                ))}
+            </div>
+          </>
+        ) : (
+          groups.map((g, i) => <MenuGroup key={i} group={g} path={path} params={params} />)
+        )}
       </div>
     </div>
   );
@@ -168,11 +187,11 @@ function MenuGroup({
   return (
     <div className="flex flex-col gap-0.5">
       {group.label && (
-        <span className="px-3 pt-2 pb-1 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+        <span className="px-3 pt-1.5 pb-0.5 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
           {group.label}
         </span>
       )}
-      <ul className={cn(group.compact ? 'grid grid-cols-2 gap-1 p-1' : 'flex flex-col gap-0.5')}>
+      <ul className={cn(group.compact ? 'grid grid-cols-2 gap-0.5 px-1' : 'flex flex-col')}>
         {group.items.map((link) => {
           const active = isLinkActive(link, path, params);
           return (
@@ -183,7 +202,7 @@ function MenuGroup({
                 aria-current={active ? 'page' : undefined}
                 className={cn(
                   'block rounded-xl transition-colors hover:bg-accent focus-visible:bg-accent focus-visible:outline-none',
-                  group.compact ? 'px-3 py-2 text-sm font-medium' : 'px-3 py-2.5',
+                  group.compact ? 'px-3 py-1.5 text-sm font-medium' : 'px-3 py-1.5',
                   active && 'bg-accent',
                 )}
               >
