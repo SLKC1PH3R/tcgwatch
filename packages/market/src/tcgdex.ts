@@ -232,11 +232,23 @@ export class TcgdexClient {
 }
 
 /** URL d'image TCGdex : les assets s'utilisent avec une extension (ex. /logo.png, /high.webp). */
+/**
+ * Images de cartes fournies avec le site (`apps/web/public/cards`) pour les cartes sans image
+ * TCGdex dont l'image de repli ne s'affiche pas (Mew B/G/R du 30e Anniversaire).
+ */
+export const LOCAL_CARD_IMAGES: Record<string, string> = {
+  '30th-B': '/cards/30e-anniversaire-b.webp',
+  '30th-G': '/cards/30e-anniversaire-g.webp',
+  '30th-R': '/cards/30e-anniversaire-r.webp',
+};
+
 export function tcgdexAsset(
   base: string | undefined,
   suffix: '.png' | '.webp' | '/high.webp' | '/low.webp',
 ) {
   if (!base) return undefined;
+  // Image servie par le site lui-même (public/cards) : chemin tel quel, quelle que soit la taille.
+  if (base.startsWith('/')) return base;
   // Image d'une autre source (pokemontcg.io, quand TCGdex n'en a pas) : URL complète.
   if (!base.startsWith('https://assets.tcgdex.net/')) {
     return suffix === '/low.webp' ? base : pokemonTcgLargeImage(base);

@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { prisma } from '@tcgwatch/db';
-import { cardmarketQuote, tcgdexAsset, TcgdexClient } from '@tcgwatch/market';
+import { cardmarketQuote, tcgdexAsset, TcgdexClient, LOCAL_CARD_IMAGES } from '@tcgwatch/market';
 import { todayUtc } from '@tcgwatch/shared';
 import { z } from 'zod';
 import { requireUser } from '@/lib/auth';
@@ -39,7 +39,7 @@ export async function followCardAction(tcgdexId: string) {
       releaseId: release.id,
       name: card.name,
       rarity: card.rarity ?? null,
-      imageUrl: tcgdexAsset(card.image, '/low.webp') ?? null,
+      imageUrl: LOCAL_CARD_IMAGES[card.id] ?? tcgdexAsset(card.image, '/low.webp') ?? null,
       manual: true,
     },
   });

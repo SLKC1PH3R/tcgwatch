@@ -1,5 +1,6 @@
 import { prisma } from '@tcgwatch/db';
 import {
+  LOCAL_CARD_IMAGES,
   matchPokemonTcgImages,
   matchPokemonTcgSet,
   PokemonTcgClient,
@@ -62,13 +63,14 @@ export async function fillCardImages(
         await pokemontcg.listSets(),
       );
       const images = new Map<string, string>();
+      for (const id of missing) if (LOCAL_CARD_IMAGES[id]) images.set(id, LOCAL_CARD_IMAGES[id]);
       if (theirSet) {
         const english = (set.cards ?? []).filter((c) => missing.has(c.id));
         for (const [id, url] of matchPokemonTcgImages(
           english,
           await pokemontcg.setCards(theirSet.id),
         )) {
-          images.set(id, url);
+          if (!images.has(id)) images.set(id, url);
         }
       }
       for (const id of missing) {

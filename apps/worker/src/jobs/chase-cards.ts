@@ -1,5 +1,11 @@
 import { prisma } from '@tcgwatch/db';
-import { cardmarketQuote, tcgdexAsset, TcgdexClient, type CardmarketQuote } from '@tcgwatch/market';
+import {
+  cardmarketQuote,
+  LOCAL_CARD_IMAGES,
+  tcgdexAsset,
+  TcgdexClient,
+  type CardmarketQuote,
+} from '@tcgwatch/market';
 import { todayUtc } from '@tcgwatch/shared';
 import type { WorkerContext } from '../context';
 
@@ -60,7 +66,7 @@ export async function selectChaseCards(
             releaseId: release.id,
             name: card.name,
             rarity: card.rarity ?? null,
-            imageUrl: tcgdexAsset(card.image, '/low.webp') ?? null,
+            imageUrl: LOCAL_CARD_IMAGES[card.id] ?? tcgdexAsset(card.image, '/low.webp') ?? null,
           },
         });
         await prisma.cardPrice.upsert({
