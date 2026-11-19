@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { formatPercent, formatPrice, todayUtc } from '@tcgwatch/shared';
 import { Thumb } from '@/components/thumb';
-import { CollectionPeak } from '@/components/collection-peak';
+import { CollectionChart } from '@/components/collection-chart';
 import { TabPanels } from '@/components/tab-panels';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -95,22 +95,25 @@ export default async function DashboardPage() {
       </div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-12 fit:min-h-0 fit:flex-1 fit:grid-rows-[minmax(0,1fr)_minmax(0,1fr)] [&>*]:min-w-0">
-        {/* Performance de la collection (carte PeakChart) + répartition par type */}
+        {/* Performance de la collection (chiffres clés + courbe) + répartition par type */}
         <Card className={cn('overflow-hidden md:col-span-2 lg:col-span-4 lg:row-span-2', tile)}>
           <CardHeader className="items-center">
             <CardTitle>Ma collection</CardTitle>
             <SeeAll href="/collection">Voir la collection</SeeAll>
           </CardHeader>
-          <CardContent className="flex flex-col gap-4 fit:min-h-0 fit:flex-1">
-            <CollectionPeak
-              history={d.collectionHistory}
-              value={v.estimatedValue}
-              trend={gainPositive ? 'up' : 'down'}
-              caption={`${gainPositive ? '+' : ''}${formatPrice(v.unrealizedGain)} (${formatPercent(
-                v.ratio !== null ? v.ratio - 1 : null,
-              )}) de plus-value`}
-              note={`Investi ${formatPrice(v.totalCost)}`}
-            />
+          {/* Sur un écran plein mais bas, le graphique garde une hauteur lisible et la carte défile. */}
+          <CardContent className="flex flex-col gap-4 fit:min-h-0 fit:flex-1 fit:overflow-y-auto">
+            <div className="grid shrink-0 grid-cols-3 gap-2">
+              <Stat label="Valeur" value={euros.format(v.estimatedValue)} />
+              <Stat label="Investi" value={euros.format(v.totalCost)} />
+              <Stat
+                label="Plus-value"
+                value={formatPercent(v.ratio !== null ? v.ratio - 1 : null)}
+                note={`${gainPositive ? '+' : ''}${euros.format(v.unrealizedGain)}`}
+                tone={gainPositive ? 'up' : 'down'}
+              />
+            </div>
+            <CollectionChart history={d.collectionHistory} />
 
             {d.breakdown.length > 0 && (
               <div className="flex shrink-0 flex-col gap-2.5 border-t border-border/60 pt-3">
@@ -436,6 +439,44 @@ export default async function DashboardPage() {
           />
         </Card>
       </div>
+    </div>
+  );
+}
+
+/** Tuile de chiffre clé de la carte « Ma collection ». */
+function Stat({
+  label,
+  value,
+  note,
+  tone,
+}: {
+  label: string;
+  value: string;
+  note?: string;
+  tone?: 'up' | 'down';
+}) {
+  return (
+    <div className="min-w-0 rounded-xl border bg-popover px-3 py-2.5">
+      <p className="truncate text-xs font-semibold text-muted-foreground">{label}</p>
+      <p
+        className={cn(
+          'mt-1 truncate font-display text-sm leading-tight font-semibold tabular-nums sm:text-base 2xl:text-lg',
+          tone === 'up' && 'text-success',
+          tone === 'down' && 'text-destructive',
+        )}
+      >
+        {value}
+      </p>
+      {note && (
+        <p
+          className={cn(
+            'truncate text-xs font-semibold tabular-nums',
+            tone === 'up' ? 'text-success' : 'text-destructive',
+          )}
+        >
+          {note}
+        </p>
+      )}
     </div>
   );
 }

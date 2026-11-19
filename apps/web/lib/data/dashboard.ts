@@ -177,7 +177,8 @@ export async function getDashboard() {
     getTopPriceMoves(),
     prisma.listing.count({ where: { state: { not: 'PAUSED' } } }),
     prisma.listing.aggregate({ _max: { lastCheckedAt: true } }),
-    getCollectionHistory(365),
+    // Depuis le premier achat (jusqu'à 5 ans) : la période « Tout » du graphique de l'accueil.
+    getCollectionHistory(5 * 366),
     getSealedPrices(),
   ]);
   return {
