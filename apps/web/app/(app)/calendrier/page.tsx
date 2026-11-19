@@ -8,7 +8,6 @@ import {
   todayUtc,
   type ProductTypeKey,
 } from '@tcgwatch/shared';
-import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -21,6 +20,9 @@ import {
 import { cn } from '@/lib/utils';
 
 export const metadata: Metadata = { title: 'Calendrier des sorties' };
+
+const DESCRIPTION =
+  'Extensions (TCGdex) et produits scellés FR (Pokécardex), enrichis par les dates « Sortie prévue le » des revendeurs.';
 
 const WEEKDAYS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
 const SOURCE_LABEL: Record<string, string> = {
@@ -118,13 +120,19 @@ export default async function CalendarPage({
   });
 
   return (
-    <>
-      <PageHeader
-        title="Calendrier des sorties"
-        description="Extensions (TCGdex) et produits scellés FR (Pokécardex), enrichis par les dates « Sortie prévue le » des revendeurs."
-      />
+    // Comme l'accueil : sur un écran assez grand, la page tient en hauteur sans défiler ; le mois
+    // se partage la hauteur restante et les listes de droite défilent dans leur carte.
+    <div data-fit-screen className="flex flex-col gap-4 fit:min-h-0 fit:flex-1">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
+        <h1 className="font-display text-2xl font-bold tracking-tight md:text-3xl">
+          Calendrier des sorties
+        </h1>
+        <p className="max-w-2xl text-sm text-muted-foreground fit:truncate" title={DESCRIPTION}>
+          {DESCRIPTION}
+        </p>
+      </div>
 
-      <nav aria-label="Filtrer par type" className="mb-4 flex flex-wrap gap-1.5">
+      <nav aria-label="Filtrer par type" className="flex flex-wrap gap-1.5">
         {FILTERS.map((f) => (
           <Link
             key={f.label}
@@ -142,8 +150,8 @@ export default async function CalendarPage({
         ))}
       </nav>
 
-      <div className="grid gap-5 xl:grid-cols-[1fr_360px] [&>*]:min-w-0">
-        <Card>
+      <div className="grid gap-5 lg:grid-cols-[1fr_320px] xl:grid-cols-[1fr_360px] fit:min-h-0 fit:flex-1 [&>*]:min-w-0">
+        <Card className="fit:min-h-0 fit:py-5">
           <CardHeader className="items-center">
             <CardTitle className="capitalize">{monthLabel}</CardTitle>
             <div className="flex gap-1.5">
@@ -162,8 +170,8 @@ export default async function CalendarPage({
               </Button>
             </div>
           </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-7 gap-1.5 text-sm">
+          <CardContent className="fit:flex fit:min-h-0 fit:flex-1 fit:flex-col">
+            <div className="grid grid-cols-7 gap-1.5 text-sm fit:min-h-0 fit:flex-1 fit:grid-rows-[auto_repeat(6,minmax(0,1fr))]">
               {WEEKDAYS.map((d) => (
                 <div
                   key={d}
@@ -181,7 +189,7 @@ export default async function CalendarPage({
                   <div
                     key={k}
                     className={cn(
-                      'min-h-16 rounded-lg border border-transparent bg-secondary/60 p-1.5 sm:min-h-20',
+                      'min-h-16 rounded-lg border border-transparent bg-secondary/60 p-1.5 sm:min-h-20 fit:min-h-0 fit:overflow-hidden',
                       !inMonth && 'bg-secondary/25 text-muted-foreground/60',
                       isToday && 'border-muted-foreground/60',
                       k === shownDay && 'border-primary',
@@ -227,13 +235,13 @@ export default async function CalendarPage({
           </CardContent>
         </Card>
 
-        <div className="space-y-5">
+        <div className="flex flex-col gap-5 fit:min-h-0">
           <DayPanel day={shownDay} events={shownDay ? (byDay.get(shownDay) ?? []) : []} />
-          <Card>
+          <Card className="fit:min-h-0 fit:flex-1 fit:py-5">
             <CardHeader>
               <CardTitle>À venir</CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className={scrollBody}>
               {upcoming.length === 0 ? (
                 <p className="text-sm text-muted-foreground">Aucune sortie à venir connue.</p>
               ) : (
@@ -261,9 +269,13 @@ export default async function CalendarPage({
           </Card>
         </div>
       </div>
-    </>
+    </div>
   );
 }
+
+// En plein écran, une liste trop longue défile dans sa carte, avec un fondu en bas.
+const scrollBody =
+  'fit:min-h-0 fit:flex-1 fit:overflow-y-auto fit:pb-2 fit:[mask-image:linear-gradient(to_bottom,#000_calc(100%-1.75rem),transparent)]';
 
 /** Couleur de chaque type de sortie (pastilles des filtres et cases du calendrier). */
 const TYPE_COLOR: Record<string, { dot: string; chip: string }> = {
@@ -325,8 +337,9 @@ function DayPanel({ day, events }: { day: string | undefined; events: CalendarEv
   const main = events.find((e) => e.href.startsWith('/extensions/')) ?? events[0];
   const items = events.filter((e) => e !== main || events.length === 1);
   return (
-    <Card className="holo-frame">
-      <CardContent className="space-y-3 pt-5">
+    // En plein écran, le détail du jour prend au plus 60 % de la colonne et défile au-delà.
+    <Card className="holo-frame fit:max-h-[60%] fit:min-h-0 fit:shrink-0">
+      <CardContent className={cn('space-y-3 pt-5', scrollBody)}>
         <p className="text-xs text-muted-foreground first-letter:uppercase">
           {longDate.format(date)} · {countdown(date)}
         </p>
