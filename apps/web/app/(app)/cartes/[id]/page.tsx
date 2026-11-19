@@ -116,6 +116,7 @@ export default async function CardPage({ params, searchParams }: Props) {
           {card.image ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
+              referrerPolicy="no-referrer"
               src={card.image}
               alt={card.name}
               className="aspect-[63/88] w-full rounded-xl border bg-muted object-cover"

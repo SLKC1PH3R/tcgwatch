@@ -333,6 +333,7 @@ async function CardsTab({
                     {c.image ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
+                        referrerPolicy="no-referrer"
                         src={c.image}
                         alt={c.name}
                         loading="lazy"
