@@ -26,7 +26,7 @@ const TYPE_SHORT: Record<ProductTypeKey, string> = {
  * Répartition de la valeur de la collection par type de produit (valeur estimée, à défaut prix
  * d'achat). Les plus petits types au-delà de `max` sont regroupés dans « Autres ».
  */
-function breakdownByType(
+export function breakdownByType(
   rows: {
     product: { type: string };
     quantity: number;

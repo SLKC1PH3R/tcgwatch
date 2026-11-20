@@ -5,6 +5,7 @@ import { notFound } from 'next/navigation';
 import { formatPrice } from '@tcgwatch/shared';
 import { CardPicker } from '@/components/card-picker';
 import { CollectionCardTile } from '@/components/collection-card';
+import { FitPage } from '@/components/fit-page';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -18,6 +19,7 @@ import {
   rarityCounts,
 } from '@/lib/card-filters';
 import { getBinder } from '@/lib/data/card-collection';
+import { fitCard, fitGrid, fitScroll } from '@/lib/fit';
 import { cn } from '@/lib/utils';
 import {
   addBinderCardAction,
@@ -84,7 +86,7 @@ export default async function BinderPage({ params, searchParams }: Props) {
   const filtering = filtered.length !== binder.cards.length;
 
   return (
-    <>
+    <FitPage>
       <PageHeader
         title={binder.name}
         description={
@@ -105,203 +107,229 @@ export default async function BinderPage({ params, searchParams }: Props) {
         }
       />
 
-      {binder.cards.length > 0 && (
-        <div className="mb-4 space-y-2">
-          <div className="flex flex-wrap gap-1.5">
-            {chip('Toutes', { ...filters, owned: 'toutes' }, filters.owned === 'toutes')}
-            {chip(
-              'Manquantes',
-              { ...filters, owned: 'manquantes' },
-              filters.owned === 'manquantes',
-            )}
-            {chip('Possédées', { ...filters, owned: 'possedees' }, filters.owned === 'possedees')}
-            {isSet &&
-              chip('Existe en reverse', { ...filters, reverse: !filters.reverse }, filters.reverse)}
-          </div>
-          {groups.length > 1 && (
-            <div className="flex flex-wrap gap-1.5">
-              {chip('Toutes raretés', { ...filters, rarities: [] }, filters.rarities.length === 0)}
-              {groups.map((g) => {
-                const on = filters.rarities.includes(g.key);
-                return chip(
-                  g.label,
-                  {
-                    ...filters,
-                    rarities: on
-                      ? filters.rarities.filter((k) => k !== g.key)
-                      : [...filters.rarities, g.key],
-                  },
-                  on,
-                  g.count,
-                );
-              })}
-            </div>
-          )}
-          {filtering && (
-            <p className="text-sm text-muted-foreground">
-              {filtered.length} carte{filtered.length > 1 ? 's' : ''} sur {binder.cards.length} ·{' '}
-              <Link href={base} className="text-primary hover:underline">
-                Retirer les filtres
-              </Link>
-            </p>
-          )}
-        </div>
-      )}
-
-      {binder.cards.length === 0 ? (
-        <Card className="mb-8">
-          <CardContent className="py-10 text-center text-sm text-muted-foreground">
-            Classeur vide : cherche des cartes ci-dessous pour le remplir.
-          </CardContent>
-        </Card>
-      ) : filtered.length === 0 ? (
-        <Card className="mb-8">
-          <CardContent className="py-10 text-center text-sm text-muted-foreground">
-            Aucune carte pour ces filtres.
-          </CardContent>
-        </Card>
-      ) : (
-        <>
-          <div className="grid gap-4 lg:grid-cols-2">
-            {pages.map((page, i) =>
-              page.length === 0 ? null : (
-                <section
-                  key={i}
-                  aria-label={`Page ${(spread - 1) * 2 + i + 1}`}
-                  className="rounded-2xl border bg-muted/30 p-3 sm:p-4"
-                >
-                  <div className="grid grid-cols-3 gap-2 sm:gap-3">
-                    {page.map((c) => (
-                      <CollectionCardTile key={c.id} card={c} dimMissing>
-                        <div className="flex items-center justify-between gap-1">
-                          {isSet ? (
-                            <>
-                              <form action={adjustOwnedCardAction.bind(null, c.id, -1, 'normal')}>
-                                <Button
-                                  type="submit"
-                                  size="icon"
-                                  variant="ghost"
-                                  className="size-7"
-                                  disabled={!c.byVariant.normal}
-                                  aria-label={`Retirer un ${c.name}`}
-                                >
-                                  <Minus />
-                                </Button>
-                              </form>
-                              <form action={adjustOwnedCardAction.bind(null, c.id, 1, 'normal')}>
-                                <Button
-                                  type="submit"
-                                  size="icon"
-                                  variant="ghost"
-                                  className="size-7"
-                                  aria-label={`Ajouter un ${c.name}`}
-                                >
-                                  <Plus />
-                                </Button>
-                              </form>
-                            </>
-                          ) : (
-                            <form
-                              action={removeBinderCardAction.bind(null, binder.id, c.id)}
-                              className="ml-auto"
-                            >
-                              <Button
-                                type="submit"
-                                size="icon"
-                                variant="ghost"
-                                className="size-7 text-muted-foreground"
-                                aria-label={`Retirer ${c.name} du classeur`}
-                              >
-                                <X />
-                              </Button>
-                            </form>
-                          )}
+      <div className={cn(fitGrid, 'xl:grid-cols-[minmax(0,1fr)_22rem]')}>
+        <Card className={cn(fitCard, 'px-4')}>
+          <div className={cn('space-y-4', fitScroll)}>
+            {binder.cards.length === 0 ? (
+              <div>
+                <CardContent className="py-10 text-center text-sm text-muted-foreground">
+                  Classeur vide : cherche des cartes ci-dessous pour le remplir.
+                </CardContent>
+              </div>
+            ) : filtered.length === 0 ? (
+              <div>
+                <CardContent className="py-10 text-center text-sm text-muted-foreground">
+                  Aucune carte pour ces filtres.
+                </CardContent>
+              </div>
+            ) : (
+              <>
+                <div className="grid gap-4 lg:grid-cols-2 fit:items-start">
+                  {pages.map((page, i) =>
+                    page.length === 0 ? null : (
+                      <section
+                        key={i}
+                        aria-label={`Page ${(spread - 1) * 2 + i + 1}`}
+                        className="rounded-2xl border bg-muted/30 p-3 sm:p-4"
+                      >
+                        <div className="grid grid-cols-3 gap-2 sm:gap-3 fit:mx-auto fit:max-w-[calc((100dvh-27.5rem)*0.72)]">
+                          {page.map((c) => (
+                            <CollectionCardTile key={c.id} card={c} dimMissing>
+                              <div className="flex items-center justify-between gap-1">
+                                {isSet ? (
+                                  <>
+                                    <form
+                                      action={adjustOwnedCardAction.bind(null, c.id, -1, 'normal')}
+                                    >
+                                      <Button
+                                        type="submit"
+                                        size="icon"
+                                        variant="ghost"
+                                        className="size-7"
+                                        disabled={!c.byVariant.normal}
+                                        aria-label={`Retirer un ${c.name}`}
+                                      >
+                                        <Minus />
+                                      </Button>
+                                    </form>
+                                    <form
+                                      action={adjustOwnedCardAction.bind(null, c.id, 1, 'normal')}
+                                    >
+                                      <Button
+                                        type="submit"
+                                        size="icon"
+                                        variant="ghost"
+                                        className="size-7"
+                                        aria-label={`Ajouter un ${c.name}`}
+                                      >
+                                        <Plus />
+                                      </Button>
+                                    </form>
+                                  </>
+                                ) : (
+                                  <form
+                                    action={removeBinderCardAction.bind(null, binder.id, c.id)}
+                                    className="ml-auto"
+                                  >
+                                    <Button
+                                      type="submit"
+                                      size="icon"
+                                      variant="ghost"
+                                      className="size-7 text-muted-foreground"
+                                      aria-label={`Retirer ${c.name} du classeur`}
+                                    >
+                                      <X />
+                                    </Button>
+                                  </form>
+                                )}
+                              </div>
+                            </CollectionCardTile>
+                          ))}
                         </div>
-                      </CollectionCardTile>
-                    ))}
-                  </div>
-                </section>
-              ),
+                      </section>
+                    ),
+                  )}
+                </div>
+                {spreads > 1 && (
+                  <nav
+                    aria-label="Pages du classeur"
+                    className="mt-4 flex items-center justify-center gap-3 fit:mt-0"
+                  >
+                    <Button asChild variant="outline" size="sm" aria-disabled={spread === 1}>
+                      <Link href={pageHref(Math.max(1, spread - 1))}>
+                        <ChevronLeft /> Précédentes
+                      </Link>
+                    </Button>
+                    <span className="text-sm text-muted-foreground tabular-nums">
+                      Pages {(spread - 1) * 2 + 1}–
+                      {Math.min(spread * 2, Math.ceil(filtered.length / PER_PAGE))} sur{' '}
+                      {Math.ceil(filtered.length / PER_PAGE)}
+                    </span>
+                    <Button asChild variant="outline" size="sm" aria-disabled={spread === spreads}>
+                      <Link href={pageHref(Math.min(spreads, spread + 1))}>
+                        Suivantes <ChevronRight />
+                      </Link>
+                    </Button>
+                  </nav>
+                )}
+              </>
             )}
           </div>
-          {spreads > 1 && (
-            <nav
-              aria-label="Pages du classeur"
-              className="mt-4 flex items-center justify-center gap-3"
-            >
-              <Button asChild variant="outline" size="sm" aria-disabled={spread === 1}>
-                <Link href={pageHref(Math.max(1, spread - 1))}>
-                  <ChevronLeft /> Précédentes
-                </Link>
-              </Button>
-              <span className="text-sm text-muted-foreground tabular-nums">
-                Pages {(spread - 1) * 2 + 1}–
-                {Math.min(spread * 2, Math.ceil(filtered.length / PER_PAGE))} sur{' '}
-                {Math.ceil(filtered.length / PER_PAGE)}
-              </span>
-              <Button asChild variant="outline" size="sm" aria-disabled={spread === spreads}>
-                <Link href={pageHref(Math.min(spreads, spread + 1))}>
-                  Suivantes <ChevronRight />
-                </Link>
-              </Button>
-            </nav>
-          )}
-        </>
-      )}
+        </Card>
+        <Card className={cn(fitCard, 'px-4')}>
+          <div className={cn('space-y-6', fitScroll)}>
+            {binder.cards.length > 0 && (
+              <div className="space-y-2">
+                <div className="flex flex-wrap gap-1.5">
+                  {chip('Toutes', { ...filters, owned: 'toutes' }, filters.owned === 'toutes')}
+                  {chip(
+                    'Manquantes',
+                    { ...filters, owned: 'manquantes' },
+                    filters.owned === 'manquantes',
+                  )}
+                  {chip(
+                    'Possédées',
+                    { ...filters, owned: 'possedees' },
+                    filters.owned === 'possedees',
+                  )}
+                  {isSet &&
+                    chip(
+                      'Existe en reverse',
+                      { ...filters, reverse: !filters.reverse },
+                      filters.reverse,
+                    )}
+                </div>
+                {groups.length > 1 && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {chip(
+                      'Toutes raretés',
+                      { ...filters, rarities: [] },
+                      filters.rarities.length === 0,
+                    )}
+                    {groups.map((g) => {
+                      const on = filters.rarities.includes(g.key);
+                      return chip(
+                        g.label,
+                        {
+                          ...filters,
+                          rarities: on
+                            ? filters.rarities.filter((k) => k !== g.key)
+                            : [...filters.rarities, g.key],
+                        },
+                        on,
+                        g.count,
+                      );
+                    })}
+                  </div>
+                )}
+                {filtering && (
+                  <p className="text-sm text-muted-foreground">
+                    {filtered.length} carte{filtered.length > 1 ? 's' : ''} sur{' '}
+                    {binder.cards.length} ·{' '}
+                    <Link href={base} className="text-primary hover:underline">
+                      Retirer les filtres
+                    </Link>
+                  </p>
+                )}
+              </div>
+            )}
 
-      {!isSet && (
-        <section className="mt-10 space-y-3">
-          <h2 className="font-display text-xl font-bold">Ajouter des cartes</h2>
-          <CardPicker
-            q={query.q}
-            mine={query.mine === '1'}
-            basePath={base}
-            exclude={new Set(binder.cards.map((c) => c.id))}
-            addAction={(cardId) => addBinderCardAction.bind(null, binder.id, cardId)}
-          />
-        </section>
-      )}
+            {!isSet && (
+              <section className="space-y-3">
+                <h2 className="font-display text-base font-semibold">Ajouter des cartes</h2>
+                <CardPicker
+                  q={query.q}
+                  mine={query.mine === '1'}
+                  basePath={base}
+                  exclude={new Set(binder.cards.map((c) => c.id))}
+                  addAction={(cardId) => addBinderCardAction.bind(null, binder.id, cardId)}
+                />
+              </section>
+            )}
 
-      <details className="mt-10 rounded-xl border p-4 text-sm">
-        <summary className="cursor-pointer font-medium">Réglages du classeur</summary>
-        <div className="mt-4 flex flex-wrap items-end gap-3">
-          <form
-            action={updateBinderAction.bind(null, binder.id)}
-            className="flex flex-wrap items-end gap-3"
-          >
-            <div className="space-y-1.5">
-              <Label htmlFor="bn">Nom</Label>
-              <Input
-                id="bn"
-                name="name"
-                defaultValue={binder.name}
-                required
-                className="w-64 max-w-full"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="bd">Description</Label>
-              <Input
-                id="bd"
-                name="description"
-                defaultValue={binder.description ?? ''}
-                className="w-72 max-w-full"
-              />
-            </div>
-            <Button type="submit" size="sm">
-              Enregistrer
-            </Button>
-          </form>
-          <form action={deleteBinderAction.bind(null, binder.id)}>
-            <Button type="submit" size="sm" variant="ghost" className="text-destructive">
-              <Trash2 /> Supprimer le classeur
-            </Button>
-          </form>
-        </div>
-        <p className="mt-2 text-xs text-muted-foreground">
-          Supprimer un classeur ne retire aucune carte de ta collection.
-        </p>
-      </details>
-    </>
+            <details className="rounded-xl border p-4 text-sm">
+              <summary className="cursor-pointer font-medium">Réglages du classeur</summary>
+              <div className="mt-4 flex flex-wrap items-end gap-3">
+                <form
+                  action={updateBinderAction.bind(null, binder.id)}
+                  className="flex flex-wrap items-end gap-3"
+                >
+                  <div className="space-y-1.5">
+                    <Label htmlFor="bn">Nom</Label>
+                    <Input
+                      id="bn"
+                      name="name"
+                      defaultValue={binder.name}
+                      required
+                      className="w-64 max-w-full"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="bd">Description</Label>
+                    <Input
+                      id="bd"
+                      name="description"
+                      defaultValue={binder.description ?? ''}
+                      className="w-72 max-w-full"
+                    />
+                  </div>
+                  <Button type="submit" size="sm">
+                    Enregistrer
+                  </Button>
+                </form>
+                <form action={deleteBinderAction.bind(null, binder.id)}>
+                  <Button type="submit" size="sm" variant="ghost" className="text-destructive">
+                    <Trash2 /> Supprimer le classeur
+                  </Button>
+                </form>
+              </div>
+              <p className="mt-2 text-xs text-muted-foreground">
+                Supprimer un classeur ne retire aucune carte de ta collection.
+              </p>
+            </details>
+          </div>
+        </Card>
+      </div>
+    </FitPage>
   );
 }
