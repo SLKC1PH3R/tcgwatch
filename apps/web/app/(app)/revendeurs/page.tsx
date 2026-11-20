@@ -122,7 +122,7 @@ export default async function RetailersPage({ searchParams }: Props) {
       <div
         className={cn(
           fitGrid,
-          'lg:grid-cols-[15rem_minmax(0,1fr)] xl:grid-cols-[15rem_minmax(0,1fr)_22rem]',
+          'lg:grid-cols-[15rem_minmax(0,1fr)] xl:grid-cols-[15rem_minmax(0,1fr)_minmax(24rem,0.8fr)]',
         )}
       >
         <Card className={fitCard}>
@@ -296,7 +296,7 @@ export default async function RetailersPage({ searchParams }: Props) {
                   Aucune fiche suivie chez ce revendeur pour l’instant.
                 </p>
               ) : (
-                <ul className={cn('divide-y', fitScroll)}>
+                <ul className={cn('divide-y fit:pr-4', fitScroll)}>
                   {listings.map((l) => (
                     <li key={l.id}>
                       <Link
