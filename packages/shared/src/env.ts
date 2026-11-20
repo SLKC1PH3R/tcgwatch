@@ -49,6 +49,8 @@ const schema = z.object({
   MARKET_CRON: z.string().default('30 6 * * *'),
   /** Regroupement des relevés anciens dans le résumé quotidien. */
   HISTORY_CRON: z.string().default('30 3 * * *'),
+  /** Rappel des sorties du lendemain pour les produits suivis (veille au soir). */
+  RELEASE_REMINDER_CRON: z.string().default('0 18 * * *'),
   /** Jours de relevés détaillés gardés (au-delà : une ligne par fiche et par jour). */
   SNAPSHOT_RETENTION_DAYS: z.coerce.number().int().min(1).default(14),
   /** Jours d'alertes gardées dans l'historique des alertes. */

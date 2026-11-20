@@ -10,6 +10,7 @@ import { importTcgdex } from './jobs/import-tcgdex';
 import { linkProductExtensions } from './jobs/link-extensions';
 import { runMarketJob } from './jobs/market';
 import { runMarketListings } from './jobs/market-listings';
+import { runReleaseReminders } from './jobs/release-reminders';
 import { runSecondhandPrices } from './jobs/secondhand';
 import { syncRetailers } from './jobs/sync-retailers';
 
@@ -77,11 +78,19 @@ async function main() {
     );
   });
 
+  const releaseReminderJob = exclusive(ctx, 'release-reminders', async () => {
+    await runReleaseReminders(ctx);
+  });
+
   const tasks: ScheduledTask[] = [
     cron.schedule(env.LISTINGS_CRON, listingsJob, { timezone, name: 'listings' }),
     cron.schedule(env.TCGDEX_CRON, tcgdexJob, { timezone, name: 'tcgdex' }),
     cron.schedule(env.MARKET_CRON, marketJob, { timezone, name: 'market' }),
     cron.schedule(env.HISTORY_CRON, historyJob, { timezone, name: 'history' }),
+    cron.schedule(env.RELEASE_REMINDER_CRON, releaseReminderJob, {
+      timezone,
+      name: 'release-reminders',
+    }),
   ];
   if (env.POKECARDEX_ENABLED) {
     tasks.push(cron.schedule(env.POKECARDEX_CRON, pokecardexJob, { timezone, name: 'pokecardex' }));
