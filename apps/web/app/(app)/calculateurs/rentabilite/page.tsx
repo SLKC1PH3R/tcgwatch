@@ -3,10 +3,12 @@ import Link from 'next/link';
 import { prisma } from '@tcgwatch/db';
 import { HIT_SLOT, RARE_SLOT, simulateOpening, type OpeningCard } from '@tcgwatch/market';
 import { formatPrice, toNumber } from '@tcgwatch/shared';
+import { FitPage } from '@/components/fit-page';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { getSealedPrices, type SealedPrice } from '@/lib/data/prices';
+import { fitCard, fitColumn, fitGrid, fitScroll } from '@/lib/fit';
 import { cn } from '@/lib/utils';
 
 export const metadata: Metadata = { title: 'Rentabilité d’une ouverture' };
@@ -131,18 +133,23 @@ export default async function OpeningCalculatorPage({ searchParams }: Props) {
     .sort((a, b) => b.expected / b.display!.price - a.expected / a.display!.price);
 
   return (
-    <>
+    <FitPage>
       <PageHeader
         title="Ouvrir une display, est-ce rentable ?"
         description="Ce que vaut en moyenne le contenu d’une display, d’un ETB ou de boosters, carte par carte, avec les cotes Cardmarket du jour. Entrez le prix trouvé : vous saurez si ouvrir vaut le coup, ou s’il vaut mieux garder scellé."
       />
 
-      <div className="grid gap-6 lg:grid-cols-[340px_1fr] [&>*]:min-w-0">
-        <Card className="self-start">
-          <CardHeader>
+      <div
+        className={cn(
+          fitGrid,
+          'lg:grid-cols-[17rem_minmax(0,1fr)_18rem] xl:grid-cols-[19rem_minmax(0,1fr)_22rem]',
+        )}
+      >
+        <Card className={cn(fitCard, 'self-start fit:self-stretch')}>
+          <CardHeader className="shrink-0">
             <CardTitle>Votre calcul</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className={cn('space-y-4', fitScroll)}>
             <form className="space-y-4">
               <label className="block space-y-1.5 text-sm font-medium">
                 Extension
@@ -225,10 +232,31 @@ export default async function OpeningCalculatorPage({ searchParams }: Props) {
                 Faire le calcul
               </Button>
             </form>
+            <details className="group rounded-lg border px-3 py-2 text-sm">
+              <summary className="cursor-pointer font-medium">Comment on calcule</summary>
+              <div className="mt-2 space-y-2 text-muted-foreground">
+                <p>
+                  Chaque booster : 4 communes, 3 peu communes, un emplacement rare et deux reverses,
+                  dont l’un peut révéler une carte illustrée. Valeur d’une rareté : cote moyenne de
+                  ses cartes dans l’extension (guide des prix Cardmarket du jour).
+                </p>
+                <p>
+                  Taux de tirage estimés (moyennes communautaires, non officielles) :{' '}
+                  {[...Object.entries(RARE_SLOT), ...Object.entries(HIT_SLOT)]
+                    .map(([r, p]) => `${r} 1/${Math.round(1 / p)}`)
+                    .join(', ')}
+                  . Les reverses sont comptées à la cote de la version normale.
+                </p>
+                <p>
+                  Non comptés : cartes énergie, codes en ligne, goodies des ETB et frais d’envoi.
+                  Ces chiffres sont des moyennes : une ouverture réelle peut s’en écarter fortement.
+                </p>
+              </div>
+            </details>
           </CardContent>
         </Card>
 
-        <div className="space-y-6">
+        <div className={fitColumn}>
           {!set || !result ? (
             <Card>
               <CardContent className="py-10 text-center text-sm text-muted-foreground">
@@ -240,10 +268,11 @@ export default async function OpeningCalculatorPage({ searchParams }: Props) {
             <>
               <Card
                 className={cn(
+                  'shrink-0',
                   gain !== null && (gain >= 0 ? 'border-success/50' : 'border-destructive/50'),
                 )}
               >
-                <CardContent className="space-y-4 py-6">
+                <CardContent className="space-y-4 py-2">
                   <p className="font-display text-2xl font-bold">
                     {gain === null
                       ? `Contenu moyen : ${formatPrice(result.expected)}`
@@ -251,7 +280,7 @@ export default async function OpeningCalculatorPage({ searchParams }: Props) {
                         ? `En moyenne, ouvrir fait gagner ${formatPrice(gain)}`
                         : `En moyenne, ouvrir fait perdre ${formatPrice(-gain)}`}
                   </p>
-                  <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                  <div className="grid gap-3 sm:grid-cols-2 2xl:grid-cols-4">
                     <Tile label="Valeur moyenne du contenu" value={formatPrice(result.expected)} />
                     <Tile label="Prix payé" value={paid ? formatPrice(paid) : '—'} />
                     <Tile
@@ -282,8 +311,8 @@ export default async function OpeningCalculatorPage({ searchParams }: Props) {
                 </CardContent>
               </Card>
 
-              <div className="grid gap-6 xl:grid-cols-2 [&>*]:min-w-0">
-                <Card>
+              <div className="grid gap-4 xl:grid-cols-2 fit:min-h-0 fit:flex-1 [&>*]:min-w-0">
+                <Card className={fitCard}>
                   <CardHeader>
                     <div className="space-y-1">
                       <CardTitle>D’où vient la valeur</CardTitle>
@@ -292,7 +321,7 @@ export default async function OpeningCalculatorPage({ searchParams }: Props) {
                       </CardDescription>
                     </div>
                   </CardHeader>
-                  <CardContent className="space-y-2">
+                  <CardContent className={cn('space-y-2', fitScroll)}>
                     {result.byRarity
                       .filter((r) => r.share > 0.005)
                       .map((r) => (
@@ -313,14 +342,14 @@ export default async function OpeningCalculatorPage({ searchParams }: Props) {
                       ))}
                   </CardContent>
                 </Card>
-                <Card>
+                <Card className={fitCard}>
                   <CardHeader>
                     <div className="space-y-1">
                       <CardTitle>Les cartes qui font la valeur</CardTitle>
                       <CardDescription>Cote × nombre moyen d’exemplaires tirés.</CardDescription>
                     </div>
                   </CardHeader>
-                  <CardContent className="px-2">
+                  <CardContent className={cn('px-2', fitScroll)}>
                     <ol className="divide-y">
                       {result.contributors.map(({ card, expectedCopies, contribution }) => (
                         <li key={card.id}>
@@ -350,79 +379,55 @@ export default async function OpeningCalculatorPage({ searchParams }: Props) {
               </div>
             </>
           )}
-
-          <Card>
-            <CardHeader>
-              <div className="space-y-1">
-                <CardTitle>Quelle display ouvrir aujourd’hui ?</CardTitle>
-                <CardDescription>
-                  Valeur moyenne du contenu d’une display de 36 boosters face à sa cote du jour
-                  (mêmes réglages).
-                </CardDescription>
-              </div>
-            </CardHeader>
-            <CardContent className="px-2">
-              {ranking.length === 0 ? (
-                <p className="px-4 py-4 text-sm text-muted-foreground">
-                  Aucune display cotée pour les extensions prises en charge.
-                </p>
-              ) : (
-                <ol className="divide-y">
-                  {ranking.map(({ s, expected, display }) => {
-                    const ratio = expected / display!.price;
-                    return (
-                      <li key={s.id}>
-                        <Link
-                          href={`/calculateurs/rentabilite?ext=${s.tcgdexId}&type=display&prix=${display!.price}`}
-                          className="flex items-center gap-3 rounded-lg px-4 py-2 text-sm transition-colors hover:bg-accent/60"
-                        >
-                          <span className="min-w-0 flex-1 truncate font-medium">{s.nameFr}</span>
-                          <span className="text-xs text-muted-foreground tabular-nums">
-                            {formatPrice(expected)} pour {formatPrice(display!.price)}
-                          </span>
-                          <span
-                            className={cn(
-                              'w-14 text-right font-semibold tabular-nums',
-                              ratio >= 1 ? 'text-success' : 'text-destructive',
-                            )}
-                          >
-                            {Math.round(ratio * 100)} %
-                          </span>
-                        </Link>
-                      </li>
-                    );
-                  })}
-                </ol>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Comment on calcule</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2 text-sm text-muted-foreground">
-              <p>
-                Chaque booster : 4 communes, 3 peu communes, un emplacement rare et deux reverses,
-                dont l’un peut révéler une carte illustrée. Valeur d’une rareté : cote moyenne de
-                ses cartes dans l’extension (guide des prix Cardmarket du jour).
-              </p>
-              <p>
-                Taux de tirage estimés (moyennes communautaires, non officielles) :{' '}
-                {[...Object.entries(RARE_SLOT), ...Object.entries(HIT_SLOT)]
-                  .map(([r, p]) => `${r} 1/${Math.round(1 / p)}`)
-                  .join(', ')}
-                . Les reverses sont comptées à la cote de la version normale.
-              </p>
-              <p>
-                Non comptés : cartes énergie, codes en ligne, goodies des ETB et frais d’envoi. Ces
-                chiffres sont des moyennes : une ouverture réelle peut s’en écarter fortement.
-              </p>
-            </CardContent>
-          </Card>
         </div>
+
+        <Card className={fitCard}>
+          <CardHeader>
+            <div className="space-y-1">
+              <CardTitle className="text-balance">Quelle display ouvrir aujourd’hui ?</CardTitle>
+              <CardDescription>
+                Valeur moyenne du contenu d’une display de 36 boosters face à sa cote du jour (mêmes
+                réglages).
+              </CardDescription>
+            </div>
+          </CardHeader>
+          <CardContent className={cn('px-2', fitScroll)}>
+            {ranking.length === 0 ? (
+              <p className="px-4 py-4 text-sm text-muted-foreground">
+                Aucune display cotée pour les extensions prises en charge.
+              </p>
+            ) : (
+              <ol className="divide-y">
+                {ranking.map(({ s, expected, display }) => {
+                  const ratio = expected / display!.price;
+                  return (
+                    <li key={s.id}>
+                      <Link
+                        href={`/calculateurs/rentabilite?ext=${s.tcgdexId}&type=display&prix=${display!.price}`}
+                        className="flex items-center gap-3 rounded-lg px-4 py-2 text-sm transition-colors hover:bg-accent/60"
+                      >
+                        <span className="min-w-0 flex-1 truncate font-medium">{s.nameFr}</span>
+                        <span className="text-xs text-muted-foreground tabular-nums">
+                          {formatPrice(expected)} pour {formatPrice(display!.price)}
+                        </span>
+                        <span
+                          className={cn(
+                            'w-14 text-right font-semibold tabular-nums',
+                            ratio >= 1 ? 'text-success' : 'text-destructive',
+                          )}
+                        >
+                          {Math.round(ratio * 100)} %
+                        </span>
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ol>
+            )}
+          </CardContent>
+        </Card>
       </div>
-    </>
+    </FitPage>
   );
 }
 

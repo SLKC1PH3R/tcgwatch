@@ -10,11 +10,13 @@ import {
   type ProductTypeKey,
 } from '@tcgwatch/shared';
 import { AvailabilityBadge } from '@/components/availability-badge';
+import { FitPage } from '@/components/fit-page';
 import { PageHeader } from '@/components/page-header';
 import { Thumb } from '@/components/thumb';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { search } from '@/lib/data/search';
+import { fitCard, fitGrid, fitScroll } from '@/lib/fit';
 import { cn } from '@/lib/utils';
 
 export const metadata: Metadata = { title: 'Recherche' };
@@ -38,15 +40,21 @@ export default async function SearchPage({
   const empty =
     results.products.length === 0 && results.releases.length === 0 && results.cards.length === 0;
 
+  const none = (what: string) => (
+    <p className="text-sm text-muted-foreground">
+      Aucun{what} pour « {query} ».
+    </p>
+  );
+
   return (
-    <>
+    <FitPage>
       <PageHeader
         title={query ? `Recherche : « ${query} »` : 'Recherche'}
         description="Produits scellés FR, extensions et cartes Pokémon. Astuce : « / » ou Ctrl+K pour chercher depuis n’importe quelle page."
       />
 
       {query && (
-        <nav aria-label="Type de produit" className="mb-5 flex flex-wrap gap-1.5">
+        <nav aria-label="Type de produit" className="flex shrink-0 flex-wrap gap-1.5">
           {[undefined, ...QUICK_TYPES].map((t) => (
             <Link
               key={t ?? 'tout'}
@@ -74,15 +82,20 @@ export default async function SearchPage({
           Aucun résultat pour « {query} »{type && ` en ${PRODUCT_TYPE_LABELS[type]}`}.
         </p>
       ) : (
-        <div className="grid gap-6 [&>*]:min-w-0">
+        <div className={cn(fitGrid, 'lg:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)_minmax(0,1fr)]')}>
           {results.releases.length > 0 && (
-            <Card>
+            <Card className={cn(fitCard, 'lg:col-start-2 lg:row-start-1')}>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-base">
                   <Layers className="size-4" /> Extensions
+                  <span className="text-sm font-normal text-muted-foreground">
+                    {results.releases.length}
+                  </span>
                 </CardTitle>
               </CardHeader>
-              <CardContent className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+              <CardContent
+                className={cn('grid content-start gap-2 sm:grid-cols-2 lg:grid-cols-1', fitScroll)}
+              >
                 {results.releases.map((r) => (
                   <Link
                     key={r.id}
@@ -112,8 +125,8 @@ export default async function SearchPage({
             </Card>
           )}
 
-          {results.products.length > 0 && (
-            <Card>
+          {results.products.length > 0 ? (
+            <Card className={cn(fitCard, 'lg:col-start-1 lg:row-start-1')}>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-base">
                   <Package className="size-4" /> Produits scellés
@@ -124,14 +137,11 @@ export default async function SearchPage({
                   </span>
                 </CardTitle>
               </CardHeader>
-              <CardContent className="divide-y">
+              <CardContent className={cn('divide-y', fitScroll)}>
                 {results.products.map(({ product: p, resale }) => {
                   const gain = resale && p.msrp ? resale.price / p.msrp - 1 : null;
                   return (
-                    <div
-                      key={p.id}
-                      className="flex flex-wrap items-center gap-3 py-3 sm:flex-nowrap"
-                    >
+                    <div key={p.id} className="flex flex-wrap items-center gap-x-3 gap-y-2 py-3">
                       <Thumb src={p.displayImage} className="size-14" />
                       <div className="min-w-0 flex-1 basis-48">
                         <Link
@@ -152,7 +162,7 @@ export default async function SearchPage({
                           )}
                         </div>
                       </div>
-                      <dl className="grid grid-cols-3 gap-x-4 text-right text-xs sm:w-96 sm:shrink-0">
+                      <dl className="grid w-full grid-cols-3 gap-x-4 text-right text-xs">
                         <div>
                           <dt className="text-muted-foreground">Prix conseillé</dt>
                           <dd className="text-sm tabular-nums">{formatPrice(p.msrp)}</dd>
@@ -204,27 +214,54 @@ export default async function SearchPage({
                 })}
               </CardContent>
             </Card>
-          )}
-
-          {results.cards.length > 0 && (
-            <Card>
+          ) : (
+            <Card className={cn(fitCard, 'lg:col-start-1 lg:row-start-1')}>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-base">
-                  <Sparkles className="size-4" /> Cartes Pokémon
-                  <span className="text-sm font-normal text-muted-foreground">
-                    prix Cardmarket (tendance) via TCGdex
-                  </span>
+                  <Package className="size-4" /> Produits scellés
                 </CardTitle>
+              </CardHeader>
+              <CardContent>{none(' produit')}</CardContent>
+            </Card>
+          )}
+
+          {results.releases.length === 0 && (
+            <Card className={cn(fitCard, 'lg:col-start-2 lg:row-start-1')}>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Layers className="size-4" /> Extensions
+                </CardTitle>
+              </CardHeader>
+              <CardContent>{none('e extension')}</CardContent>
+            </Card>
+          )}
+
+          {results.cards.length > 0 ? (
+            <Card className={cn(fitCard, 'lg:col-start-3 lg:row-start-1')}>
+              <CardHeader>
+                <div className="min-w-0 space-y-1">
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <Sparkles className="size-4" /> Cartes Pokémon
+                  </CardTitle>
+                  <p className="text-xs text-muted-foreground">
+                    Prix Cardmarket (tendance) via TCGdex
+                  </p>
+                </div>
                 {results.cardTotal > results.cards.length && (
                   <Link
                     href={`/cartes?q=${encodeURIComponent(q)}`}
-                    className="text-sm text-primary hover:underline"
+                    className="shrink-0 text-sm text-primary hover:underline"
                   >
                     Voir les {results.cardTotal} cartes
                   </Link>
                 )}
               </CardHeader>
-              <CardContent className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8">
+              <CardContent
+                className={cn(
+                  'grid grid-cols-2 content-start gap-3 sm:grid-cols-4 lg:grid-cols-3',
+                  fitScroll,
+                )}
+              >
                 {results.cards.map((c) => (
                   <Link
                     key={c.id}
@@ -259,9 +296,18 @@ export default async function SearchPage({
                 ))}
               </CardContent>
             </Card>
+          ) : (
+            <Card className={cn(fitCard, 'lg:col-start-3 lg:row-start-1')}>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <Sparkles className="size-4" /> Cartes Pokémon
+                </CardTitle>
+              </CardHeader>
+              <CardContent>{none('e carte')}</CardContent>
+            </Card>
           )}
         </div>
       )}
-    </>
+    </FitPage>
   );
 }

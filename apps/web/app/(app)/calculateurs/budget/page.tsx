@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { prisma } from '@tcgwatch/db';
 import { fold, formatDate, formatPrice } from '@tcgwatch/shared';
+import { FitPage } from '@/components/fit-page';
 import { PageHeader } from '@/components/page-header';
 import { SafeImg } from '@/components/safe-img';
 import { Thumb } from '@/components/thumb';
@@ -10,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { getSealedPrices, toPricedCard } from '@/lib/data/prices';
+import { fitCard, fitColumn, fitGrid, fitScroll } from '@/lib/fit';
 import { cn } from '@/lib/utils';
 
 export const metadata: Metadata = { title: 'Budget Pokémon' };
@@ -252,164 +254,167 @@ export default async function BudgetPage({ searchParams }: Props) {
   );
 
   return (
-    <>
+    <FitPage>
       <PageHeader
         title="Quoi acheter en Pokémon avec votre budget ?"
         description="Indiquez combien vous voulez dépenser et ce que vous cherchez : trois idées d’achat au prix du jour (meilleure offre chez les revendeurs suivis, sinon cote du marché), avec tout ce qui rentre dans votre budget."
       />
 
-      <Card className="mb-8">
-        <CardContent className="space-y-5 py-6">
-          <section className="space-y-2">
-            <h2 className="text-sm font-semibold">1. Mon budget : {formatPrice(budget)} maximum</h2>
-            <div className="flex flex-wrap items-center gap-1.5">
-              {BUDGETS.map((b) => (
-                <Link
-                  key={b}
-                  href={href({ budget: String(b) })}
-                  aria-current={b === budget ? 'true' : undefined}
-                  className={cn(
-                    'inline-flex h-8 items-center rounded-full border px-3.5 text-sm font-medium transition-colors hover:bg-accent',
-                    b === budget &&
-                      'border-primary bg-primary text-primary-foreground hover:bg-primary/90',
-                  )}
-                >
-                  {b} €
-                </Link>
-              ))}
-              <form className="flex items-center gap-1.5">
+      <div className={cn(fitGrid, 'lg:grid-cols-[20rem_minmax(0,1fr)]')}>
+        <Card className={fitCard}>
+          <CardContent className={cn('space-y-5', fitScroll)}>
+            <section className="space-y-2">
+              <h2 className="text-sm font-semibold">
+                1. Mon budget : {formatPrice(budget)} maximum
+              </h2>
+              <div className="flex flex-wrap items-center gap-1.5">
+                {BUDGETS.map((b) => (
+                  <Link
+                    key={b}
+                    href={href({ budget: String(b) })}
+                    aria-current={b === budget ? 'true' : undefined}
+                    className={cn(
+                      'inline-flex h-8 items-center rounded-full border px-3.5 text-sm font-medium transition-colors hover:bg-accent',
+                      b === budget &&
+                        'border-primary bg-primary text-primary-foreground hover:bg-primary/90',
+                    )}
+                  >
+                    {b} €
+                  </Link>
+                ))}
+                <form className="flex items-center gap-1.5">
+                  <input type="hidden" name="cherche" value={looking} />
+                  <input type="hidden" name="pour" value={goal} />
+                  {pokemon && <input type="hidden" name="pokemon" value={pokemon} />}
+                  {recentOnly && <input type="hidden" name="recent" value="1" />}
+                  <input
+                    type="number"
+                    name="budget"
+                    min={5}
+                    max={10000}
+                    defaultValue={budget}
+                    aria-label="Autre montant"
+                    className="h-8 w-24 rounded-md border border-input bg-transparent px-2 text-sm"
+                  />
+                  <Button type="submit" size="sm" variant="outline">
+                    OK
+                  </Button>
+                </form>
+              </div>
+            </section>
+            <section className="space-y-2">
+              <h2 className="text-sm font-semibold">2. Je cherche</h2>
+              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
+                {LOOKING.map((l) =>
+                  option(l.label, l.hint, href({ cherche: l.key }), l.key === looking),
+                )}
+              </div>
+            </section>
+            <section className="space-y-2">
+              <h2 className="text-sm font-semibold">3. C’est pour</h2>
+              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
+                {GOALS.map((g) => option(g.label, g.hint, href({ pour: g.key }), g.key === goal))}
+              </div>
+            </section>
+            <section className="space-y-2">
+              <h2 className="text-sm font-semibold">4. Mes préférences (facultatif)</h2>
+              <form className="flex flex-wrap items-center gap-3">
+                <input type="hidden" name="budget" value={budget} />
                 <input type="hidden" name="cherche" value={looking} />
                 <input type="hidden" name="pour" value={goal} />
-                {pokemon && <input type="hidden" name="pokemon" value={pokemon} />}
-                {recentOnly && <input type="hidden" name="recent" value="1" />}
                 <input
-                  type="number"
-                  name="budget"
-                  min={5}
-                  max={10000}
-                  defaultValue={budget}
-                  aria-label="Autre montant"
-                  className="h-8 w-24 rounded-md border border-input bg-transparent px-2 text-sm"
+                  name="pokemon"
+                  defaultValue={pokemon}
+                  placeholder="Mon Pokémon préféré : Pikachu…"
+                  aria-label="Mon Pokémon préféré"
+                  className="h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
                 />
-                <Button type="submit" size="sm" variant="outline">
-                  OK
+                <label className="flex items-center gap-2 text-sm">
+                  <input type="checkbox" name="recent" value="1" defaultChecked={recentOnly} />
+                  Seulement la série la plus récente{latestSerie ? ` (${latestSerie.name})` : ''}
+                </label>
+                <Button type="submit" size="sm">
+                  Appliquer
                 </Button>
               </form>
-            </div>
-          </section>
-          <section className="space-y-2">
-            <h2 className="text-sm font-semibold">2. Je cherche</h2>
-            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-              {LOOKING.map((l) =>
-                option(l.label, l.hint, href({ cherche: l.key }), l.key === looking),
-              )}
-            </div>
-          </section>
-          <section className="space-y-2">
-            <h2 className="text-sm font-semibold">3. C’est pour</h2>
-            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-              {GOALS.map((g) => option(g.label, g.hint, href({ pour: g.key }), g.key === goal))}
-            </div>
-          </section>
-          <section className="space-y-2">
-            <h2 className="text-sm font-semibold">4. Mes préférences (facultatif)</h2>
-            <form className="flex flex-wrap items-center gap-3">
-              <input type="hidden" name="budget" value={budget} />
-              <input type="hidden" name="cherche" value={looking} />
-              <input type="hidden" name="pour" value={goal} />
-              <input
-                name="pokemon"
-                defaultValue={pokemon}
-                placeholder="Mon Pokémon préféré : Pikachu…"
-                aria-label="Mon Pokémon préféré"
-                className="h-9 w-64 rounded-md border border-input bg-transparent px-3 text-sm"
-              />
-              <label className="flex items-center gap-2 text-sm">
-                <input type="checkbox" name="recent" value="1" defaultChecked={recentOnly} />
-                Seulement la série la plus récente{latestSerie ? ` (${latestSerie.name})` : ''}
-              </label>
-              <Button type="submit" size="sm">
-                Appliquer
-              </Button>
-            </form>
-          </section>
-        </CardContent>
-      </Card>
+            </section>
+            <p className="text-xs text-muted-foreground">
+              Prix du scellé : meilleure offre achetable chez les revendeurs suivis (prix livré
+              quand le port est connu), sinon cote Cardmarket du jour. Cartes : cote Cardmarket du
+              jour, à acheter sur une plateforme de vente entre particuliers.
+            </p>
+          </CardContent>
+        </Card>
 
-      <h2 className="mb-3 font-display text-xl font-semibold">
-        3 idées pour {formatPrice(budget)}
-      </h2>
-      <div className="mb-8 grid gap-4 lg:grid-cols-3 [&>*]:min-w-0">
-        {ideas.map((idea, n) => {
-          const total = idea.items.reduce((s, i) => s + i.price, 0);
-          return (
-            <Card key={idea.title}>
-              <CardHeader>
-                <div className="space-y-1">
-                  <CardDescription>
-                    Idée {n + 1} · {idea.items.length} produit{idea.items.length > 1 ? 's' : ''}
-                  </CardDescription>
-                  <CardTitle>{idea.title}</CardTitle>
-                  <CardDescription>{idea.hint}</CardDescription>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {idea.items.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">
-                    Pas de combinaison possible avec ces critères.
-                  </p>
-                ) : (
-                  <>
-                    <ul className="space-y-2">
-                      {idea.items.map((i) => (
-                        <ItemRow key={i.key} item={i} />
-                      ))}
-                    </ul>
-                    <p className="flex justify-between border-t pt-2 text-sm">
-                      <span>
-                        Total <strong className="tabular-nums">{formatPrice(total)}</strong>
-                      </span>
-                      <span className="text-muted-foreground">
-                        Il reste {formatPrice(budget - total)}
-                      </span>
-                    </p>
-                  </>
-                )}
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
-
-      <Card>
-        <CardHeader>
-          <div className="space-y-1">
-            <CardTitle>Tout ce qui rentre dans {formatPrice(budget)}</CardTitle>
-            <CardDescription>
-              {items.length} possibilité{items.length > 1 ? 's' : ''}, de la plus chère à la moins
-              chère{items.length > all.length ? ` (${all.length} premières)` : ''}.
-            </CardDescription>
+        <div className={fitColumn}>
+          <h2 className="sr-only">3 idées pour {formatPrice(budget)}</h2>
+          <div className="grid gap-4 md:grid-cols-3 fit:min-h-0 fit:flex-1 [&>*]:min-w-0">
+            {ideas.map((idea, n) => {
+              const total = idea.items.reduce((s, i) => s + i.price, 0);
+              return (
+                <Card key={idea.title} className={cn(fitCard, n === 0 && 'holo-frame')}>
+                  <CardHeader>
+                    <div className="space-y-1">
+                      <CardDescription>
+                        Idée {n + 1} · {idea.items.length} produit{idea.items.length > 1 ? 's' : ''}
+                      </CardDescription>
+                      <CardTitle>{idea.title}</CardTitle>
+                      <CardDescription>{idea.hint}</CardDescription>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="flex flex-col gap-3 fit:min-h-0 fit:flex-1">
+                    {idea.items.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">
+                        Pas de combinaison possible avec ces critères.
+                      </p>
+                    ) : (
+                      <>
+                        <ul className={cn('space-y-2', fitScroll)}>
+                          {idea.items.map((i) => (
+                            <ItemRow key={i.key} item={i} />
+                          ))}
+                        </ul>
+                        <p className="flex shrink-0 flex-wrap justify-between gap-x-2 border-t pt-2 text-sm">
+                          <span>
+                            Total <strong className="tabular-nums">{formatPrice(total)}</strong>
+                          </span>
+                          <span className="text-muted-foreground">
+                            Il reste {formatPrice(budget - total)}
+                          </span>
+                        </p>
+                      </>
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
-        </CardHeader>
-        <CardContent>
-          {all.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Rien ne correspond à ces critères.</p>
-          ) : (
-            <ul className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
-              {all.map((i) => (
-                <ItemRow key={i.key} item={i} />
-              ))}
-            </ul>
-          )}
-        </CardContent>
-      </Card>
 
-      <p className="mt-6 text-xs text-muted-foreground">
-        Prix du scellé : meilleure offre achetable chez les revendeurs suivis (prix livré quand le
-        port est connu), sinon cote Cardmarket du jour. Cartes : cote Cardmarket du jour, à acheter
-        sur une plateforme de vente entre particuliers.
-      </p>
-    </>
+          <Card className={cn(fitCard, 'shrink-0')}>
+            <CardHeader>
+              <div className="space-y-1">
+                <CardTitle>Tout ce qui rentre dans {formatPrice(budget)}</CardTitle>
+                <CardDescription>
+                  {items.length} possibilité{items.length > 1 ? 's' : ''}, de la plus chère à la
+                  moins chère{items.length > all.length ? ` (${all.length} premières)` : ''}.
+                </CardDescription>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {all.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Rien ne correspond à ces critères.</p>
+              ) : (
+                <ul className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3 fit:flex fit:overflow-x-auto fit:pb-2 fit:[&>li]:w-72 fit:[&>li]:shrink-0">
+                  {all.map((i) => (
+                    <ItemRow key={i.key} item={i} />
+                  ))}
+                </ul>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </FitPage>
   );
 }
 
