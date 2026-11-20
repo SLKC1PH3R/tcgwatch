@@ -1,8 +1,9 @@
 @import 'tailwindcss';
 @import 'tw-animate-css';
 
-/* Thème sombre unique : la variante dark: reste valide pour les composants existants. */
-@custom-variant dark (&:where(html, html *));
+/* Thème sombre par défaut ; thème clair choisi dans l'en-tête (cookie « theme » → data-theme sur
+   <html>) : « clair », ou « système » qui suit le réglage de l'appareil. */
+@custom-variant dark (&:where(html:not([data-theme='light']), html:not([data-theme='light']) *));
 /* Écran assez grand (large et haut) pour afficher une page « plein écran » sans défiler. */
 @custom-variant fit (@media (min-width: 64rem) and (min-height: 42rem));
 
@@ -44,6 +45,73 @@
     #6ee7a0,
     #ffd43b
   );
+  --scrollbar-track: rgb(255 255 255 / 0.04);
+  color-scheme: dark;
+}
+
+/* Thème clair « Holo Rare de jour » : mêmes repères, couleurs assombries pour rester lisibles
+   sur fond blanc (jaune ambré pour les liens et valeurs, accents plus profonds). */
+:root[data-theme='light'] {
+  --background: #f5f6fb;
+  --foreground: #14151f;
+  --card: #ffffff;
+  --card-foreground: #14151f;
+  --popover: #ffffff;
+  --popover-foreground: #14151f;
+  --primary: #e0a400;
+  --primary-foreground: #14151f;
+  --secondary: #eceef5;
+  --secondary-foreground: #14151f;
+  --muted: #eef0f6;
+  --muted-foreground: #5b5f78;
+  --accent: #e7e8f3;
+  --accent-foreground: #14151f;
+  --destructive: #d6336c;
+  --success: #15803d;
+  --warning: #b45309;
+  --info: #2563eb;
+  --border: #dfe1ea;
+  --input: #c9ccdb;
+  --ring: #e0a400;
+  --chart-1: #d39b00;
+  --chart-2: #6b5cf0;
+  --chart-3: #0b98c9;
+  --chart-4: #16a34a;
+  --chart-5: #e0457b;
+  --scrollbar-track: rgb(20 21 31 / 0.06);
+  color-scheme: light;
+}
+@media (prefers-color-scheme: light) {
+  :root[data-theme='system'] {
+    --background: #f5f6fb;
+    --foreground: #14151f;
+    --card: #ffffff;
+    --card-foreground: #14151f;
+    --popover: #ffffff;
+    --popover-foreground: #14151f;
+    --primary: #e0a400;
+    --primary-foreground: #14151f;
+    --secondary: #eceef5;
+    --secondary-foreground: #14151f;
+    --muted: #eef0f6;
+    --muted-foreground: #5b5f78;
+    --accent: #e7e8f3;
+    --accent-foreground: #14151f;
+    --destructive: #d6336c;
+    --success: #15803d;
+    --warning: #b45309;
+    --info: #2563eb;
+    --border: #dfe1ea;
+    --input: #c9ccdb;
+    --ring: #e0a400;
+    --chart-1: #d39b00;
+    --chart-2: #6b5cf0;
+    --chart-3: #0b98c9;
+    --chart-4: #16a34a;
+    --chart-5: #e0457b;
+    --scrollbar-track: rgb(20 21 31 / 0.06);
+    color-scheme: light;
+  }
 }
 
 @theme inline {
@@ -87,9 +155,6 @@
   * {
     @apply border-border outline-ring/50;
   }
-  html {
-    color-scheme: dark;
-  }
   body {
     @apply bg-background text-foreground antialiased;
   }
@@ -102,7 +167,7 @@
     height: 5px;
   }
   ::-webkit-scrollbar-track {
-    background: rgb(255 255 255 / 0.04);
+    background: var(--scrollbar-track);
     border-radius: 9999px;
     margin: 4px;
   }

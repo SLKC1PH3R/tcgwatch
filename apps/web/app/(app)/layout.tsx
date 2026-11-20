@@ -1,12 +1,15 @@
 import { Bell, LogOut } from 'lucide-react';
 import Link from 'next/link';
 import { Suspense } from 'react';
+import { cookies } from 'next/headers';
 import { prisma } from '@tcgwatch/db';
 import { Button } from '@/components/ui/button';
 import { requireUser } from '@/lib/auth';
 import { BrandLogo } from '@/components/brand-logo';
 import { MainNav } from '@/components/main-nav';
 import { MobileNav } from '@/components/mobile-nav';
+import { ThemeToggle } from '@/components/theme-toggle';
+import { parseTheme } from '@/lib/theme';
 import { PageTrail } from '@/components/page-trail';
 import { SearchBox } from '@/components/search-box';
 import { logoutAction } from '../(auth)/actions';
@@ -14,6 +17,7 @@ import { logoutAction } from '../(auth)/actions';
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const user = await requireUser();
   const unread = await prisma.alertEvent.count({ where: { acknowledged: false } });
+  const theme = parseTheme((await cookies()).get('theme')?.value);
   return (
     // Une page qui porte data-fit-screen (l'accueil) occupe exactement la hauteur de l'écran
     // sur un écran assez grand : en-tête + contenu, sans défilement de la page.
@@ -36,6 +40,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             <Suspense>
               <SearchBox className="w-32 sm:w-56 xl:w-48 2xl:w-56" />
             </Suspense>
+            <ThemeToggle initial={theme} />
             <Link
               href="/alertes"
               aria-label={unread > 0 ? `Alertes, ${unread} pas encore vues` : 'Alertes'}
