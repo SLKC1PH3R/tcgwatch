@@ -58,7 +58,8 @@ export const NAV: NavEntry[] = [
   {
     label: 'Produits',
     icon: Package,
-    match: (p) => p.startsWith('/produits') || p.startsWith('/retours-en-stock'),
+    match: (p) =>
+      p.startsWith('/produits') || p.startsWith('/retours-en-stock') || p.startsWith('/alertes'),
     groups: [
       {
         label: 'Suivi',
@@ -80,6 +81,12 @@ export const NAV: NavEntry[] = [
             label: 'Retours en stock',
             hint: 'Les dernières remises en vente',
             active: (p) => p.startsWith('/retours-en-stock'),
+          },
+          {
+            href: '/alertes',
+            label: 'Alertes',
+            hint: 'Tout ce qui t’a été envoyé, et les réglages',
+            active: (p) => p.startsWith('/alertes'),
           },
           {
             href: '/produits/bons-plans',

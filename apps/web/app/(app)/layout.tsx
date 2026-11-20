@@ -1,6 +1,7 @@
-import { LogOut } from 'lucide-react';
+import { Bell, LogOut } from 'lucide-react';
 import Link from 'next/link';
 import { Suspense } from 'react';
+import { prisma } from '@tcgwatch/db';
 import { Button } from '@/components/ui/button';
 import { requireUser } from '@/lib/auth';
 import { BrandLogo } from '@/components/brand-logo';
@@ -12,6 +13,7 @@ import { logoutAction } from '../(auth)/actions';
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const user = await requireUser();
+  const unread = await prisma.alertEvent.count({ where: { acknowledged: false } });
   return (
     // Une page qui porte data-fit-screen (l'accueil) occupe exactement la hauteur de l'écran
     // sur un écran assez grand : en-tête + contenu, sans défilement de la page.
@@ -34,6 +36,19 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             <Suspense>
               <SearchBox className="w-32 sm:w-56 xl:w-48 2xl:w-56" />
             </Suspense>
+            <Link
+              href="/alertes"
+              aria-label={unread > 0 ? `Alertes, ${unread} pas encore vues` : 'Alertes'}
+              title="Alertes"
+              className="relative flex size-9 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-accent"
+            >
+              <Bell className="size-4.5" />
+              {unread > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground tabular-nums">
+                  {unread > 99 ? '99+' : unread}
+                </span>
+              )}
+            </Link>
             <span
               className="hidden max-w-40 truncate text-sm text-muted-foreground xl:inline"
               title={user.email}

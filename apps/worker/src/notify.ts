@@ -10,6 +10,8 @@ export interface Notification {
   /** Texte du lien sur Telegram (« Voir la fiche » par défaut). */
   linkLabel?: string;
   priority?: 'min' | 'low' | 'default' | 'high' | 'urgent';
+  /** Heures silencieuses : notification sans son (ntfy priorité basse, Telegram muet). */
+  silent?: boolean;
   tags?: string[];
 }
 
@@ -73,7 +75,7 @@ export class Notifier {
     if (!this.config.ntfyUrl) return false;
     const headers: Record<string, string> = {
       Title: headerSafe(n.title),
-      Priority: PRIORITY[n.priority ?? 'default'],
+      Priority: n.silent ? PRIORITY.low : PRIORITY[n.priority ?? 'default'],
       'Content-Type': 'text/plain; charset=utf-8',
     };
     if (n.tags?.length) headers.Tags = n.tags.join(',');
@@ -157,6 +159,7 @@ export class Notifier {
             chat_id: this.config.telegramChatId,
             text,
             parse_mode: 'HTML',
+            disable_notification: Boolean(n.silent),
             disable_web_page_preview: false,
           }),
           signal: AbortSignal.timeout(10_000),

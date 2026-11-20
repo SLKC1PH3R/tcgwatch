@@ -32,6 +32,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { getPriceHistory, PERIODS, periodOf } from '@/lib/data/history';
 import { fitCard, fitColumn, fitGrid, fitScroll } from '@/lib/fit';
+import { ALERT_STYLE, PRODUCT_ALERT_TYPES } from '@/lib/alerts';
+import { setProductAlertMuteAction } from '../../alertes/actions';
 import { cn } from '@/lib/utils';
 import { getProduct } from '@/lib/data/products';
 import { getChaseIndicator, getFormatComparison, getProductExtension } from '@/lib/data/release';
@@ -51,6 +53,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function ProductPage({ params, searchParams }: Props) {
   const [{ id }, { erreur, periode }] = await Promise.all([params, searchParams]);
   const product = await getProduct(id);
+  const muted = new Set(
+    (await prisma.product.findUnique({ where: { id }, select: { mutedAlerts: true } }))
+      ?.mutedAlerts ?? [],
+  );
   if (!product) notFound();
   const period = periodOf(periode);
 
@@ -551,6 +557,35 @@ export default async function ProductPage({ params, searchParams }: Props) {
                 label: 'Alertes',
                 content: (
                   <>
+                    <div className="space-y-1.5">
+                      <p className="text-xs text-muted-foreground">
+                        Alertes envoyées pour ce produit (cliquer pour couper ou réactiver) :
+                      </p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {PRODUCT_ALERT_TYPES.map((t) => {
+                          const off = muted.has(t);
+                          return (
+                            <form
+                              key={t}
+                              action={setProductAlertMuteAction.bind(null, id, t, !off)}
+                            >
+                              <button
+                                type="submit"
+                                aria-pressed={!off}
+                                className={cn(
+                                  'inline-flex h-7 items-center gap-1 rounded-full border px-2.5 text-xs font-semibold transition-colors hover:bg-accent',
+                                  off
+                                    ? 'text-muted-foreground line-through'
+                                    : 'border-primary/40 bg-primary/10',
+                                )}
+                              >
+                                {ALERT_STYLE[t].label}
+                              </button>
+                            </form>
+                          );
+                        })}
+                      </div>
+                    </div>
                     {alerts.length === 0 ? (
                       <p className="text-sm text-muted-foreground">Aucune alerte émise.</p>
                     ) : (
@@ -774,17 +809,6 @@ const MARKET_SOURCE: Record<string, string> = {
   cardmarket: 'Cardmarket · tendance',
   poketrace: 'PokeTrace',
   manual: 'Saisie manuelle',
-};
-
-const ALERT_STYLE: Record<string, { label: string; className: string }> = {
-  BACK_IN_STOCK: { label: 'Retour en stock', className: 'text-success' },
-  PRICE_TARGET: { label: 'Prix cible', className: 'text-primary' },
-  PREORDER_OPEN: { label: 'Précommande', className: 'text-info' },
-  NEW_LOW: { label: 'Plus bas historique', className: 'text-success' },
-  RELEASE_DATE: { label: 'Date de sortie', className: 'text-info' },
-  MARKET_MOVE: { label: 'Variation marché', className: 'text-warning' },
-  CARD_PRICE: { label: 'Carte', className: 'text-chart-2' },
-  MARKET_DEAL: { label: 'Bon prix', className: 'text-success' },
 };
 
 /** « il y a 12 min », « il y a 3 h », puis la date. */

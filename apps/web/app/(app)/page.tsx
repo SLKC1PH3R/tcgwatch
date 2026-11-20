@@ -7,19 +7,9 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { getDashboard } from '@/lib/data/dashboard';
 import { ago } from '@/lib/time';
+import { ALERT_STYLE } from '@/lib/alerts';
 import { cn } from '@/lib/utils';
 import { acknowledgeAlertAction, acknowledgeAllAlertsAction } from './produits/actions';
-
-const ALERT_STYLE = {
-  BACK_IN_STOCK: { label: 'Retour en stock', className: 'text-success' },
-  PREORDER_OPEN: { label: 'Précommande', className: 'text-info' },
-  PRICE_TARGET: { label: 'Prix cible', className: 'text-primary' },
-  RELEASE_DATE: { label: 'Date de sortie', className: 'text-info' },
-  NEW_LOW: { label: 'Plus bas historique', className: 'text-success' },
-  MARKET_MOVE: { label: 'Variation marché', className: 'text-warning' },
-  CARD_PRICE: { label: 'Carte', className: 'text-chart-2' },
-  MARKET_DEAL: { label: 'Bon prix', className: 'text-success' },
-} as const;
 
 /** Couleurs de la répartition par type (ordre : du plus gros au plus petit). */
 const SHARE_COLORS = [

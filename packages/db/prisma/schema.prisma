@@ -175,6 +175,8 @@ model Product {
   description       String?
   brand             String?
   msrp              Decimal?         @db.Decimal(10, 2) /// prix public conseillé
+  /// Types d'alertes coupés pour ce produit (journalisés, pas envoyés).
+  mutedAlerts       AlertType[]      @default([])
   targetPrice       Decimal?         @db.Decimal(10, 2) /// seuil d'alerte par défaut (surchargé par Listing.targetPrice)
   releaseDate       DateTime?        @db.Date /// date propre au produit (ex. "Sortie prévue le" revendeur)
   releaseDateSource ReleaseSource?
@@ -300,6 +302,17 @@ model ListingDaily {
   @@index([date])
 }
 
+/// Réglages des alertes (une seule ligne, id « default »).
+model AlertSettings {
+  id         String      @id @default("default")
+  /// Heures silencieuses, en minutes depuis minuit (heure de Paris) ; null : désactivées.
+  quietStart Int?
+  quietEnd   Int?
+  /// Types d'alertes journalisés mais jamais envoyés.
+  mutedTypes AlertType[] @default([])
+  updatedAt  DateTime    @updatedAt
+}
+
 model AlertEvent {
   id           String     @id @default(cuid())
   type         AlertType
@@ -318,6 +331,10 @@ model AlertEvent {
   sentNtfy     Boolean    @default(false)
   sentTelegram Boolean    @default(false)
   acknowledged Boolean    @default(false)
+  /// Envoyée sans son (heures silencieuses).
+  silent       Boolean    @default(false)
+  /// Journalisée mais pas envoyée : type coupé (partout ou pour ce produit).
+  muted        Boolean    @default(false)
   createdAt    DateTime   @default(now())
 
   @@index([acknowledged, createdAt])

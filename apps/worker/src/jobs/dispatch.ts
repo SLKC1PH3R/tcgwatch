@@ -2,6 +2,7 @@ import { prisma, type AlertType } from '@tcgwatch/db';
 import { formatPrice, toNumber } from '@tcgwatch/shared';
 import type { WorkerContext } from '../context';
 import type { Notification } from '../notify';
+import { inQuietHours } from '../quiet-hours';
 
 /** Fenêtre d'anti-doublon : une même alerte n'est pas renvoyée avant ce délai. */
 export const DEDUPE_WINDOW_MS = 6 * 60 * 60 * 1000;
@@ -33,6 +34,20 @@ export async function dispatchAlert(ctx: WorkerContext, alert: AlertToDispatch):
     return false;
   }
 
+  const [settings, product] = await Promise.all([
+    prisma.alertSettings.findUnique({ where: { id: 'default' } }),
+    alert.productId
+      ? prisma.product.findUnique({
+          where: { id: alert.productId },
+          select: { mutedAlerts: true },
+        })
+      : null,
+  ]);
+  const muted =
+    (settings?.mutedTypes ?? []).includes(alert.type) ||
+    (product?.mutedAlerts ?? []).includes(alert.type);
+  const silent = !muted && inQuietHours(new Date(), settings?.quietStart, settings?.quietEnd);
+
   const event = await prisma.alertEvent.create({
     data: {
       type: alert.type,
@@ -44,13 +59,22 @@ export async function dispatchAlert(ctx: WorkerContext, alert: AlertToDispatch):
       url: alert.url,
       price: alert.price ?? null,
       dedupeKey: alert.dedupeKey,
+      muted,
+      silent,
       // Les alertes informatives (dates) ne restent pas « actives ».
       acknowledged: alert.type === 'RELEASE_DATE',
     },
   });
 
+  if (muted) {
+    ctx.logger.info(
+      { type: alert.type, productId: alert.productId },
+      'Alerte coupée (journalisée)',
+    );
+    return true;
+  }
   const details = alert.details ?? (alert.productId ? await priceDetails(alert.productId) : []);
-  const delivery = await ctx.notifier.send({ ...alert, details });
+  const delivery = await ctx.notifier.send({ ...alert, details, silent });
   await prisma.alertEvent.update({
     where: { id: event.id },
     data: { sentNtfy: delivery.ntfy, sentTelegram: delivery.telegram },
