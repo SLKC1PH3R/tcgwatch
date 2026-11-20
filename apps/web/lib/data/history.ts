@@ -23,6 +23,8 @@ export function periodStart(days: number | null): string {
 
 export const BEST_SERIES = 'Meilleur prix achetable';
 export const MARKET_SERIES = 'Marché';
+/** Médiane quotidienne des annonces d'occasion (eBay, neuves, port compris). */
+export const SECONDHAND_SERIES = 'Occasion (eBay)';
 
 const dayOf = (d: Date) => d.toISOString().slice(0, 10);
 
@@ -59,7 +61,7 @@ const isKept = (d: { excluded: boolean | null; suspect: boolean }) =>
  * Les jours mis de côté (prix aberrant) ou exclus à la main ne comptent pas.
  */
 export async function getPriceHistory(productId: string, days: number | null) {
-  const [daily, market, purchases] = await Promise.all([
+  const [daily, market, purchases, secondhand] = await Promise.all([
     prisma.listingDaily.findMany({
       where: { listing: { productId } },
       select: {
@@ -93,6 +95,11 @@ export async function getPriceHistory(productId: string, days: number | null) {
     prisma.collectionItem.findMany({
       where: { productId },
       select: { quantity: true, purchasePrice: true },
+    }),
+    prisma.secondhandDaily.findMany({
+      where: { productId, source: 'ebay' },
+      select: { date: true, median: true, low: true, count: true },
+      orderBy: { date: 'asc' },
     }),
   ]);
   const kept = daily.filter(isKept);
@@ -151,6 +158,15 @@ export async function getPriceHistory(productId: string, days: number | null) {
     row(day)[MARKET_SERIES] = toNumber(m.price)!;
   }
 
+  let hasSecondhand = false;
+  for (const s of secondhand) {
+    const day = dayOf(s.date);
+    if (day < since) continue;
+    hasSecondhand = true;
+    row(day)[SECONDHAND_SERIES] = toNumber(s.median)!;
+  }
+  const lastSecondhand = secondhand.at(-1);
+
   const qty = purchases.reduce((s, p) => s + p.quantity, 0);
   const avgPurchase = qty
     ? purchases.reduce((s, p) => s + p.quantity * toNumber(p.purchasePrice)!, 0) / qty
@@ -168,6 +184,7 @@ export async function getPriceHistory(productId: string, days: number | null) {
       .filter((p) => p.state !== 'kept').length,
     hasBest: bestSeries.some((b) => b.best !== null && b.day >= since),
     hasMarket,
+    hasSecondhand,
     outOfStock: outOfStockRanges(bestSeries.filter((b) => b.day >= since)),
     allTimeLow: lowestBest(bestSeries),
     low30: lowestBest(bestSeries, 30, todayUtc()),
@@ -178,6 +195,15 @@ export async function getPriceHistory(productId: string, days: number | null) {
     lastMarketMedian: lastQuote ? toNumber(lastQuote.median) : null,
     lastMarketListings: lastQuote?.listingCount ?? null,
     lastMarketSource: lastQuote?.source ?? null,
+    /** Dernière médiane d'occasion (eBay) : prix, plus bas et nombre d'annonces. */
+    secondhand: lastSecondhand
+      ? {
+          date: lastSecondhand.date,
+          median: toNumber(lastSecondhand.median)!,
+          low: toNumber(lastSecondhand.low)!,
+          count: lastSecondhand.count,
+        }
+      : null,
     /** Dernier relevé du guide des prix Cardmarket. */
     cardmarket: guide
       ? {

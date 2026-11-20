@@ -191,6 +191,7 @@ model Product {
   cardmarketCategory String?
   /// Mots-clés des recherches d'annonces (eBay, Leboncoin, Vinted) ; sinon le nom du produit.
   marketQuery       String?
+  secondhandDaily   SecondhandDaily[]
   marketListings    MarketListing[]
   /// Extension TCGdex du produit (calculée à l'import d'après le nom et la date).
   extensionId       String?
@@ -481,6 +482,22 @@ model CollectionItem {
 
 /// Annonce d'un particulier ou d'un vendeur sur une place de marché (eBay, API officielle),
 /// trouvée pour un produit de « Mes produits » (produit avec un bon prix).
+/// Prix du marché de l'occasion, un résumé par jour et par source (annonces eBay neuves, en
+/// achat immédiat, port compris) : la 3ᵉ courbe de la fiche produit.
+model SecondhandDaily {
+  id        String   @id @default(cuid())
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  source    String /// "ebay"
+  date      DateTime @db.Date
+  median    Decimal  @db.Decimal(10, 2)
+  low       Decimal  @db.Decimal(10, 2)
+  count     Int
+  createdAt DateTime @default(now())
+
+  @@unique([productId, source, date])
+}
+
 model MarketListing {
   id          String    @id @default(cuid())
   source      String /// "ebay"

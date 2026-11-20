@@ -10,6 +10,7 @@ import { importTcgdex } from './jobs/import-tcgdex';
 import { linkProductExtensions } from './jobs/link-extensions';
 import { runMarketJob } from './jobs/market';
 import { runMarketListings } from './jobs/market-listings';
+import { runSecondhandPrices } from './jobs/secondhand';
 import { syncRetailers } from './jobs/sync-retailers';
 
 /** Empêche deux exécutions simultanées d'une même tâche planifiée. */
@@ -90,7 +91,11 @@ async function main() {
   }
   // Annonces eBay de « Mes produits » (API officielle, seulement si les clés sont fournies).
   if (env.EBAY_CLIENT_ID && env.EBAY_CLIENT_SECRET) {
-    const ebayJob = exclusive(ctx, 'ebay', () => runMarketListings(ctx));
+    // Après les annonces : la médiane d'occasion du jour (une fois par produit et par jour).
+    const ebayJob = exclusive(ctx, 'ebay', async () => {
+      await runMarketListings(ctx);
+      await runSecondhandPrices(ctx);
+    });
     tasks.push(cron.schedule(env.EBAY_CRON, ebayJob, { timezone, name: 'ebay' }));
   }
 

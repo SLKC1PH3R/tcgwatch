@@ -27,9 +27,11 @@ type DayPoint = {
 /** Libellés des séries calculées (alignés sur lib/data/history.ts). */
 const BEST = 'Meilleur prix achetable';
 const MARKET = 'Marché';
+const SECONDHAND = 'Occasion (eBay)';
 
 // --chart-1 (jaune) : prix marché ; --chart-2 : meilleur prix achetable ; boutiques en retrait.
-const RETAILER_COLORS = ['var(--chart-3)', 'var(--chart-4)', 'var(--chart-5)'];
+// --chart-5 : marché de l'occasion (eBay).
+const RETAILER_COLORS = ['var(--chart-3)', 'var(--chart-4)', 'var(--muted-foreground)'];
 const eur = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' });
 const day = (d: string) =>
   new Date(`${d}T00:00:00Z`).toLocaleDateString('fr-FR', {
@@ -60,6 +62,7 @@ export function PriceChart({
   retailers,
   hasBest,
   hasMarket,
+  hasSecondhand = false,
   outOfStock,
   allTimeLow,
   low30,
@@ -71,6 +74,8 @@ export function PriceChart({
   retailers: string[];
   hasBest: boolean;
   hasMarket: boolean;
+  /** Médiane quotidienne des annonces d'occasion (3ᵉ courbe). */
+  hasSecondhand?: boolean;
   outOfStock: { from: string; to: string }[];
   allTimeLow: number | null;
   low30: number | null;
@@ -177,6 +182,18 @@ export function PriceChart({
                 stroke="var(--chart-1)"
                 strokeWidth={2.5}
                 strokeDasharray="6 3"
+                dot={false}
+                connectNulls
+              />
+            )}
+            {hasSecondhand && (
+              <Line
+                type="monotone"
+                dataKey={SECONDHAND}
+                stroke="var(--chart-5)"
+                strokeWidth={2.5}
+                strokeDasharray="2 4"
+                strokeLinecap="round"
                 dot={false}
                 connectNulls
               />

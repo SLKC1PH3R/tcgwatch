@@ -226,7 +226,7 @@ export default async function ProductPage({ params, searchParams }: Props) {
 
         {/* Prix : chiffres clés, courbe, revendeurs */}
         <div className={fitColumn}>
-          <div className="grid shrink-0 gap-3 sm:grid-cols-3">
+          <div className="grid shrink-0 gap-3 sm:grid-cols-2 2xl:grid-cols-4">
             <HeroStat
               label="Meilleur prix"
               value={formatPrice(bestPrice)}
@@ -263,6 +263,16 @@ export default async function ProductPage({ params, searchParams }: Props) {
                 ]
                   .filter(Boolean)
                   .join(' · ') || 'aucun relevé'
+              }
+            />
+            <HeroStat
+              label="Occasion (eBay)"
+              value={history.secondhand ? formatPrice(history.secondhand.median) : '—'}
+              valueClass="text-chart-5"
+              hint={
+                history.secondhand
+                  ? `médiane de ${history.secondhand.count} annonces · dès ${formatPrice(history.secondhand.low)}`
+                  : 'pas encore de relevé'
               }
             />
             {history.ratio !== null ? (
@@ -336,6 +346,7 @@ export default async function ProductPage({ params, searchParams }: Props) {
                 retailers={history.retailers}
                 hasBest={history.hasBest}
                 hasMarket={history.hasMarket}
+                hasSecondhand={history.hasSecondhand}
                 outOfStock={history.outOfStock}
                 allTimeLow={history.allTimeLow}
                 low30={history.low30}

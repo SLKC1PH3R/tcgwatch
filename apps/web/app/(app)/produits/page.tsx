@@ -19,7 +19,13 @@ import { buttonVariants } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { fitCard, fitGrid, fitScroll, fitSplit3 } from '@/lib/fit';
-import { BEST_SERIES, getLowSinceBadges, getPriceHistory, MARKET_SERIES } from '@/lib/data/history';
+import {
+  BEST_SERIES,
+  getLowSinceBadges,
+  getPriceHistory,
+  MARKET_SERIES,
+  SECONDHAND_SERIES,
+} from '@/lib/data/history';
 import { getProducts, type ListingDTO, type ProductDTO } from '@/lib/data/products';
 import { cn } from '@/lib/utils';
 
@@ -287,6 +293,9 @@ function Preview({
   const gap = best && p.msrp ? best.price / p.msrp - 1 : null;
   const bestLine = history.data.map((d) => (d[BEST_SERIES] as number | undefined) ?? null);
   const marketLine = history.data.map((d) => (d[MARKET_SERIES] as number | undefined) ?? null);
+  const secondhandLine = history.data.map(
+    (d) => (d[SECONDHAND_SERIES] as number | undefined) ?? null,
+  );
   const listings = [...p.listings].sort(
     (a, b) => rank(a) - rank(b) || (a.price ?? Infinity) - (b.price ?? Infinity),
   );
@@ -325,6 +334,7 @@ function Preview({
               height={80}
               series={[
                 { values: marketLine, color: 'var(--primary)', dashed: true },
+                { values: secondhandLine, color: 'var(--chart-5)', dashed: true },
                 { values: bestLine, color: 'var(--chart-2)' },
               ]}
             />
