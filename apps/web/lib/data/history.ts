@@ -93,7 +93,7 @@ export async function getPriceHistory(productId: string, days: number | null) {
       orderBy: { date: 'asc' },
     }),
     prisma.collectionItem.findMany({
-      where: { productId },
+      where: { productId, soldAt: null },
       select: { quantity: true, purchasePrice: true },
     }),
     prisma.secondhandDaily.findMany({

@@ -1,4 +1,4 @@
-import { Trash2 } from 'lucide-react';
+import { Trash2, Undo2 } from 'lucide-react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { after } from 'next/server';
@@ -21,9 +21,10 @@ import { refreshOwnedCardPrices } from '@/lib/data/extensions';
 import { getProductOptions } from '@/lib/data/products';
 import { fitCard, fitColumn, fitGrid, fitScroll } from '@/lib/fit';
 import { cn } from '@/lib/utils';
-import { deleteCollectionItemAction } from './actions';
+import { cancelSaleAction, deleteCollectionItemAction } from './actions';
 import { AddPurchaseDialog } from './add-purchase-dialog';
 import { CONDITION_LABELS } from './collection-form';
+import { SellDialog } from './sell-dialog';
 
 export const metadata: Metadata = { title: 'Ma collection' };
 
@@ -48,22 +49,30 @@ const SORTS = [
 ] as const;
 type Sort = (typeof SORTS)[number]['value'];
 
-type Props = { searchParams: Promise<{ tri?: string; categorie?: string }> };
+type Props = { searchParams: Promise<{ tri?: string; categorie?: string; vue?: string }> };
 
 export default async function CollectionPage({ searchParams }: Props) {
-  const { tri, categorie } = await searchParams;
+  const { tri, categorie, vue } = await searchParams;
+  const soldView = vue === 'vendus';
+  const today = new Date().toISOString().slice(0, 10);
   const category = PRICE_CATEGORIES.find((c) => c.key === categorie);
   const sort: Sort = SORTS.find((s) => s.value === tri)?.value ?? 'plus-value';
-  const [{ rows: allRows, valuation: v }, products, history] = await Promise.all([
-    getCollection(),
-    getProductOptions(),
-    getCollectionHistory(5 * 366),
-  ]);
+  const [{ rows: allRows, sold: allSold, realized, valuation: v }, products, history] =
+    await Promise.all([getCollection(), getProductOptions(), getCollectionHistory(5 * 366)]);
   const breakdown = breakdownByType(allRows, v.cards.value);
   // Filtre par type (ETB, display…) : la valorisation en tête reste celle de tout le scellé.
-  const rows = category
-    ? allRows.filter((r) => priceCategoryOf(r.product.name, r.product.type)?.key === category.key)
-    : allRows;
+  const inCategory = (r: { product: { name: string; type: string } }) =>
+    !category || priceCategoryOf(r.product.name, r.product.type)?.key === category.key;
+  const rows = allRows.filter(inCategory);
+  const sold = allSold.filter(inCategory);
+  const viewHref = (sold: boolean) => {
+    const params = new URLSearchParams();
+    if (category) params.set('categorie', category.key);
+    if (tri) params.set('tri', tri);
+    if (sold) params.set('vue', 'vendus');
+    const qs = params.toString();
+    return qs ? `/collection?${qs}` : '/collection';
+  };
   // Cartes possédées pas encore cotées : reliées à Cardmarket après l'affichage.
   after(() => refreshOwnedCardPrices().then(() => undefined));
   const positive = v.unrealizedGain >= 0;
@@ -91,12 +100,12 @@ export default async function CollectionPage({ searchParams }: Props) {
             <Button asChild variant="outline">
               <a href="/api/collection/export">Exporter CSV</a>
             </Button>
-            <AddPurchaseDialog products={products} today={new Date().toISOString().slice(0, 10)} />
+            <AddPurchaseDialog products={products} today={today} />
           </>
         }
       />
 
-      <div className="grid shrink-0 grid-cols-1 gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] [&>*]:min-w-0">
+      <div className="grid shrink-0 grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.35fr)] [&>*]:min-w-0">
         <Card className="holo-frame py-4">
           <CardContent className="flex h-full flex-col justify-center gap-1">
             <p className="text-sm text-muted-foreground">Valeur estimée</p>
@@ -119,15 +128,18 @@ export default async function CollectionPage({ searchParams }: Props) {
           </CardContent>
         </Card>
         <Card className="py-4">
-          <CardContent className="grid grid-cols-2 gap-4">
+          <CardContent className="grid grid-cols-2 gap-4 sm:grid-cols-3">
             <div>
               <p className="text-xs text-muted-foreground">Investi</p>
-              <p className="font-display text-2xl font-bold tabular-nums">
+              <p className="font-display text-xl font-bold tabular-nums 2xl:text-2xl">
                 {formatPrice(v.totalCost)}
               </p>
               {v.cards.copies > 0 && (
-                <p className="text-xs text-muted-foreground">
-                  Cartes sans prix d’achat comptées 0 € (issues de boosters déjà payés)
+                <p
+                  className="text-xs text-muted-foreground"
+                  title="Cartes sans prix d’achat comptées 0 € (issues de boosters déjà payés)"
+                >
+                  cartes sans prix d’achat : 0 €
                 </p>
               )}
             </div>
@@ -135,7 +147,7 @@ export default async function CollectionPage({ searchParams }: Props) {
               <p className="text-xs text-muted-foreground">Plus-value latente</p>
               <p
                 className={cn(
-                  'font-display text-2xl font-bold tabular-nums',
+                  'font-display text-xl font-bold tabular-nums 2xl:text-2xl',
                   positive ? 'text-success' : 'text-destructive',
                 )}
               >
@@ -152,6 +164,28 @@ export default async function CollectionPage({ searchParams }: Props) {
                 </p>
               )}
             </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Plus-value réalisée</p>
+              <p
+                className={cn(
+                  'font-display text-xl font-bold tabular-nums 2xl:text-2xl',
+                  realized.count === 0
+                    ? 'text-muted-foreground'
+                    : realized.gain >= 0
+                      ? 'text-success'
+                      : 'text-destructive',
+                )}
+              >
+                {realized.count === 0
+                  ? '—'
+                  : `${realized.gain >= 0 ? '+' : ''}${formatPrice(realized.gain)}`}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {realized.count === 0
+                  ? 'aucune revente'
+                  : `${realized.count} vendu${realized.count > 1 ? 's' : ''} · ${formatPrice(realized.proceeds)} encaissés`}
+              </p>
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -159,11 +193,26 @@ export default async function CollectionPage({ searchParams }: Props) {
       <div className={cn(fitGrid, 'xl:grid-cols-[minmax(0,1fr)_26rem]')}>
         <Card className={cn(fitCard, 'overflow-hidden py-0')}>
           <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b px-5 py-3">
-            <h2 className="font-display text-lg font-bold">
-              {rows.length} ligne{rows.length > 1 ? 's' : ''} · {quantity} produit
-              {quantity > 1 ? 's' : ''}
-            </h2>
-            <form>
+            <nav aria-label="Vue" className="flex gap-1 rounded-full border bg-popover p-1">
+              {[
+                { sold: false, label: `En collection · ${quantity}` },
+                { sold: true, label: `Vendus · ${sold.reduce((n, r) => n + r.quantity, 0)}` },
+              ].map((t) => (
+                <Link
+                  key={t.label}
+                  href={viewHref(t.sold)}
+                  scroll={false}
+                  aria-current={soldView === t.sold ? 'page' : undefined}
+                  className={cn(
+                    'rounded-full px-3.5 py-1.5 text-sm font-semibold text-muted-foreground transition-colors hover:text-foreground',
+                    soldView === t.sold && 'bg-foreground text-background hover:text-background',
+                  )}
+                >
+                  {t.label}
+                </Link>
+              ))}
+            </nav>
+            <form className={cn(soldView && 'hidden')}>
               {category && <input type="hidden" name="categorie" value={category.key} />}
               <AutoSubmitSelect
                 name="tri"
@@ -179,7 +228,9 @@ export default async function CollectionPage({ searchParams }: Props) {
               </noscript>
             </form>
           </div>
-          {rows.length === 0 ? (
+          {soldView ? (
+            <SoldTable rows={sold} />
+          ) : rows.length === 0 ? (
             <p className="py-10 text-center text-sm text-muted-foreground">
               {category
                 ? `Aucun produit « ${category.label} » dans ta collection.`
@@ -234,8 +285,18 @@ export default async function CollectionPage({ searchParams }: Props) {
                         </div>
                       </td>
                       <td className="px-3 py-3 text-right tabular-nums">{r.quantity}</td>
-                      <td className="px-3 py-3 text-right text-muted-foreground tabular-nums">
-                        {formatPrice(r.purchasePrice)}
+                      <td
+                        className="px-3 py-3 text-right text-muted-foreground tabular-nums"
+                        title={
+                          r.shipping
+                            ? `${formatPrice(r.purchasePrice)} + ${formatPrice(r.shipping)} de port`
+                            : undefined
+                        }
+                      >
+                        {formatPrice(r.unitCost)}
+                        {r.shipping ? (
+                          <span className="block text-[11px] font-normal">port compris</span>
+                        ) : null}
                       </td>
                       <td
                         className="px-3 py-3 text-right font-bold tabular-nums"
@@ -268,8 +329,19 @@ export default async function CollectionPage({ searchParams }: Props) {
                       <td className="px-3 py-3 text-xs whitespace-nowrap text-muted-foreground">
                         {[formatDate(r.purchaseDate), r.store].filter(Boolean).join(' · ') || '—'}
                       </td>
-                      <td className="px-3 py-3 text-right">
-                        <form action={deleteCollectionItemAction.bind(null, r.id)}>
+                      <td className="px-3 py-3 text-right whitespace-nowrap">
+                        <SellDialog
+                          id={r.id}
+                          name={r.product.name}
+                          quantity={r.quantity}
+                          purchaseDate={r.purchaseDate.toISOString().slice(0, 10)}
+                          suggestedPrice={r.unitValue}
+                          today={today}
+                        />
+                        <form
+                          action={deleteCollectionItemAction.bind(null, r.id)}
+                          className="inline-block"
+                        >
                           <Button
                             size="icon"
                             variant="ghost"
@@ -344,5 +416,96 @@ export default async function CollectionPage({ searchParams }: Props) {
         </div>
       </div>
     </FitPage>
+  );
+}
+
+type SoldRow = Awaited<ReturnType<typeof getCollection>>['sold'][number];
+
+function SoldTable({ rows }: { rows: SoldRow[] }) {
+  if (rows.length === 0) {
+    return (
+      <p className="py-10 text-center text-sm text-muted-foreground">
+        Aucune revente enregistrée. Utilise le bouton « Vendre » d’une ligne de ta collection.
+      </p>
+    );
+  }
+  return (
+    <div className={cn('relative overflow-x-auto', fitScroll)}>
+      <table className="w-full min-w-[760px] text-sm">
+        <thead className="text-xs tracking-wide text-muted-foreground uppercase fit:sticky fit:top-0 fit:z-10 fit:bg-card">
+          <tr className="border-b">
+            <th className="px-5 py-3 text-left font-semibold">Produit</th>
+            <th className="px-3 py-3 text-right font-semibold">Qté</th>
+            <th className="px-3 py-3 text-right font-semibold">Coût</th>
+            <th className="px-3 py-3 text-right font-semibold">Vendu</th>
+            <th className="px-3 py-3 text-right font-semibold">Plus-value</th>
+            <th className="px-3 py-3 text-left font-semibold">Vente</th>
+            <th className="px-3 py-3">
+              <span className="sr-only">Actions</span>
+            </th>
+          </tr>
+        </thead>
+        <tbody className="divide-y">
+          {rows.map((r) => (
+            <tr key={r.id}>
+              <td className="px-5 py-3">
+                <Link
+                  href={`/produits/${r.product.id}`}
+                  className="line-clamp-2 font-semibold hover:underline"
+                >
+                  {r.product.name}
+                </Link>
+                <p className="text-xs text-muted-foreground">
+                  Acheté {formatDate(r.purchaseDate)}
+                  {r.store ? ` · ${r.store}` : ''}
+                </p>
+              </td>
+              <td className="px-3 py-3 text-right tabular-nums">{r.quantity}</td>
+              <td className="px-3 py-3 text-right text-muted-foreground tabular-nums">
+                {formatPrice(r.cost)}
+                <span className="block text-[11px]">{formatPrice(r.unitCost)} / u.</span>
+              </td>
+              <td className="px-3 py-3 text-right font-bold tabular-nums">
+                {formatPrice(r.proceeds)}
+                <span className="block text-[11px] font-normal text-muted-foreground">
+                  {formatPrice(r.salePrice)} / u.
+                  {r.saleFees ? ` − ${formatPrice(r.saleFees)} frais` : ''}
+                </span>
+              </td>
+              <td className="px-3 py-3 text-right">
+                <span
+                  className={cn(
+                    'rounded-md px-2 py-0.5 text-xs font-bold tabular-nums',
+                    r.gain >= 0
+                      ? 'bg-success/15 text-success'
+                      : 'bg-destructive/15 text-destructive',
+                  )}
+                >
+                  {r.gain >= 0 ? '+' : ''}
+                  {formatPrice(r.gain)}
+                </span>
+              </td>
+              <td className="px-3 py-3 text-xs whitespace-nowrap text-muted-foreground">
+                {[formatDate(r.soldAt), r.saleChannel].filter(Boolean).join(' · ')}
+              </td>
+              <td className="px-3 py-3 text-right">
+                <form action={cancelSaleAction.bind(null, r.id)}>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    type="submit"
+                    aria-label={`Annuler la vente de ${r.product.name}`}
+                    title="Annuler la vente (la ligne revient dans la collection)"
+                    className="size-8 text-muted-foreground"
+                  >
+                    <Undo2 />
+                  </Button>
+                </form>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }

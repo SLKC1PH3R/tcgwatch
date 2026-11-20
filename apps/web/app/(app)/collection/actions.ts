@@ -4,7 +4,14 @@ import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { prisma, SealCondition } from '@tcgwatch/db';
 import { requireUser } from '@/lib/auth';
-import { firstIssue, formToObject, optionalDate, optionalText, requiredPrice } from '@/lib/form';
+import {
+  firstIssue,
+  formToObject,
+  optionalDate,
+  optionalPrice,
+  optionalText,
+  requiredPrice,
+} from '@/lib/form';
 import { deleteUpload, saveCollectionPhoto } from '@/lib/uploads';
 
 export interface CollectionState {
@@ -18,6 +25,7 @@ const itemSchema = z.object({
   purchasePrice: requiredPrice,
   purchaseDate: optionalDate.refine((d) => d !== null, 'Date d’achat requise'),
   store: optionalText,
+  shipping: optionalPrice,
   condition: z.enum(SealCondition),
   notes: optionalText,
 });
@@ -48,6 +56,7 @@ export async function addCollectionItemAction(
       purchasePrice: d.purchasePrice,
       purchaseDate: d.purchaseDate!,
       store: d.store,
+      shipping: d.shipping,
       condition: d.condition,
       notes: d.notes,
       photoPath,
@@ -62,6 +71,85 @@ export async function deleteCollectionItemAction(id: string) {
   await requireUser();
   const item = await prisma.collectionItem.delete({ where: { id } });
   await deleteUpload(item.photoPath);
+  revalidatePath('/collection');
+  revalidatePath('/');
+}
+
+const saleSchema = z.object({
+  id: z.string().min(1),
+  quantity: z.coerce.number().int().min(1, 'Quantité minimale : 1'),
+  salePrice: requiredPrice,
+  saleFees: optionalPrice,
+  soldAt: optionalDate.refine((d) => d !== null, 'Date de vente requise'),
+  saleChannel: optionalText,
+});
+
+/**
+ * Revente de tout ou partie d'une ligne. Vente partielle : la ligne est scindée (la part vendue
+ * devient une ligne « vendue », avec sa part des frais de port), le reste reste en collection.
+ */
+export async function sellCollectionItemAction(
+  _prev: CollectionState,
+  formData: FormData,
+): Promise<CollectionState> {
+  await requireUser();
+  const parsed = saleSchema.safeParse(formToObject(formData));
+  if (!parsed.success) return { error: firstIssue(parsed.error) };
+  const d = parsed.data;
+  const item = await prisma.collectionItem.findUnique({ where: { id: d.id } });
+  if (!item || item.soldAt) return { error: 'Ligne introuvable ou déjà vendue.' };
+  if (d.quantity > item.quantity) {
+    return { error: `Tu n’en as que ${item.quantity} sur cette ligne.` };
+  }
+  if (d.soldAt! < item.purchaseDate) return { error: 'La vente ne peut pas précéder l’achat.' };
+
+  const sale = {
+    soldAt: d.soldAt!,
+    salePrice: d.salePrice,
+    saleFees: d.saleFees,
+    saleChannel: d.saleChannel,
+  };
+  if (d.quantity === item.quantity) {
+    await prisma.collectionItem.update({ where: { id: item.id }, data: sale });
+  } else {
+    const shipping = item.shipping === null ? null : Number(item.shipping);
+    const soldShipping =
+      shipping === null ? null : Math.round(((shipping * d.quantity) / item.quantity) * 100) / 100;
+    await prisma.$transaction([
+      prisma.collectionItem.update({
+        where: { id: item.id },
+        data: {
+          quantity: item.quantity - d.quantity,
+          shipping: shipping === null ? null : Math.round((shipping - soldShipping!) * 100) / 100,
+        },
+      }),
+      prisma.collectionItem.create({
+        data: {
+          productId: item.productId,
+          quantity: d.quantity,
+          purchasePrice: item.purchasePrice,
+          purchaseDate: item.purchaseDate,
+          store: item.store,
+          shipping: soldShipping,
+          condition: item.condition,
+          notes: item.notes,
+          ...sale,
+        },
+      }),
+    ]);
+  }
+  revalidatePath('/collection');
+  revalidatePath('/');
+  return { success: 'Vente enregistrée.' };
+}
+
+/** Annule une vente : la ligne revient dans la collection. */
+export async function cancelSaleAction(id: string) {
+  await requireUser();
+  await prisma.collectionItem.update({
+    where: { id },
+    data: { soldAt: null, salePrice: null, saleFees: null, saleChannel: null },
+  });
   revalidatePath('/collection');
   revalidatePath('/');
 }

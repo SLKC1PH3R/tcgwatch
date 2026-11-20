@@ -12,38 +12,77 @@ const num = (n: number | null) => (n === null ? '' : n.toFixed(2).replace('.', '
 
 export async function GET() {
   if (!(await getCurrentUser())) return new Response('Non autorisé', { status: 401 });
-  const { rows } = await getCollection();
+  const { rows, sold } = await getCollection();
+  const day = (d: Date | null) => (d ? d.toISOString().slice(0, 10) : '');
 
   const header = [
+    'Statut',
     'Produit',
     'Type',
     'Quantité',
     'Prix d’achat unitaire (€)',
+    'Frais de port à l’achat (€)',
+    'Coût unitaire, port compris (€)',
     'Date d’achat',
     'Magasin',
     'État',
     'Valeur unitaire estimée (€)',
     'Source de la valeur',
     'Plus-value latente (€)',
+    'Date de vente',
+    'Vendu sur',
+    'Prix de vente unitaire (€)',
+    'Frais de vente (€)',
+    'Montant encaissé (€)',
+    'Plus-value réalisée (€)',
     'Notes',
   ];
-  const lines = rows.map((r) =>
-    [
+  const lines = [
+    ...rows.map((r) => [
+      'En collection',
       r.product.name,
       r.product.type,
       r.quantity,
       num(r.purchasePrice),
-      r.purchaseDate.toISOString().slice(0, 10),
+      num(r.shipping),
+      num(r.unitCost),
+      day(r.purchaseDate),
       r.store,
       r.condition,
       num(r.unitValue),
       r.valueSource,
       num(r.gain),
+      '',
+      '',
+      '',
+      '',
+      '',
+      '',
       r.notes,
-    ]
-      .map(cell)
-      .join(';'),
-  );
+    ]),
+    ...sold.map((r) => [
+      'Vendu',
+      r.product.name,
+      r.product.type,
+      r.quantity,
+      num(r.purchasePrice),
+      num(r.shipping),
+      num(r.unitCost),
+      day(r.purchaseDate),
+      r.store,
+      r.condition,
+      '',
+      '',
+      '',
+      day(r.soldAt),
+      r.saleChannel,
+      num(r.salePrice),
+      num(r.saleFees),
+      num(r.proceeds),
+      num(r.gain),
+      r.notes,
+    ]),
+  ].map((l) => l.map(cell).join(';'));
   // BOM UTF-8 : accents corrects à l'ouverture dans Excel.
   const csv = `\uFEFF${[header.map(cell).join(';'), ...lines].join('\r\n')}\r\n`;
   const date = new Date().toISOString().slice(0, 10);

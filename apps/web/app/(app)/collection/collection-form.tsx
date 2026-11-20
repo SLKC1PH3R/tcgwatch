@@ -76,15 +76,21 @@ export function CollectionForm({
           <Input id="c-store" name="store" placeholder="Play-In, Leclerc…" />
         </div>
       </div>
-      <div className="space-y-1.5">
-        <Label htmlFor="c-condition">État du scellé</Label>
-        <NativeSelect id="c-condition" name="condition" defaultValue="MINT">
-          {Object.entries(CONDITION_LABELS).map(([k, v]) => (
-            <option key={k} value={k}>
-              {v}
-            </option>
-          ))}
-        </NativeSelect>
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-1.5">
+          <Label htmlFor="c-shipping">Frais de port (€, toute la commande)</Label>
+          <Input id="c-shipping" name="shipping" inputMode="decimal" placeholder="0" />
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="c-condition">État du scellé</Label>
+          <NativeSelect id="c-condition" name="condition" defaultValue="MINT">
+            {Object.entries(CONDITION_LABELS).map(([k, v]) => (
+              <option key={k} value={k}>
+                {v}
+              </option>
+            ))}
+          </NativeSelect>
+        </div>
       </div>
       <div className="space-y-1.5">
         <Label htmlFor="c-photo">Photo (optionnelle, 5 Mo max.)</Label>

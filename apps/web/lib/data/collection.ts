@@ -58,14 +58,19 @@ export async function getCollection() {
   }
   const marketPrice = new Map([...market].map(([id, m]) => [id, m.price]));
 
-  const rows = items.map((i) => {
+  const held = items.filter((i) => i.soldAt === null);
+  const rows = held.map((i) => {
     const purchasePrice = toNumber(i.purchasePrice)!;
+    const shipping = toNumber(i.shipping);
+    const unitCost = lineUnitCost(i);
     const unitValue = marketPrice.get(i.productId) ?? retail.get(i.productId) ?? null;
     return {
       id: i.id,
       product: i.product,
       quantity: i.quantity,
       purchasePrice,
+      shipping,
+      unitCost,
       purchaseDate: i.purchaseDate,
       store: i.store,
       condition: i.condition,
@@ -77,15 +82,52 @@ export async function getCollection() {
         : retail.has(i.productId)
           ? ('boutique' as const)
           : null,
-      gain: unitValue !== null ? (unitValue - purchasePrice) * i.quantity : null,
+      gain: unitValue !== null ? round((unitValue - unitCost) * i.quantity) : null,
     };
   });
 
+  // Reventes : plus-value réalisée = prix de vente − frais − coût d'achat (port compris).
+  const sold = items
+    .filter((i) => i.soldAt !== null)
+    .map((i) => {
+      const unitCost = lineUnitCost(i);
+      const salePrice = toNumber(i.salePrice) ?? 0;
+      const saleFees = toNumber(i.saleFees) ?? 0;
+      const cost = round(unitCost * i.quantity);
+      const proceeds = round(salePrice * i.quantity - saleFees);
+      return {
+        id: i.id,
+        product: i.product,
+        quantity: i.quantity,
+        purchasePrice: toNumber(i.purchasePrice)!,
+        shipping: toNumber(i.shipping),
+        unitCost,
+        purchaseDate: i.purchaseDate,
+        store: i.store,
+        condition: i.condition,
+        notes: i.notes,
+        soldAt: i.soldAt!,
+        salePrice,
+        saleFees,
+        saleChannel: i.saleChannel,
+        cost,
+        proceeds,
+        gain: round(proceeds - cost),
+      };
+    })
+    .sort((a, b) => b.soldAt.getTime() - a.soldAt.getTime());
+  const realized = {
+    count: sold.reduce((n, r) => n + r.quantity, 0),
+    cost: round(sold.reduce((s, r) => s + r.cost, 0)),
+    proceeds: round(sold.reduce((s, r) => s + r.proceeds, 0)),
+    gain: round(sold.reduce((s, r) => s + r.gain, 0)),
+  };
+
   const sealed = valueCollection({
-    lines: items.map((i) => ({
+    lines: held.map((i) => ({
       productId: i.productId,
       quantity: i.quantity,
-      purchasePrice: toNumber(i.purchasePrice)!,
+      purchasePrice: lineUnitCost(i),
     })),
     marketPrice,
     retailPrice: retail,
@@ -110,7 +152,17 @@ export async function getCollection() {
     cards,
   };
 
-  return { rows, valuation };
+  return { rows, sold, realized, valuation };
+}
+
+/** Coût unitaire d'une ligne : prix payé + sa part des frais de port. */
+function lineUnitCost(i: {
+  purchasePrice: Parameters<typeof toNumber>[0];
+  shipping: Parameters<typeof toNumber>[0];
+  quantity: number;
+}): number {
+  const shipping = toNumber(i.shipping) ?? 0;
+  return round(toNumber(i.purchasePrice)! + shipping / Math.max(1, i.quantity));
 }
 
 export type CollectionPoint = {
@@ -128,7 +180,14 @@ export type CollectionPoint = {
 export async function getCollectionHistory(days = 365): Promise<CollectionPoint[]> {
   const [items, cardLines] = await Promise.all([
     prisma.collectionItem.findMany({
-      select: { productId: true, quantity: true, purchasePrice: true, purchaseDate: true },
+      select: {
+        productId: true,
+        quantity: true,
+        purchasePrice: true,
+        shipping: true,
+        purchaseDate: true,
+        soldAt: true,
+      },
     }),
     getOwnedCardLines(),
   ]);
@@ -197,8 +256,9 @@ export async function getCollectionHistory(days = 365): Promise<CollectionPoint[
     let invested = 0;
     let value = 0;
     for (const i of items) {
-      if (i.purchaseDate.getTime() > t) continue;
-      const paid = toNumber(i.purchasePrice)!;
+      // Revendu : sort de la collection (valeur et investi) à partir du jour de la vente.
+      if (i.purchaseDate.getTime() > t || (i.soldAt && i.soldAt.getTime() <= t)) continue;
+      const paid = lineUnitCost(i);
       invested += paid * i.quantity;
       value += (lastMarket.get(i.productId) ?? lastRetail.get(i.productId) ?? paid) * i.quantity;
     }

@@ -471,6 +471,13 @@ model CollectionItem {
   purchasePrice Decimal       @db.Decimal(10, 2) /// prix unitaire payé
   purchaseDate  DateTime      @db.Date
   store         String?
+  /// Frais de port payés pour toute la ligne (répartis sur la quantité).
+  shipping      Decimal?      @db.Decimal(10, 2)
+  /// Revente : date, prix unitaire, frais (commission + port, pour toute la ligne), canal.
+  soldAt        DateTime?     @db.Date
+  salePrice     Decimal?      @db.Decimal(10, 2)
+  saleFees      Decimal?      @db.Decimal(10, 2)
+  saleChannel   String?
   condition     SealCondition @default(MINT)
   photoPath     String?
   notes         String?
@@ -480,8 +487,6 @@ model CollectionItem {
   @@index([productId])
 }
 
-/// Annonce d'un particulier ou d'un vendeur sur une place de marché (eBay, API officielle),
-/// trouvée pour un produit de « Mes produits » (produit avec un bon prix).
 /// Prix du marché de l'occasion, un résumé par jour et par source (annonces eBay neuves, en
 /// achat immédiat, port compris) : la 3ᵉ courbe de la fiche produit.
 model SecondhandDaily {
@@ -498,6 +503,8 @@ model SecondhandDaily {
   @@unique([productId, source, date])
 }
 
+/// Annonce d'un particulier ou d'un vendeur sur une place de marché (eBay, API officielle),
+/// trouvée pour un produit de « Mes produits » (produit avec un bon prix).
 model MarketListing {
   id          String    @id @default(cuid())
   source      String /// "ebay"
