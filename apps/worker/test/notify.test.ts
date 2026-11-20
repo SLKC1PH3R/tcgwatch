@@ -90,3 +90,29 @@ describe('Notifier', () => {
     });
   });
 });
+
+describe('Notifier — repères de prix', () => {
+  it('ajoute prix conseillé et marché secondaire sous le message Telegram', async () => {
+    const { calls, fetchImpl } = capture();
+    const n = new Notifier({ telegramBotToken: 'bt', telegramChatId: '42' }, logger, fetchImpl);
+    await n.send({
+      title: '✅ Retour en stock : Lucario',
+      message: 'DracauGames — 34,90 €',
+      details: [
+        'Prix de vente conseillé : 29,99 €',
+        'Marché secondaire : 42,00 € · Cardmarket (+40 % vs conseillé)',
+      ],
+      url: 'https://example.com/p',
+    });
+    const body = JSON.parse(String(calls[0]!.init.body)) as { text: string };
+    expect(body.text).toBe(
+      [
+        '<b>✅ Retour en stock : Lucario</b>',
+        'DracauGames — 34,90 €',
+        'Prix de vente conseillé : <b>29,99 €</b>',
+        'Marché secondaire : <b>42,00 €</b> · Cardmarket (+40 % vs conseillé)',
+        '<a href="https://example.com/p">Voir la fiche</a>',
+      ].join('\n'),
+    );
+  });
+});

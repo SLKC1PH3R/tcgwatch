@@ -1,4 +1,5 @@
 import { prisma, type AlertType } from '@tcgwatch/db';
+import { formatPrice, toNumber } from '@tcgwatch/shared';
 import type { WorkerContext } from '../context';
 import type { Notification } from '../notify';
 
@@ -48,7 +49,8 @@ export async function dispatchAlert(ctx: WorkerContext, alert: AlertToDispatch):
     },
   });
 
-  const delivery = await ctx.notifier.send(alert);
+  const details = alert.details ?? (alert.productId ? await priceDetails(alert.productId) : []);
+  const delivery = await ctx.notifier.send({ ...alert, details });
   await prisma.alertEvent.update({
     where: { id: event.id },
     data: { sentNtfy: delivery.ntfy, sentTelegram: delivery.telegram },
@@ -58,4 +60,43 @@ export async function dispatchAlert(ctx: WorkerContext, alert: AlertToDispatch):
     'Alerte émise',
   );
   return true;
+}
+
+const MARKET_SOURCES: Record<string, string> = {
+  cardmarket: 'Cardmarket',
+  ebay: 'eBay',
+  poketrace: 'PokeTrace',
+  cardnexus: 'CardNexus',
+};
+
+/** Repères de prix d'un produit : prix de vente conseillé et dernière cote du marché secondaire. */
+export async function priceDetails(productId: string): Promise<string[]> {
+  const [product, quote] = await Promise.all([
+    prisma.product.findUnique({ where: { id: productId }, select: { msrp: true } }),
+    prisma.marketPrice.findFirst({
+      where: { productId },
+      orderBy: { date: 'desc' },
+      select: { price: true, source: true },
+    }),
+  ]);
+  return marketLines(
+    toNumber(product?.msrp ?? null),
+    quote ? toNumber(quote.price) : null,
+    quote?.source,
+  );
+}
+
+export function marketLines(msrp: number | null, market: number | null, source?: string): string[] {
+  const lines = [`Prix de vente conseillé : ${msrp !== null ? formatPrice(msrp) : 'inconnu'}`];
+  if (market === null) {
+    lines.push('Marché secondaire : pas encore de cote');
+  } else {
+    const gap =
+      msrp !== null && msrp > 0
+        ? ` (${market >= msrp ? '+' : '−'}${Math.round(Math.abs(market / msrp - 1) * 100)} % vs conseillé)`
+        : '';
+    const from = source ? ` · ${MARKET_SOURCES[source] ?? source}` : '';
+    lines.push(`Marché secondaire : ${formatPrice(market)}${from}${gap}`);
+  }
+  return lines;
 }

@@ -5,6 +5,8 @@ export interface Notification {
   message: string;
   /** Lien ouvert au clic (fiche produit). */
   url?: string;
+  /** Repères de prix affichés sous le message (« Prix conseillé : 29,99 € »…). */
+  details?: string[];
   /** Texte du lien sur Telegram (« Voir la fiche » par défaut). */
   linkLabel?: string;
   priority?: 'min' | 'low' | 'default' | 'high' | 'urgent';
@@ -84,7 +86,7 @@ export class Notifier {
       const res = await this.fetchImpl(this.config.ntfyUrl, {
         method: 'POST',
         headers,
-        body: n.message,
+        body: [n.message, ...(n.details ?? [])].join('\n'),
         signal: AbortSignal.timeout(10_000),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -131,6 +133,16 @@ export class Notifier {
     const text = [
       `<b>${escape(n.title)}</b>`,
       escape(n.message),
+      ...(n.details ?? []).map((d) => {
+        const i = d.indexOf(' : ');
+        if (i < 0) return escape(d);
+        // Valeur en gras, précisions (source, écart) en texte normal.
+        const value = d.slice(i + 3);
+        const cut = value.search(/ · | \(/);
+        const main = cut < 0 ? value : value.slice(0, cut);
+        const rest = cut < 0 ? '' : value.slice(cut);
+        return `${escape(d.slice(0, i))} : <b>${escape(main)}</b>${escape(rest)}`;
+      }),
       n.url ? `<a href="${escape(n.url)}">${escape(n.linkLabel ?? 'Voir la fiche')}</a>` : '',
     ]
       .filter(Boolean)
