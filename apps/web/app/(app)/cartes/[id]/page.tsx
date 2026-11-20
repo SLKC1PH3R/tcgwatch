@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { formatPercent, formatPrice } from '@tcgwatch/shared';
 import { CardChart } from '@/components/card-chart';
+import { FitPage } from '@/components/fit-page';
 import { FormError } from '@/components/form-message';
 import { PageHeader } from '@/components/page-header';
 import { Badge } from '@/components/ui/badge';
@@ -13,7 +14,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { getCardPage } from '@/lib/data/cards';
-import type { LocalCard } from '@/lib/data/encyclopedia';
+import { searchCards, type LocalCard } from '@/lib/data/encyclopedia';
+import { fitCard, fitColumn, fitGrid, fitScroll } from '@/lib/fit';
 import { PERIODS, periodOf, periodStart } from '@/lib/data/history';
 import { cn } from '@/lib/utils';
 import { prisma } from '@tcgwatch/db';
@@ -55,6 +57,11 @@ export default async function CardPage({ params, searchParams }: Props) {
 
   const first = history.find((h) => h.trend !== null)?.trend ?? null;
   const change = first && card.current?.trend ? card.current.trend / first - 1 : null;
+  // Autres cartes du même Pokémon (premier mot du nom : « Noctali ex » → « Noctali »).
+  const pokemon = card.name.split(/\s+/)[0] ?? card.name;
+  const siblings = (await searchCards(pokemon)).cards
+    .filter((c) => c.id !== card.tcgdexId)
+    .slice(0, 12);
   const stats = [
     { label: 'Tendance', value: card.current?.trend ?? null },
     { label: 'Prix bas', value: card.current?.low ?? null },
@@ -63,7 +70,7 @@ export default async function CardPage({ params, searchParams }: Props) {
   ];
 
   return (
-    <>
+    <FitPage>
       <PageHeader
         title={card.name}
         description={
@@ -111,157 +118,222 @@ export default async function CardPage({ params, searchParams }: Props) {
       />
       <FormError message={erreur} />
 
-      <div className="grid gap-6 lg:grid-cols-[18rem_1fr]">
-        <div className="space-y-3">
+      <div
+        className={cn(
+          fitGrid,
+          'lg:grid-cols-[minmax(0,16rem)_minmax(0,1fr)] xl:grid-cols-[minmax(0,20rem)_minmax(0,1fr)_20rem]',
+        )}
+      >
+        {/* La carte en grand : sur une page plein écran, elle suit la hauteur disponible. */}
+        <div className="holo-frame flex items-start justify-center overflow-hidden rounded-[1.375rem] border bg-card p-3 fit:min-h-0 fit:items-center">
           {card.image ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
               referrerPolicy="no-referrer"
               src={card.image}
               alt={card.name}
-              className="aspect-[63/88] w-full rounded-xl border bg-muted object-cover"
+              className="aspect-[63/88] w-full rounded-xl border bg-muted object-contain fit:h-full fit:max-h-full fit:w-auto fit:max-w-full"
             />
           ) : (
-            <div className="aspect-[63/88] w-full rounded-xl border bg-muted" />
+            <div className="aspect-[63/88] w-full max-w-72 rounded-xl border bg-muted" />
           )}
-          {card.local && (
-            <div className="space-y-2 rounded-xl border bg-card p-3">
-              <p className="text-sm font-semibold">Dans ma collection</p>
-              <ul className="space-y-1.5">
-                {variants.map((v) => (
-                  <li key={v} className="flex items-center justify-between gap-2 text-sm">
-                    <span className="text-muted-foreground">{VARIANT_LABELS[v]}</span>
-                    <span className="flex items-center gap-1">
-                      <form action={adjustOwnedCardAction.bind(null, tcgdexId, -1, v)}>
-                        <Button
-                          type="submit"
-                          size="icon"
-                          variant="ghost"
-                          className="size-7"
-                          disabled={!ownedBy[v]}
-                          aria-label={`Retirer une ${VARIANT_LABELS[v]}`}
-                        >
-                          <Minus />
-                        </Button>
-                      </form>
-                      <span className="w-6 text-center font-bold tabular-nums">
-                        {ownedBy[v] ?? 0}
-                      </span>
-                      <form action={adjustOwnedCardAction.bind(null, tcgdexId, 1, v)}>
-                        <Button
-                          type="submit"
-                          size="icon"
-                          variant="ghost"
-                          className="size-7"
-                          aria-label={`Ajouter une ${VARIANT_LABELS[v]}`}
-                        >
-                          <Plus />
-                        </Button>
-                      </form>
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-          {card.local && <CardFacts card={card.local} />}
-          <a
-            href={`https://www.tcgdex.dev/cards/${encodeURIComponent(card.tcgdexId)}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
-          >
-            Fiche TCGdex <ExternalLink className="size-3" />
-          </a>
         </div>
 
-        <Card>
-          <CardHeader className="flex-col">
-            <CardTitle>Cotes Cardmarket</CardTitle>
-            <CardDescription>
-              Agrégées par TCGdex
-              {card.tracked
-                ? ', relevées chaque jour.'
-                : ' — suivez la carte pour garder son historique.'}
-              {change !== null &&
-                ` ${period.days ? `Sur ${period.label}` : 'Depuis le premier relevé'} : ${formatPercent(change)}.`}
-            </CardDescription>
-            <nav aria-label="Période" className="flex flex-wrap gap-1">
-              {PERIODS.map((p) => (
-                <Link
-                  key={p.key}
-                  href={`/cartes/${encodeURIComponent(card.tcgdexId)}?periode=${p.key}`}
-                  scroll={false}
-                  aria-current={p.key === period.key ? 'true' : undefined}
+        <div className={fitColumn}>
+          <div className="grid shrink-0 grid-cols-2 gap-3 sm:grid-cols-4">
+            {stats.map((s, i) => (
+              <div key={s.label} className="min-w-0 rounded-xl border bg-card px-4 py-3">
+                <p className="text-xs text-muted-foreground">{s.label}</p>
+                <p
                   className={cn(
-                    'rounded-full border px-2.5 py-1 text-xs font-medium text-muted-foreground hover:bg-accent',
-                    p.key === period.key &&
-                      'border-foreground bg-foreground text-background hover:bg-foreground',
+                    'font-display text-xl font-bold tabular-nums',
+                    i === 0 && 'text-primary',
                   )}
                 >
-                  {p.label}
+                  {formatPrice(s.value)}
+                </p>
+              </div>
+            ))}
+          </div>
+          <Card className={cn(fitCard, 'fit:flex-1')}>
+            <CardHeader className="flex-col">
+              <CardTitle>Cotes Cardmarket</CardTitle>
+              <CardDescription>
+                Agrégées par TCGdex
+                {card.tracked
+                  ? ', relevées chaque jour.'
+                  : ' — suivez la carte pour garder son historique.'}
+                {change !== null &&
+                  ` ${period.days ? `Sur ${period.label}` : 'Depuis le premier relevé'} : ${formatPercent(change)}.`}
+              </CardDescription>
+              <nav aria-label="Période" className="flex flex-wrap gap-1">
+                {PERIODS.map((p) => (
+                  <Link
+                    key={p.key}
+                    href={`/cartes/${encodeURIComponent(card.tcgdexId)}?periode=${p.key}`}
+                    scroll={false}
+                    aria-current={p.key === period.key ? 'true' : undefined}
+                    className={cn(
+                      'rounded-full border px-2.5 py-1 text-xs font-medium text-muted-foreground hover:bg-accent',
+                      p.key === period.key &&
+                        'border-foreground bg-foreground text-background hover:bg-foreground',
+                    )}
+                  >
+                    {p.label}
+                  </Link>
+                ))}
+              </nav>
+            </CardHeader>
+            <CardContent className="fit:min-h-0 fit:flex-1">
+              <CardChart data={history} />
+            </CardContent>
+          </Card>
+          {siblings.length > 0 && (
+            <Card className={cn(fitCard, 'shrink-0')}>
+              <CardHeader className="items-center">
+                <CardTitle>Autres cartes {pokemon}</CardTitle>
+                <Link
+                  href={`/cartes?q=${encodeURIComponent(pokemon)}`}
+                  className="text-sm text-primary hover:underline"
+                >
+                  Toutes ›
                 </Link>
-              ))}
-            </nav>
-            <dl className="grid w-full grid-cols-2 gap-3 pt-2 text-sm sm:grid-cols-4">
-              {stats.map((s) => (
-                <div key={s.label}>
-                  <dt className="text-muted-foreground">{s.label}</dt>
-                  <dd className="font-semibold tabular-nums">{formatPrice(s.value)}</dd>
-                </div>
-              ))}
-            </dl>
+              </CardHeader>
+              <CardContent>
+                <ul className="flex [scrollbar-width:thin] gap-2 overflow-x-auto pb-1">
+                  {siblings.map((c) => (
+                    <li key={c.id} className="w-20 shrink-0 fit:w-[4.5rem]">
+                      <Link
+                        href={`/cartes/${encodeURIComponent(c.id)}`}
+                        title={`${c.name} · ${c.setName}`}
+                        className="block"
+                      >
+                        {c.image ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            referrerPolicy="no-referrer"
+                            src={c.image}
+                            alt={c.name}
+                            loading="lazy"
+                            className="aspect-[63/88] w-full rounded-md border bg-muted object-cover transition-transform hover:scale-[1.04]"
+                          />
+                        ) : (
+                          <span className="block aspect-[63/88] w-full rounded-md border bg-muted" />
+                        )}
+                        <span className="mt-0.5 block truncate text-[11px] text-muted-foreground">
+                          {c.setName}
+                        </span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+
+        <Card className={cn(fitCard, 'lg:col-span-2 xl:col-span-1')}>
+          <CardHeader>
+            <CardTitle>Détails</CardTitle>
           </CardHeader>
-          <CardContent>
-            <CardChart data={history} />
+          <CardContent className={cn('space-y-4', fitScroll)}>
+            {card.local && <CardFacts card={card.local} />}
+            {card.local && (
+              <div className="space-y-2 rounded-xl border bg-card p-3">
+                <p className="text-sm font-semibold">Dans ma collection</p>
+                <ul className="space-y-1.5">
+                  {variants.map((v) => (
+                    <li key={v} className="flex items-center justify-between gap-2 text-sm">
+                      <span className="text-muted-foreground">{VARIANT_LABELS[v]}</span>
+                      <span className="flex items-center gap-1">
+                        <form action={adjustOwnedCardAction.bind(null, tcgdexId, -1, v)}>
+                          <Button
+                            type="submit"
+                            size="icon"
+                            variant="ghost"
+                            className="size-7"
+                            disabled={!ownedBy[v]}
+                            aria-label={`Retirer une ${VARIANT_LABELS[v]}`}
+                          >
+                            <Minus />
+                          </Button>
+                        </form>
+                        <span className="w-6 text-center font-bold tabular-nums">
+                          {ownedBy[v] ?? 0}
+                        </span>
+                        <form action={adjustOwnedCardAction.bind(null, tcgdexId, 1, v)}>
+                          <Button
+                            type="submit"
+                            size="icon"
+                            variant="ghost"
+                            className="size-7"
+                            aria-label={`Ajouter une ${VARIANT_LABELS[v]}`}
+                          >
+                            <Plus />
+                          </Button>
+                        </form>
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {card.tracked && (
+              <div className="space-y-3 rounded-xl border bg-popover/40 p-3">
+                <div className="space-y-1">
+                  <p className="flex items-center gap-2 text-sm font-semibold">
+                    <Bell className="size-4" /> Alertes de prix
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Prévenir quand la tendance Cardmarket du relevé quotidien passe sous ou
+                    au-dessus d’un seuil (une alerte par jour au plus). Laisser vide pour ne pas
+                    être prévenu.
+                  </p>
+                </div>
+                <div>
+                  <form
+                    action={setCardAlertAction.bind(null, card.tcgdexId)}
+                    className="flex flex-wrap items-end gap-3"
+                  >
+                    <div className="space-y-1.5">
+                      <Label htmlFor="alertBelow">Sous (€)</Label>
+                      <Input
+                        id="alertBelow"
+                        name="alertBelow"
+                        inputMode="decimal"
+                        placeholder="ex. 80"
+                        defaultValue={fmt(card.tracked.alertBelow)}
+                        className="w-32"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="alertAbove">Au-dessus de (€)</Label>
+                      <Input
+                        id="alertAbove"
+                        name="alertAbove"
+                        inputMode="decimal"
+                        placeholder="ex. 150"
+                        defaultValue={fmt(card.tracked.alertAbove)}
+                        className="w-32"
+                      />
+                    </div>
+                    <Button type="submit">Enregistrer</Button>
+                  </form>
+                </div>
+              </div>
+            )}
+            <a
+              href={`https://www.tcgdex.dev/cards/${encodeURIComponent(card.tcgdexId)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+            >
+              Fiche TCGdex <ExternalLink className="size-3" />
+            </a>
           </CardContent>
         </Card>
       </div>
-
-      {card.tracked && (
-        <Card className="mt-6">
-          <CardHeader className="flex-col">
-            <CardTitle className="flex items-center gap-2">
-              <Bell className="size-4" /> Alertes de prix
-            </CardTitle>
-            <CardDescription>
-              Prévenir quand la tendance Cardmarket du relevé quotidien passe sous ou au-dessus d’un
-              seuil (une alerte par jour au plus). Laisser vide pour ne pas être prévenu.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form
-              action={setCardAlertAction.bind(null, card.tcgdexId)}
-              className="flex flex-wrap items-end gap-3"
-            >
-              <div className="space-y-1.5">
-                <Label htmlFor="alertBelow">Sous (€)</Label>
-                <Input
-                  id="alertBelow"
-                  name="alertBelow"
-                  inputMode="decimal"
-                  placeholder="ex. 80"
-                  defaultValue={fmt(card.tracked.alertBelow)}
-                  className="w-32"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="alertAbove">Au-dessus de (€)</Label>
-                <Input
-                  id="alertAbove"
-                  name="alertAbove"
-                  inputMode="decimal"
-                  placeholder="ex. 150"
-                  defaultValue={fmt(card.tracked.alertAbove)}
-                  className="w-32"
-                />
-              </div>
-              <Button type="submit">Enregistrer</Button>
-            </form>
-          </CardContent>
-        </Card>
-      )}
-    </>
+    </FitPage>
   );
 }
 

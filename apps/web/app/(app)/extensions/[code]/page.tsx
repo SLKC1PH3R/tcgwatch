@@ -13,6 +13,7 @@ import {
 } from '@tcgwatch/shared';
 import { AvailabilityBadge } from '@/components/availability-badge';
 import { Countdown } from '@/components/countdown';
+import { FitPage } from '@/components/fit-page';
 import { PageHeader } from '@/components/page-header';
 import { SafeImg } from '@/components/safe-img';
 import { Sparkline } from '@/components/sparkline';
@@ -79,7 +80,7 @@ export default async function ExtensionPage({ params, searchParams }: Props) {
   };
 
   return (
-    <>
+    <FitPage>
       <PageHeader
         title={ext.nameFr}
         description={<ExtensionFacts ext={ext} />}
@@ -99,7 +100,7 @@ export default async function ExtensionPage({ params, searchParams }: Props) {
         }
       />
 
-      <nav aria-label="Onglets de l’extension" className="mb-4 flex flex-wrap gap-1.5">
+      <nav aria-label="Onglets de l’extension" className="flex shrink-0 flex-wrap gap-1.5">
         {TABS.map((t) => (
           <Link
             key={t.key}
@@ -119,20 +120,23 @@ export default async function ExtensionPage({ params, searchParams }: Props) {
         ))}
       </nav>
 
-      {tab === 'produits' && <ProductsTab ext={ext} />}
-      {tab === 'cartes' && (
-        <CardsTab
-          ext={ext}
-          rarity={query.rarete}
-          type={query.type}
-          secret={query.secretes === '1'}
-          href={(extra) => tabHref('cartes', extra)}
-        />
-      )}
-      {tab === 'phares' && <ChaseTab ext={ext} cardsHref={tabHref('cartes')} />}
-      {tab === 'prix' && <PricesTab ext={ext} />}
-      {tab === 'dates' && <DatesTab ext={ext} />}
-    </>
+      {/* Sur une page plein écran, l'onglet ouvert prend la hauteur restante et défile dedans. */}
+      <div className="fit:min-h-0 fit:flex-1 fit:overflow-y-auto fit:[mask-image:linear-gradient(to_bottom,#000_calc(100%-1.75rem),transparent)] fit:pr-1 fit:pb-3">
+        {tab === 'produits' && <ProductsTab ext={ext} />}
+        {tab === 'cartes' && (
+          <CardsTab
+            ext={ext}
+            rarity={query.rarete}
+            type={query.type}
+            secret={query.secretes === '1'}
+            href={(extra) => tabHref('cartes', extra)}
+          />
+        )}
+        {tab === 'phares' && <ChaseTab ext={ext} cardsHref={tabHref('cartes')} />}
+        {tab === 'prix' && <PricesTab ext={ext} />}
+        {tab === 'dates' && <DatesTab ext={ext} />}
+      </div>
+    </FitPage>
   );
 }
 
@@ -168,7 +172,7 @@ async function ProductsTab({ ext }: { ext: Extension }) {
     .filter((p): p is ExtensionProduct & { perBooster: number } => p.perBooster !== null)
     .sort((a, b) => a.perBooster - b.perBooster);
   return (
-    <div className="space-y-6">
+    <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.35fr)] [&>*]:min-w-0">
       {ranked.length > 1 && (
         <Card>
           <CardHeader className="flex-col">
@@ -204,7 +208,12 @@ async function ProductsTab({ ext }: { ext: Extension }) {
           </CardContent>
         </Card>
       )}
-      <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+      <ul
+        className={cn(
+          'grid gap-3 sm:grid-cols-2',
+          ranked.length <= 1 && 'xl:col-span-2 xl:grid-cols-3',
+        )}
+      >
         {products.map((p) => (
           <li key={p.id}>
             <Link

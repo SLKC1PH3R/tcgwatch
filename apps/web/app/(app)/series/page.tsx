@@ -3,6 +3,9 @@ import { SeriesBoard } from './series-board';
 
 export const metadata: Metadata = { title: 'Encyclopédie' };
 
-export default function SeriesPage() {
-  return <SeriesBoard mode="produits" />;
+type Props = { searchParams: Promise<{ serie?: string }> };
+
+export default async function SeriesPage({ searchParams }: Props) {
+  const { serie } = await searchParams;
+  return <SeriesBoard mode="produits" serie={serie} />;
 }

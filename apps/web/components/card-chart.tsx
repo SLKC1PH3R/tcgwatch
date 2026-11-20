@@ -45,7 +45,7 @@ export function CardChart({ data }: { data: Point[] }) {
   }
   const present = SERIES.filter((s) => data.some((d) => typeof d[s.key] === 'number'));
   return (
-    <div className="h-72 w-full">
+    <div className="h-72 w-full fit:h-full fit:min-h-40">
       <ResponsiveContainer width="100%" height="100%">
         <LineChart data={data} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
