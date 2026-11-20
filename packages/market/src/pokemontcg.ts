@@ -113,34 +113,70 @@ export function matchPokemonTcgSet(
 
 const numberKey = (n: string) => n.replace(/^0+(?=.)/, '').toUpperCase();
 
+/** Nom sans mention de niveau ni de format (« Palkia LV.X » → « palkia »). */
+const coreName = (s: string) => squash(s.replace(/\b(?:lv\.?\s*x|legend|l[ée]gende)\b/gi, ''));
+
+/** Numéro comparable : « 99 » < « 100 », lettres après les chiffres. */
+const numberOrder = (n: string) => {
+  const m = /^(\d+)/.exec(n);
+  return m ? Number(m[1]) : Number.MAX_SAFE_INTEGER;
+};
+
 /**
- * Image pokemontcg.io de chaque carte TCGdex (numéro et nom anglais) : même numéro et même
- * nom ; sinon le seul homonyme de l'extension (numérotations différentes, ex. collection
- * classique). Renvoie l'URL de la petite image (`/small` ou `.png`).
+ * Image pokemontcg.io de chaque carte TCGdex (numéro et nom anglais) :
+ * 1. même numéro et même nom ;
+ * 2. homonymes en nombre égal des deux côtés (les deux moitiés d'une carte LÉGENDE, ou un nom
+ *    unique) : appariés dans l'ordre des numéros (numérotations différentes, ex. collection
+ *    classique qui reprend les numéros d'origine) ;
+ * 3. même nom sans mention de niveau (« Palkia » ↔ « Palkia LV.X »), unique des deux côtés.
+ * Renvoie l'URL de la petite image (`/small` ou `.png`).
  */
 export function matchPokemonTcgImages(
   cards: { id: string; localId: string; name: string }[],
   theirs: PokemonTcgCard[],
 ): Map<string, string> {
   const byNumber = new Map(theirs.map((c) => [numberKey(c.number), c]));
-  const byName = new Map<string, PokemonTcgCard[]>();
-  for (const c of theirs) byName.set(squash(c.name), [...(byName.get(squash(c.name)) ?? []), c]);
-  const ourNames = new Map<string, number>();
-  for (const c of cards) ourNames.set(squash(c.name), (ourNames.get(squash(c.name)) ?? 0) + 1);
+  const group = <T>(items: T[], key: (t: T) => string) => {
+    const m = new Map<string, T[]>();
+    for (const it of items) m.set(key(it), [...(m.get(key(it)) ?? []), it]);
+    return m;
+  };
+  const theirByName = group(theirs, (c) => squash(c.name));
+  const ourByName = group(cards, (c) => squash(c.name));
+  const theirByCore = group(theirs, (c) => coreName(c.name));
+  const ourByCore = group(cards, (c) => coreName(c.name));
 
   const out = new Map<string, string>();
+  const used = new Set<PokemonTcgCard>();
+  const take = (c: { id: string }, match: PokemonTcgCard | undefined) => {
+    if (!match || used.has(match) || !match.images?.small) return;
+    used.add(match);
+    out.set(c.id, match.images.small);
+  };
+
+  // 1. Même numéro, même nom.
   for (const c of cards) {
-    const sameNumber = byNumber.get(numberKey(c.localId));
-    const named = byName.get(squash(c.name)) ?? [];
-    const match =
-      sameNumber && squash(sameNumber.name) === squash(c.name)
-        ? sameNumber
-        : named.length === 1 && ourNames.get(squash(c.name)) === 1
-          ? named[0]
-          : undefined;
-    const image = match?.images?.small;
-    if (image) out.set(c.id, image);
+    const same = byNumber.get(numberKey(c.localId));
+    if (same && squash(same.name) === squash(c.name)) take(c, same);
   }
+  // 2 et 3. Homonymes appariés dans l'ordre des numéros.
+  const pair = (
+    ours: Map<string, typeof cards>,
+    their: Map<string, PokemonTcgCard[]>,
+    unique: boolean,
+  ) => {
+    for (const [name, group] of ours) {
+      const mine = group.filter((c) => !out.has(c.id));
+      const candidates = (their.get(name) ?? []).filter((t) => !used.has(t));
+      if (mine.length === 0 || mine.length !== candidates.length) continue;
+      if (unique && mine.length !== 1) continue;
+      const a = [...mine].sort((x, y) => numberOrder(x.localId) - numberOrder(y.localId));
+      const b = [...candidates].sort((x, y) => numberOrder(x.number) - numberOrder(y.number));
+      a.forEach((c, i) => take(c, b[i]));
+    }
+  };
+  pair(ourByName, theirByName, false);
+  pair(ourByCore, theirByCore, true);
   return out;
 }
 

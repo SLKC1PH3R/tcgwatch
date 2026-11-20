@@ -42,7 +42,37 @@ describe('images pokemontcg.io', () => {
     const images = matchPokemonTcgImages(ours, theirs);
     expect(images.get('30th-B')).toBe('https://i/me55-B/small');
     expect(images.get('30th-c-001')).toBe('https://i/me55c-4/small');
+    // Une seule moitié de LÉGENDE de notre côté, deux chez eux : ambigu.
     expect(images.has('30th-c-019')).toBe(false);
+  });
+
+  it('apparie les deux moitiés d’une LÉGENDE et les noms avec niveau (collection classique)', () => {
+    // Numéros d'origine chez pokemontcg.io (99, 100, 106), numéros 019-022 chez TCGdex.
+    const theirs = [
+      {
+        id: 'me55c-100',
+        name: 'Darkrai & Cresselia LEGEND',
+        number: '100',
+        images: { small: 'bas' },
+      },
+      {
+        id: 'me55c-99',
+        name: 'Darkrai & Cresselia LEGEND',
+        number: '99',
+        images: { small: 'haut' },
+      },
+      { id: 'me55c-106a', name: 'M Gardevoir-EX', number: '106', images: { small: 'gardevoir' } },
+      { id: 'me55c-106b', name: 'Palkia LV.X', number: '106', images: { small: 'palkia' } },
+    ];
+    const ours = [
+      { id: '30th-c-019', localId: '019', name: 'Darkrai & Cresselia LEGEND' },
+      { id: '30th-c-020', localId: '020', name: 'Darkrai & Cresselia LEGEND' },
+      { id: '30th-c-022', localId: '022', name: 'Palkia' },
+    ];
+    const images = matchPokemonTcgImages(ours, theirs);
+    expect(images.get('30th-c-019')).toBe('haut');
+    expect(images.get('30th-c-020')).toBe('bas');
+    expect(images.get('30th-c-022')).toBe('palkia');
   });
 
   it('grande image et URL des images hors TCGdex', () => {

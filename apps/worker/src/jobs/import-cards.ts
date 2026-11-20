@@ -13,6 +13,9 @@ export interface CardImportSummary {
   failed: number;
 }
 
+/** Extensions incomplètes (cartes sans image) reprises à chaque passage. */
+const MISSING_IMAGES_PER_RUN = 10;
+
 /**
  * Import des cartes de toutes les extensions (TCGdex GraphQL, français puis anglais pour les
  * noms et images manquants). Première passe : toutes les extensions sans cartes ; ensuite,
@@ -77,6 +80,23 @@ export async function importCards(
     (await fillCardImages(
       ctx,
       imported.filter((r) => !r.recent).map((r) => r.id),
+    )) +
+    // Extensions non réimportées aujourd'hui mais encore incomplètes (rapprochement amélioré
+    // depuis) : quelques-unes à chaque passage, les plus récentes d'abord.
+    (await fillCardImages(
+      ctx,
+      (
+        await prisma.release.findMany({
+          where: {
+            id: { notIn: imported.map((r) => r.id) },
+            tcgdexId: { not: null },
+            cards: { some: { imageUrl: null } },
+          },
+          orderBy: { releaseDate: { sort: 'desc', nulls: 'last' } },
+          take: MISSING_IMAGES_PER_RUN,
+          select: { id: true },
+        })
+      ).map((r) => r.id),
     ));
   ctx.logger.info({ ...summary, images, pending: releases.length }, 'Import des cartes terminé');
   return summary;
