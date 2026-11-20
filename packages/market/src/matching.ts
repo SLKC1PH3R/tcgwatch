@@ -43,7 +43,7 @@ const BULK = /\b(?:case|caisse|carton)\b(?! ?(?:de )?rangement)|\b\d+\s+bundles\
 
 /** Accessoires et produits dérivés : jamais des produits scellés de cartes. */
 const ACCESSORY =
-  /prot[eè]ge|protection|crystal ?box|bo[iî]tier|phoenix shield|pok[ée] ?ball|\b(?:lune|hyper|honor|super|master|luxe|soin) ?ball\b|sleeves?|pochettes?|classeur|portfolio|binder|deck ?box|tapis|playmat|toploader|range-?cartes|album|peluche|figurine seule|puzzle|monopoly|jeu de soci[ée]t[ée]|lampe|mug|t-?shirt|sac\b|calendrier de l.avent|4d build|carte[s]? (?:à l'unit[ée]|seule)|gradée?/i;
+  /prot[eè]ge|protection|crystal ?box|bo[iî]tier|phoenix shield|pok[ée] ?ball|\b(?:lune|hyper|honor|super|master|luxe|soin) ?ball\b|sleeves?|pochettes?|classeur|portfolio|binder|deck ?box|tapis|playmat|toploader|range-?cartes|album|peluche|figurine seule|puzzle|monopoly|jeu de soci[ée]t[ée]|lampe|mug|t-?shirt|sac\b|calendrier de l.avent|4d build|carte[s]? (?:à l'unit[ée]|seule)|gradée?|\brangement\b/i;
 
 export function isForeignTitle(title: string): boolean {
   return FOREIGN_WORD.test(title) || FOREIGN_CODE.test(title);

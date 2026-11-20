@@ -6,7 +6,12 @@ import {
   type RetailerInfo,
 } from '@tcgwatch/adapters';
 import { prisma } from '@tcgwatch/db';
-import { matchProduct, searchQueryFor, type CatalogProduct } from '@tcgwatch/market';
+import {
+  isAccessoryTitle,
+  matchProduct,
+  searchQueryFor,
+  type CatalogProduct,
+} from '@tcgwatch/market';
 import { todayUtc } from '@tcgwatch/shared';
 import type { WorkerContext } from '../context';
 
@@ -48,6 +53,7 @@ export async function discoverListings(
   /** Slug d'un seul revendeur (test d'un site ajouté) ; tous par défaut. */
   only?: string,
 ): Promise<DiscoverySummary> {
+  await purgeAccessoryListings(ctx);
   // Tout le catalogue, y compris les produits des années passées (prix actuel en boutique).
   const products = await prisma.product.findMany({
     select: {
@@ -222,4 +228,24 @@ async function createListings(
     created++;
   }
   return created;
+}
+
+/**
+ * Fiches trouvées automatiquement dont l'intitulé relevé est celui d'un accessoire (boîte de
+ * rangement, protection…) : rapprochées à tort d'un produit scellé avant que le filtre ne les
+ * écarte. Supprimées avec leur historique, pour ne plus fausser le meilleur prix.
+ */
+export async function purgeAccessoryListings(ctx: Pick<WorkerContext, 'logger'>): Promise<number> {
+  const discovered = await prisma.listing.findMany({
+    where: { discovered: true, lastTitle: { not: null } },
+    select: { id: true, lastTitle: true, url: true },
+  });
+  const wrong = discovered.filter((l) => isAccessoryTitle(l.lastTitle!));
+  if (wrong.length === 0) return 0;
+  await prisma.listing.deleteMany({ where: { id: { in: wrong.map((l) => l.id) } } });
+  ctx.logger.info(
+    { removed: wrong.length, urls: wrong.map((l) => l.url) },
+    'Fiches d’accessoires supprimées',
+  );
+  return wrong.length;
 }

@@ -101,6 +101,8 @@ describe('matchProduct (intitulés réels)', () => {
     'Display Gem Pack Vol.6 - Boite de 18 Boosters - CHINOIS - [CBB6C] - Pokémon',
     'Artset [ME06] - 4 Boosters Règne Delta - Pokémon - FR [ME6]',
     "1 Protection Plastique pour Coffret Dresseur d'Elite - Anti-UV, Rayures",
+    // Boîte de rangement aux couleurs d'un ETB (Parkage) : pas le coffret lui-même.
+    "Boîte de rangement accessoires Coffret Dresseur d'Elite Pokémon ME03 POR Méga-Évolution 03 Equilibre Parfait",
     'Lot de Tripack Farfuret et Dimoret - Flammes Fantasmagoriques - FR - [ME02] [ME2] - Pokémon',
     'Mini Tin - Fable Nébuleuse - Lot des 5 illustrations - FR - [SV6.5][EV6.5] - Pokémon',
     'Héros Transcendants - Display Scellée de 10 Bundles 6 Boosters [ME2.5] - Pokémon - FR',

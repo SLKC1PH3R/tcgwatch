@@ -3,7 +3,7 @@ import cron, { type ScheduledTask } from 'node-cron';
 import { createContext, type WorkerContext } from './context';
 import { startHealthServer } from './health';
 import { checkDueListings } from './jobs/check-listings';
-import { discoverListings } from './jobs/discover-listings';
+import { discoverListings, purgeAccessoryListings } from './jobs/discover-listings';
 import { importCards } from './jobs/import-cards';
 import { importPokecardex } from './jobs/import-pokecardex';
 import { importTcgdex } from './jobs/import-tcgdex';
@@ -110,6 +110,8 @@ async function main() {
 
   // Annuaire des revendeurs : nouveaux sites et métadonnées à jour à chaque démarrage.
   await exclusive(ctx, 'retailers', () => syncRetailers(ctx))();
+  // Fiches d'accessoires rapprochées à tort d'un produit : retirées dès le démarrage.
+  await exclusive(ctx, 'accessories', () => purgeAccessoryListings(ctx))();
 
   // Premier démarrage (ou encyclopédie pas encore importée) → import TCGdex immédiat.
   const [imported, series, cards] = await Promise.all([
