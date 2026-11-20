@@ -122,6 +122,11 @@ export default async function RetailersPage({ searchParams }: Props) {
       <PageHeader
         title="Revendeurs"
         description={`${retailers.length} sites français vendant du Pokémon TCG, dont ${byAccess.OK} relevés de façon fiable. ${EXCLUDED_SITES.join(', ').replace(/, ([^,]*)$/, ' et $1')} sont volontairement exclus.`}
+        actions={
+          <Button asChild variant="outline">
+            <Link href="/revendeurs/etat">État des relevés</Link>
+          </Button>
+        }
       />
 
       <div className={cn(fitGrid, fitSplit3)}>

@@ -154,6 +154,7 @@ async function recordSuccess(
       data: {
         state: 'ACTIVE',
         lastCheckedAt: now,
+        lastSuccessAt: now,
         nextCheckAt: nextCheckAfterSuccess(now, listing.checkIntervalMin),
         lastTitle: result.title ?? listing.lastTitle,
         lastImageUrl: result.imageUrl ?? listing.lastImageUrl,

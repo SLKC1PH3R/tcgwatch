@@ -243,6 +243,8 @@ model Listing {
   state             ListingState   @default(ACTIVE)
   nextCheckAt       DateTime       @default(now())
   lastCheckedAt     DateTime?
+  /// Dernier relevé réussi (page lue, prix et stock extraits).
+  lastSuccessAt     DateTime?
   // État dénormalisé (dernier relevé) pour des tableaux rapides
   lastTitle         String?
   lastImageUrl      String?
