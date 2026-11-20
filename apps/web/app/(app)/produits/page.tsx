@@ -18,7 +18,7 @@ import { Thumb } from '@/components/thumb';
 import { buttonVariants } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { fitCard, fitGrid, fitScroll } from '@/lib/fit';
+import { fitCard, fitGrid, fitScroll, fitSplit3 } from '@/lib/fit';
 import { BEST_SERIES, getLowSinceBadges, getPriceHistory, MARKET_SERIES } from '@/lib/data/history';
 import { getProducts, type ListingDTO, type ProductDTO } from '@/lib/data/products';
 import { cn } from '@/lib/utils';
@@ -99,12 +99,7 @@ export default async function ProductsPage({ searchParams }: Props) {
         description="Catalogue et fiches revendeurs mis à jour automatiquement. Les liens ouvrent la fiche du site : aucun achat automatique."
       />
 
-      <div
-        className={cn(
-          fitGrid,
-          'lg:grid-cols-[15rem_minmax(0,1fr)] xl:grid-cols-[15rem_minmax(0,1fr)_22rem]',
-        )}
-      >
+      <div className={cn(fitGrid, fitSplit3)}>
         {/* Filtres */}
         <Card className={cn(fitCard, 'px-5')}>
           <form className="space-y-1.5">
@@ -270,7 +265,7 @@ function FilterLink({
       title={title}
       aria-current={on ? 'true' : undefined}
       className={cn(
-        'flex h-8 items-center rounded-full border px-3 text-xs font-semibold whitespace-nowrap transition-colors hover:bg-accent',
+        'flex min-h-8 max-w-full items-center rounded-full border px-3 py-1 text-xs font-semibold transition-colors hover:bg-accent',
         on && 'border-foreground bg-foreground text-background hover:bg-foreground',
       )}
     >

@@ -16,4 +16,9 @@ export const fitCard = 'gap-3 py-5 fit:min-h-0 fit:overflow-hidden';
 
 /** Contenu de carte qui défile quand il dépasse, avec un fondu en bas. */
 export const fitScroll =
-  'fit:min-h-0 fit:flex-1 fit:overflow-y-auto fit:pb-3 fit:[mask-image:linear-gradient(to_bottom,#000_calc(100%-1.75rem),transparent)]';
+  'fit:min-h-0 fit:flex-1 fit:overflow-y-auto fit:pr-3 fit:pb-3 fit:[mask-image:linear-gradient(to_bottom,#000_calc(100%-1.75rem),transparent)]';
+
+/** Filtres | liste | aperçu : colonnes proportionnelles, avec un minimum pour les côtés. */
+export const fitSplit = 'lg:grid-cols-[minmax(16rem,1fr)_minmax(0,3.5fr)]';
+export const fitSplit3 =
+  'lg:grid-cols-[minmax(16rem,1fr)_minmax(0,3.5fr)] xl:grid-cols-[minmax(15rem,1fr)_minmax(0,3.5fr)_minmax(20rem,1.5fr)]';

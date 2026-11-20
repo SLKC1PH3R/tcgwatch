@@ -10,7 +10,7 @@ import { PageHeader } from '@/components/page-header';
 import { Thumb } from '@/components/thumb';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { fitCard, fitGrid, fitScroll } from '@/lib/fit';
+import { fitCard, fitGrid, fitScroll, fitSplit3 } from '@/lib/fit';
 import { EXCLUDED_SITES, getRetailers, type RetailerRow } from '@/lib/data/retailers';
 import { cn } from '@/lib/utils';
 
@@ -119,12 +119,7 @@ export default async function RetailersPage({ searchParams }: Props) {
         description={`${retailers.length} sites français vendant du Pokémon TCG, dont ${byAccess.OK} relevés de façon fiable. ${EXCLUDED_SITES.join(', ').replace(/, ([^,]*)$/, ' et $1')} sont volontairement exclus.`}
       />
 
-      <div
-        className={cn(
-          fitGrid,
-          'lg:grid-cols-[15rem_minmax(0,1fr)] xl:grid-cols-[15rem_minmax(0,1fr)_minmax(24rem,0.8fr)]',
-        )}
-      >
+      <div className={cn(fitGrid, fitSplit3)}>
         <Card className={fitCard}>
           <CardContent className={cn('space-y-5', fitScroll)}>
             <form action="/revendeurs" className="flex gap-2">
@@ -296,7 +291,7 @@ export default async function RetailersPage({ searchParams }: Props) {
                   Aucune fiche suivie chez ce revendeur pour l’instant.
                 </p>
               ) : (
-                <ul className={cn('divide-y fit:pr-4', fitScroll)}>
+                <ul className={cn('divide-y', fitScroll)}>
                   {listings.map((l) => (
                     <li key={l.id}>
                       <Link

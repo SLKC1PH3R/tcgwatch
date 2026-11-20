@@ -9,7 +9,7 @@ import { buttonVariants } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { BEST_SERIES, getPriceHistory, MARKET_SERIES } from '@/lib/data/history';
 import { getSealedPrices, groupBySerie, type SealedPrice } from '@/lib/data/prices';
-import { fitCard, fitColumn, fitGrid, fitScroll } from '@/lib/fit';
+import { fitCard, fitColumn, fitGrid, fitScroll, fitSplit, fitSplit3 } from '@/lib/fit';
 import { cn } from '@/lib/utils';
 
 const SORTS = [
@@ -119,13 +119,7 @@ export async function PriceBoard({
         description={`${name} : cote du marché du jour (guide des prix Cardmarket), évolution sur 30 jours et meilleure offre chez les revendeurs suivis.`}
       />
 
-      <div
-        className={cn(
-          fitGrid,
-          'lg:grid-cols-[14rem_minmax(0,1fr)]',
-          preview && 'xl:grid-cols-[14rem_minmax(0,1fr)_24rem]',
-        )}
-      >
+      <div className={cn(fitGrid, preview ? fitSplit3 : fitSplit)}>
         {/* Catégories */}
         <Card className={cn(fitCard, 'px-3')}>
           <h2 className="px-2 font-display text-base font-semibold">Catégories</h2>

@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { searchCards } from '@/lib/data/encyclopedia';
-import { fitCard, fitGrid, fitScroll } from '@/lib/fit';
+import { fitCard, fitGrid, fitScroll, fitSplit, fitSplit3 } from '@/lib/fit';
 import { cn } from '@/lib/utils';
 
 type Props = {
@@ -77,13 +77,7 @@ export default async function CardsSearchPage({ searchParams }: Props) {
         }
       />
 
-      <div
-        className={cn(
-          fitGrid,
-          'lg:grid-cols-[15rem_minmax(0,1fr)]',
-          preview && 'xl:grid-cols-[15rem_minmax(0,1fr)_21rem]',
-        )}
-      >
+      <div className={cn(fitGrid, preview ? fitSplit3 : fitSplit)}>
         <Card className={cn(fitCard, 'px-5')}>
           <form className="flex gap-2">
             <Input
