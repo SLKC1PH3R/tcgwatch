@@ -52,6 +52,15 @@ export default async function ShowcasesPage({ searchParams }: Props) {
                   placeholder="Mes plus belles illustrations"
                 />
               </div>
+              <label className="flex w-full items-start gap-2 text-sm">
+                <input type="checkbox" name="wanted" className="mt-1" />
+                <span>
+                  Liste de recherche
+                  <span className="block text-xs text-muted-foreground">
+                    Les cartes que tu cherches, à partager avec vendeurs et amis.
+                  </span>
+                </span>
+              </label>
               <Button type="submit">Créer</Button>
             </form>
           </CardContent>
@@ -98,6 +107,7 @@ export default async function ShowcasesPage({ searchParams }: Props) {
                             {s._count.cards} carte{s._count.cards > 1 ? 's' : ''}
                           </p>
                         </div>
+                        {s.wanted && <Badge variant="info">Je cherche</Badge>}
                         {s.public ? (
                           <Badge variant="success">
                             <Globe className="size-3" /> Publique

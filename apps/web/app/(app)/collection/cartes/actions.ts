@@ -156,6 +156,7 @@ export async function createShowcaseAction(formData: FormData) {
       title: parsed.data.title,
       description: parsed.data.description ?? null,
       slug: randomBytes(9).toString('base64url'),
+      wanted: formData.get('wanted') === 'on',
     },
   });
   redirect(`${BASE}/vitrines/${showcase.id}`);
@@ -175,6 +176,7 @@ export async function updateShowcaseAction(id: string, formData: FormData) {
       description: parsed.data.description ?? null,
       public: data.public === 'on',
       showPrices: data.showPrices === 'on',
+      wanted: data.wanted === 'on',
     },
   });
   revalidatePath(`${BASE}/vitrines/${id}`);

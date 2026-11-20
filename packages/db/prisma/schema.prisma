@@ -589,6 +589,8 @@ model Showcase {
   public      Boolean        @default(false)
   /// Afficher la cote des cartes sur la page publique.
   showPrices  Boolean        @default(false)
+  /// Liste de recherche (« cartes que je cherche ») plutôt qu'une vitrine de cartes possédées.
+  wanted      Boolean        @default(false)
   cards       ShowcaseCard[]
   createdAt   DateTime       @default(now())
   updatedAt   DateTime       @updatedAt

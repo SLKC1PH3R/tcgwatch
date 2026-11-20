@@ -251,6 +251,7 @@ export async function getShowcases() {
       slug: true,
       public: true,
       showPrices: true,
+      wanted: true,
       cards: {
         orderBy: { position: 'asc' },
         take: 4,
@@ -271,6 +272,7 @@ export async function getShowcase(where: { id: string } | { slug: string }) {
       slug: true,
       public: true,
       showPrices: true,
+      wanted: true,
       updatedAt: true,
       cards: { orderBy: { position: 'asc' }, select: { card: { select: cardSelect } } },
     },

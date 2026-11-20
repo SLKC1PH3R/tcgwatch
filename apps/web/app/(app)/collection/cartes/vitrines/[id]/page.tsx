@@ -118,6 +118,15 @@ export default async function ShowcasePage({ params, searchParams }: Props) {
                     />
                     Afficher la cote des cartes
                   </label>
+                  <label className="flex items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      name="wanted"
+                      defaultChecked={showcase.wanted}
+                      className="size-4"
+                    />
+                    Liste de recherche (« cartes que je cherche »)
+                  </label>
                   <div>
                     <Button type="submit" size="sm">
                       Enregistrer
