@@ -24,7 +24,10 @@ export function TabPanels({ tabs, bodyClassName }: { tabs: TabPanel[]; bodyClass
   return (
     <>
       <div className="flex items-center justify-between gap-3 px-6">
-        <div role="tablist" className="flex gap-1 rounded-full border bg-popover p-1">
+        <div
+          role="tablist"
+          className="flex min-w-0 [scrollbar-width:none] gap-1 overflow-x-auto rounded-full border bg-popover p-1"
+        >
           {tabs.map((t) => {
             const on = t.id === current.id;
             return (
@@ -37,7 +40,7 @@ export function TabPanels({ tabs, bodyClassName }: { tabs: TabPanel[]; bodyClass
                 aria-controls={`${base}-panel-${t.id}`}
                 onClick={() => setActive(t.id)}
                 className={cn(
-                  'h-8 cursor-pointer rounded-full px-3.5 font-display text-sm font-semibold whitespace-nowrap text-muted-foreground transition-colors hover:text-foreground',
+                  'h-8 shrink-0 cursor-pointer rounded-full px-3 font-display text-sm font-semibold whitespace-nowrap text-muted-foreground transition-colors hover:text-foreground',
                   on && 'bg-foreground text-background hover:text-background',
                 )}
               >

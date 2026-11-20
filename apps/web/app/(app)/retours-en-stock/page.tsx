@@ -10,12 +10,14 @@ import {
   type ProductTypeKey,
 } from '@tcgwatch/shared';
 import { AvailabilityBadge } from '@/components/availability-badge';
+import { FitPage } from '@/components/fit-page';
 import { PageHeader } from '@/components/page-header';
 import { Thumb } from '@/components/thumb';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { getRestocks, type RestockKind, type RestockRow } from '@/lib/data/restocks';
+import { fitCard, fitColumn, fitGrid, fitScroll } from '@/lib/fit';
 import { cn } from '@/lib/utils';
 
 export const metadata: Metadata = { title: 'Retours en stock' };
@@ -37,6 +39,15 @@ const dayKey = new Intl.DateTimeFormat('fr-FR', {
   weekday: 'long',
   day: 'numeric',
   month: 'long',
+});
+const shortDay = new Intl.DateTimeFormat('fr-FR', {
+  timeZone: 'Europe/Paris',
+  weekday: 'short',
+});
+const dayMonth = new Intl.DateTimeFormat('fr-FR', {
+  timeZone: 'Europe/Paris',
+  day: 'numeric',
+  month: 'short',
 });
 const time = new Intl.DateTimeFormat('fr-FR', {
   timeZone: 'Europe/Paris',
@@ -88,8 +99,19 @@ export default async function RestocksPage({ searchParams }: Props) {
     days.set(k, [...(days.get(k) ?? []), r]);
   }
 
+  // Résumé de la période : nombre d'événements, encore achetables, rythme et boutiques.
+  const stillAvailable = rows.filter((r) => r.listing && isBuyable(r.listing.availability)).length;
+  const bars = rhythm(rows, period.days);
+  const maxBar = Math.max(1, ...bars.map((b) => b.count));
+  const shops = [
+    ...countBy(rows.map((r) => r.listing?.retailerName).filter((n): n is string => !!n)),
+  ];
+  const maxShop = Math.max(1, ...shops.map(([, n]) => n));
+  const noun =
+    kind === 'precommandes' ? 'Précommandes' : kind === 'tout' ? 'Événements' : 'Retours';
+
   return (
-    <>
+    <FitPage>
       <PageHeader
         title="Retours en stock"
         description={`${rows.length} ${
@@ -97,7 +119,7 @@ export default async function RestocksPage({ searchParams }: Props) {
         } relevé(s) sur ${period.label}, avec la disponibilité actuelle sur les autres sites suivis.`}
       />
 
-      <div className="mb-6 flex flex-wrap items-center gap-x-4 gap-y-2">
+      <div className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2">
         <nav aria-label="Période" className="flex flex-wrap gap-1.5">
           {PERIODS.map((p) => chip(p.label, href({ periode: p.key }), p.key === period.key))}
         </nav>
@@ -111,31 +133,157 @@ export default async function RestocksPage({ searchParams }: Props) {
         )}
       </div>
 
-      {rows.length === 0 ? (
-        <Card>
-          <CardContent className="py-10 text-center text-sm text-muted-foreground">
-            Aucun {kind === 'precommandes' ? 'ouverture de précommande' : 'retour en stock'} relevé
-            sur cette période{available ? ' parmi les fiches encore disponibles' : ''}.
+      <div className={cn(fitGrid, 'lg:grid-cols-[minmax(0,1fr)_24rem]')}>
+        <Card className={fitCard}>
+          <CardHeader>
+            <CardTitle>
+              Fil des {noun.toLowerCase()}{' '}
+              <span className="font-sans text-sm text-muted-foreground">· {rows.length}</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className={fitScroll}>
+            {rows.length === 0 ? (
+              <p className="py-10 text-center text-sm text-muted-foreground">
+                Aucun {kind === 'precommandes' ? 'ouverture de précommande' : 'retour en stock'}{' '}
+                relevé sur cette période{available ? ' parmi les fiches encore disponibles' : ''}.
+              </p>
+            ) : (
+              <div className="space-y-6">
+                {[...days.entries()].map(([day, list]) => (
+                  <section key={day} className="space-y-3">
+                    <h2 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                      {day} · {list.length}
+                    </h2>
+                    <ul className="space-y-3">
+                      {list.map((r) => (
+                        <RestockItem key={r.id} row={r} />
+                      ))}
+                    </ul>
+                  </section>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
-      ) : (
-        <div className="space-y-8">
-          {[...days.entries()].map(([day, list]) => (
-            <section key={day} className="space-y-3">
-              <h2 className="font-display text-lg font-semibold first-letter:uppercase">
-                {day}{' '}
-                <span className="text-sm font-normal text-muted-foreground">{list.length}</span>
-              </h2>
-              <ul className="space-y-3">
-                {list.map((r) => (
-                  <RestockItem key={r.id} row={r} />
-                ))}
-              </ul>
-            </section>
-          ))}
+
+        <div className={fitColumn}>
+          <Card className={cn(fitCard, 'shrink-0')}>
+            <CardHeader>
+              <CardTitle>Sur {period.label}</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 gap-2">
+                <Stat label={noun} value={String(rows.length)} />
+                <Stat
+                  label="Encore disponibles"
+                  value={String(stillAvailable)}
+                  tone={stillAvailable ? 'text-success' : undefined}
+                />
+              </div>
+              {rows.length > 0 && (
+                <div
+                  className="flex h-28 items-end gap-1.5"
+                  role="img"
+                  aria-label={`Répartition : ${bars.map((b) => `${b.label} ${b.count}`).join(', ')}`}
+                >
+                  {bars.map((b, i) => (
+                    <div key={i} className="flex min-w-0 flex-1 flex-col items-center gap-1">
+                      <span className="text-[10px] text-muted-foreground tabular-nums">
+                        {b.count || ''}
+                      </span>
+                      <span
+                        className={cn(
+                          'w-full rounded-md',
+                          i === bars.length - 1 ? 'bg-success' : 'bg-success/35',
+                        )}
+                        style={{ height: `${Math.max(2, (b.count / maxBar) * 64)}px` }}
+                      />
+                      <span className="truncate text-[10px] text-muted-foreground">{b.label}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+          <Card className={cn(fitCard, 'fit:flex-1')}>
+            <CardHeader>
+              <CardTitle>Boutiques les plus actives</CardTitle>
+            </CardHeader>
+            <CardContent className={fitScroll}>
+              {shops.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Rien sur cette période.</p>
+              ) : (
+                <ul className="space-y-2.5">
+                  {shops.map(([name, n]) => (
+                    <li key={name} className="flex items-center gap-3 text-sm">
+                      <span className="w-28 shrink-0 truncate font-semibold">{name}</span>
+                      <span className="h-2 flex-1 overflow-hidden rounded-full bg-muted">
+                        <span
+                          className="block h-full rounded-full bg-success"
+                          style={{ width: `${(n / maxShop) * 100}%` }}
+                        />
+                      </span>
+                      <span className="w-6 text-right text-muted-foreground tabular-nums">{n}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </CardContent>
+          </Card>
         </div>
-      )}
-    </>
+      </div>
+    </FitPage>
+  );
+}
+
+function countBy(keys: string[]) {
+  const m = new Map<string, number>();
+  for (const k of keys) m.set(k, (m.get(k) ?? 0) + 1);
+  return [...m.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'fr'));
+}
+
+/**
+ * Rythme des événements : une barre par jour jusqu'à deux semaines, une par semaine au-delà
+ * (la dernière barre est la plus récente).
+ */
+function rhythm(rows: RestockRow[], days: number) {
+  const DAY = 86_400_000;
+  const now = Date.now();
+  if (days <= 1) {
+    // 24 h : par tranches de 3 heures.
+    return Array.from({ length: 8 }, (_, i) => {
+      const end = now - (7 - i) * 3 * 3_600_000;
+      const start = end - 3 * 3_600_000;
+      return {
+        label: time.format(new Date(start)).slice(0, 2) + 'h',
+        count: rows.filter((r) => +r.at > start && +r.at <= end).length,
+      };
+    });
+  }
+  const step = days <= 14 ? 1 : 7;
+  const n = Math.ceil(days / step);
+  const counts = new Map<string, number>();
+  for (const r of rows) {
+    const age = Math.floor((now - +r.at) / (DAY * step));
+    const k = String(age);
+    counts.set(k, (counts.get(k) ?? 0) + 1);
+  }
+  return Array.from({ length: n }, (_, i) => {
+    const age = n - 1 - i;
+    const d = new Date(now - age * step * DAY);
+    return {
+      label: step === 1 ? shortDay.format(d).replace('.', '') : dayMonth.format(d).replace('.', ''),
+      count: counts.get(String(age)) ?? 0,
+    };
+  });
+}
+
+function Stat({ label, value, tone }: { label: string; value: string; tone?: string }) {
+  return (
+    <div className="min-w-0 rounded-xl border bg-popover px-3 py-2.5">
+      <p className="truncate text-xs font-semibold text-muted-foreground">{label}</p>
+      <p className={cn('mt-1 font-display text-xl font-semibold tabular-nums', tone)}>{value}</p>
+    </div>
   );
 }
 
@@ -184,7 +332,7 @@ function RestockItem({ row: r }: { row: RestockRow }) {
           : 'mid';
 
   return (
-    <li className="rounded-xl border bg-card p-4">
+    <li className="rounded-xl border bg-popover/40 p-4">
       <div className="flex flex-wrap items-start gap-4">
         <Thumb src={r.product.image} className="size-16" />
         <div className="min-w-0 flex-1 basis-64 space-y-1">

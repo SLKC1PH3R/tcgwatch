@@ -22,8 +22,8 @@ export function PageTrail() {
   ];
   const onLinkPage = path === link.href;
   return (
-    <nav aria-label="Fil d’Ariane" className="mb-4">
-      <ol className="flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground">
+    <nav aria-label="Fil d’Ariane" className="mb-4 fit:mb-1.5">
+      <ol className="flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground fit:text-xs">
         {steps.map((s) => (
           <li key={s.label} className="flex items-center gap-1.5">
             <Link href={s.href} className="hover:text-foreground hover:underline">

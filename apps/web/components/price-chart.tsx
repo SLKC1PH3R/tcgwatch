@@ -88,8 +88,9 @@ export function PriceChart({
     );
   }
   return (
-    <div className="space-y-3">
-      <div className="h-80 w-full">
+    // Hauteur fixe ; sur une page plein écran, le graphique prend la hauteur de sa carte.
+    <div className="flex flex-col gap-3 fit:h-full fit:min-h-0">
+      <div className="h-80 w-full fit:h-auto fit:min-h-40 fit:flex-1">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart
             data={data}
