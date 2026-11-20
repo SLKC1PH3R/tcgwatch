@@ -41,7 +41,7 @@ const VERDICT: Record<Verdict, { label: string; variant: 'success' | 'warning' |
 
 const fmtInput = (n: number | null) => (n === null ? '' : String(n).replace('.', ','));
 
-type Props = { searchParams: Promise<{ erreur?: string; ajouter?: string }> };
+type Props = { searchParams: Promise<{ erreur?: string; ajouter?: string; ebay?: string }> };
 
 /**
  * Mes produits : les produits à acheter au « bon prix » choisi (ex. ETB à 55 € de prix public,
@@ -50,7 +50,7 @@ type Props = { searchParams: Promise<{ erreur?: string; ajouter?: string }> };
  * Cardmarket. Alertes dès qu'une source passe sous le bon prix.
  */
 export default async function MyProductsPage({ searchParams }: Props) {
-  const { erreur, ajouter } = await searchParams;
+  const { erreur, ajouter, ebay: ebayFilter } = await searchParams;
   const [{ products, listings }, options] = await Promise.all([
     getMyProducts(),
     prisma.product.findMany({
@@ -71,6 +71,9 @@ export default async function MyProductsPage({ searchParams }: Props) {
   const ebay = Boolean(process.env.EBAY_CLIENT_ID && process.env.EBAY_CLIENT_SECRET);
   const good = products.filter((p) => p.verdict === 'shop' || p.verdict === 'cardmarket');
   const fresh = listings.filter((l) => !l.auction && l.total <= l.target);
+  const underOnly = ebayFilter === 'sous';
+  const below = listings.filter((l) => l.total <= l.target);
+  const shownListings = underOnly ? below : listings;
   const byType = new Map<string, typeof options>();
   for (const o of options) byType.set(o.type, [...(byType.get(o.type) ?? []), o]);
 
@@ -195,6 +198,29 @@ export default async function MyProductsPage({ searchParams }: Props) {
                 Annonces neuves en France, jusqu’à 25 % au-dessus du bon prix, relevées toutes les
                 20 minutes par l’API officielle d’eBay{ebay ? '' : ' (pas encore active)'}.
               </CardDescription>
+              {ebay && listings.length > 0 && (
+                <nav aria-label="Filtrer les annonces" className="flex flex-wrap gap-1.5 pt-1">
+                  {[
+                    { label: 'Tous', count: listings.length, on: !underOnly, to: '' },
+                    { label: 'Sous le prix', count: below.length, on: underOnly, to: '?ebay=sous' },
+                  ].map((f) => (
+                    <Link
+                      key={f.label}
+                      href={`/produits/mes-produits${f.to}`}
+                      scroll={false}
+                      aria-current={f.on ? 'true' : undefined}
+                      className={cn(
+                        'inline-flex h-7 items-center gap-1.5 rounded-full border px-3 text-xs font-semibold transition-colors hover:bg-accent',
+                        f.on &&
+                          'border-primary bg-primary text-primary-foreground hover:bg-primary/90',
+                      )}
+                    >
+                      {f.label}
+                      <span className="tabular-nums opacity-70">{f.count}</span>
+                    </Link>
+                  ))}
+                </nav>
+              )}
             </CardHeader>
             <CardContent className={cn('space-y-4', fitScroll)}>
               {!ebay ? (
@@ -213,13 +239,15 @@ export default async function MyProductsPage({ searchParams }: Props) {
                   Facultatif : <code>EBAY_PICKUP_POSTCODE</code> pour les remises en main propre
                   autour de chez toi.
                 </p>
-              ) : listings.length === 0 ? (
+              ) : shownListings.length === 0 ? (
                 <p className="py-6 text-center text-sm text-muted-foreground">
-                  Aucune annonce trouvée pour l’instant.
+                  {underOnly
+                    ? 'Aucune annonce sous ton bon prix pour l’instant.'
+                    : 'Aucune annonce trouvée pour l’instant.'}
                 </p>
               ) : (
                 <ul className="space-y-2.5">
-                  {listings.map((l) => (
+                  {shownListings.map((l) => (
                     <ListingRow key={l.id} l={l} />
                   ))}
                 </ul>
