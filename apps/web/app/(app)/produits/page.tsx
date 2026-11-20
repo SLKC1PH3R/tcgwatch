@@ -472,6 +472,20 @@ function ProductRow({
             <span className="font-display text-base font-bold tabular-nums group-hover:underline">
               {formatPrice(price)}
             </span>
+            <span
+              className="block text-[11px] text-muted-foreground"
+              title={
+                p.best.delivered === null
+                  ? 'Frais de port de la boutique inconnus : prix de l’article seul'
+                  : undefined
+              }
+            >
+              {p.best.delivered === null
+                ? 'hors port'
+                : p.best.shipping === 0
+                  ? 'port offert'
+                  : `dont ${formatPrice(p.best.shipping)} de port`}
+            </span>
             {gap !== null && (
               <span
                 className={cn(

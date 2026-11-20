@@ -13,6 +13,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { fitCard, fitGrid, fitScroll, fitSplit3 } from '@/lib/fit';
 import { EXCLUDED_SITES, getRetailers, type RetailerRow } from '@/lib/data/retailers';
 import { cn } from '@/lib/utils';
+import { resetRetailerShippingAction } from './actions';
+import { ShippingForm } from './shipping-form';
 
 export const metadata: Metadata = { title: 'Revendeurs' };
 
@@ -53,12 +55,13 @@ interface Props {
     cat?: string;
     statut?: string;
     suivies?: string;
+    port?: string;
     r?: string;
   }>;
 }
 
 export default async function RetailersPage({ searchParams }: Props) {
-  const { q = '', cat, statut, suivies, r: picked } = await searchParams;
+  const { q = '', cat, statut, suivies, port, r: picked } = await searchParams;
   const retailers = await getRetailers();
   const kind = KIND_ORDER.find((k) => k.toLowerCase() === cat);
   const access = ACCESS_ORDER.find((a) => a.toLowerCase() === statut);
@@ -69,6 +72,8 @@ export default async function RetailersPage({ searchParams }: Props) {
       (!kind || r.kind === kind) &&
       (!access || r.access === access) &&
       (!followedOnly || r.listings > 0) &&
+      (port !== 'connu' || r.shippingCost !== null) &&
+      (port !== 'inconnu' || r.shippingCost === null) &&
       (!needle || r.name.toLocaleLowerCase('fr').includes(needle) || r.domain.includes(needle)),
   );
   const byAccess = Object.fromEntries(
@@ -91,7 +96,7 @@ export default async function RetailersPage({ searchParams }: Props) {
 
   const href = (patch: Record<string, string | undefined>) => {
     const params = new URLSearchParams();
-    const next = { q: q || undefined, cat, statut, suivies, r: picked, ...patch };
+    const next = { q: q || undefined, cat, statut, suivies, port, r: picked, ...patch };
     for (const [k, v] of Object.entries(next)) if (v) params.set(k, v);
     const qs = params.toString();
     return qs ? `/revendeurs?${qs}` : '/revendeurs';
@@ -184,6 +189,24 @@ export default async function RetailersPage({ searchParams }: Props) {
                   <span className="text-xs text-muted-foreground tabular-nums">{byAccess[a]}</span>
                 </Link>
               ))}
+            </section>
+            <section className="space-y-1">
+              <h2 className="px-2.5 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                Frais de port
+              </h2>
+              {filterLink('Tous', retailers.length, !port, href({ port: undefined, r: undefined }))}
+              {filterLink(
+                'Connus',
+                retailers.filter((r) => r.shippingCost !== null).length,
+                port === 'connu',
+                href({ port: 'connu', r: undefined }),
+              )}
+              {filterLink(
+                'À renseigner',
+                retailers.filter((r) => r.shippingCost === null).length,
+                port === 'inconnu',
+                href({ port: 'inconnu', r: undefined }),
+              )}
             </section>
             <Link
               href={href({ suivies: followedOnly ? undefined : '1', r: undefined })}
@@ -283,6 +306,43 @@ export default async function RetailersPage({ searchParams }: Props) {
                   <p className="font-display text-xl font-bold tabular-nums">{selected.buyable}</p>
                 </div>
               </div>
+              <section className="shrink-0 space-y-2 rounded-xl border p-3">
+                <div className="flex items-baseline justify-between gap-2">
+                  <h3 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                    Frais de port
+                  </h3>
+                  <span className="text-[11px] text-muted-foreground">
+                    {selected.shippingManual ? 'saisis par toi' : 'annuaire'}
+                  </span>
+                </div>
+                <p className="text-sm font-semibold">{shippingLabel(selected)}</p>
+                {selected.id ? (
+                  <details className="text-sm">
+                    <summary className="cursor-pointer text-xs text-primary">Modifier</summary>
+                    <div className="mt-2 space-y-2">
+                      <ShippingForm
+                        key={selected.slug}
+                        id={selected.id}
+                        cost={selected.shippingCost}
+                        freeFrom={selected.freeShippingFrom}
+                      />
+                      {selected.shippingManual && (
+                        <form action={resetRetailerShippingAction.bind(null, selected.id)}>
+                          <button
+                            type="submit"
+                            className="text-xs text-muted-foreground hover:underline"
+                          >
+                            Revenir aux valeurs de l’annuaire
+                          </button>
+                        </form>
+                      )}
+                    </div>
+                  </details>
+                ) : null}
+                <p className="text-[11px] text-muted-foreground">
+                  Sert à comparer les prix livrés (colis standard, France métropolitaine).
+                </p>
+              </section>
               <h3 className="shrink-0 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
                 Fiches suivies
               </h3>
@@ -407,6 +467,7 @@ function RetailerRowItem({
           {r.listings === 0
             ? 'aucune fiche suivie'
             : `${r.listings} fiche${r.listings > 1 ? 's' : ''} · ${r.buyable} achetable${r.buyable > 1 ? 's' : ''}`}
+          {` · ${shippingLabel(r)}`}
           {r.pokescam && (
             <ShieldCheck
               className="ml-1 inline size-3 text-success"
@@ -425,4 +486,12 @@ function RetailerRowItem({
       )}
     </li>
   );
+}
+
+/** « port 1,90 € · offert dès 50 € », « port offert », « port inconnu »… */
+function shippingLabel(r: Pick<RetailerRow, 'shippingCost' | 'freeShippingFrom'>): string {
+  const free = r.freeShippingFrom !== null ? `offert dès ${formatPrice(r.freeShippingFrom)}` : null;
+  if (r.shippingCost === 0) return 'port offert';
+  if (r.shippingCost === null) return free ? `port ${free}, inconnu en dessous` : 'port inconnu';
+  return [`port ${formatPrice(r.shippingCost)}`, free].filter(Boolean).join(' · ');
 }

@@ -225,6 +225,8 @@ model Retailer {
   shippingCost     Decimal?       @db.Decimal(10, 2)
   /// Montant de commande à partir duquel le port est offert (null = jamais / inconnu).
   freeShippingFrom Decimal?       @db.Decimal(10, 2)
+  /// Frais de port saisis sur le site : l'annuaire ne les écrase plus.
+  shippingManual   Boolean        @default(false)
   listings         Listing[]
 }
 

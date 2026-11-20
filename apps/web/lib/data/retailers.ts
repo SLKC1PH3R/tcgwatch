@@ -6,7 +6,7 @@ import {
   type RetailerKind,
 } from '@tcgwatch/adapters';
 import { prisma } from '@tcgwatch/db';
-import { isBuyable } from '@tcgwatch/shared';
+import { isBuyable, toNumber } from '@tcgwatch/shared';
 
 export interface RetailerRow {
   /** null : site de l'annuaire pas encore synchronisé en base (worker non démarré). */
@@ -22,6 +22,11 @@ export interface RetailerRow {
   /** Présentation PokéScam si la boutique figure dans leur liste de sites fiables. */
   pokescam: string | null;
   enabled: boolean;
+  /** Frais de port d'un colis standard, port offert dès ce montant (null : inconnu). */
+  shippingCost: number | null;
+  freeShippingFrom: number | null;
+  /** Frais de port saisis sur le site (prioritaires sur l'annuaire). */
+  shippingManual: boolean;
   listings: number;
   buyable: number;
 }
@@ -49,6 +54,9 @@ export async function getRetailers(): Promise<RetailerRow[]> {
       notes: r.notes ?? info?.notes ?? null,
       pokescam: info?.pokescam ?? null,
       enabled: r.enabled,
+      shippingCost: toNumber(r.shippingCost),
+      freeShippingFrom: toNumber(r.freeShippingFrom),
+      shippingManual: r.shippingManual,
       listings: r.listings.length,
       buyable: r.listings.filter((l) => l.state === 'ACTIVE' && isBuyable(l.lastAvailability))
         .length,
@@ -68,6 +76,9 @@ export async function getRetailers(): Promise<RetailerRow[]> {
       notes: info.notes ?? null,
       pokescam: info.pokescam ?? null,
       enabled: true,
+      shippingCost: info.shipping?.cost ?? null,
+      freeShippingFrom: info.shipping?.freeFrom ?? null,
+      shippingManual: false,
       listings: 0,
       buyable: 0,
     });
