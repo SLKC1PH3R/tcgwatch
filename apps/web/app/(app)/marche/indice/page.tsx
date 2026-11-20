@@ -3,7 +3,9 @@ import Link from 'next/link';
 import { prisma, type Prisma } from '@tcgwatch/db';
 import { formatDate, formatPrice, toNumber } from '@tcgwatch/shared';
 import { ChangeBadge } from '@/components/change-badge';
+import { FitPage } from '@/components/fit-page';
 import { PageHeader } from '@/components/page-header';
+import { TabPanels } from '@/components/tab-panels';
 import { Thumb } from '@/components/thumb';
 import { TrendChart } from '@/components/trend-chart';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -15,7 +17,9 @@ import {
   type PricedCard,
   type SealedPrice,
 } from '@/lib/data/prices';
+import { fitCard, fitGrid, fitScroll } from '@/lib/fit';
 import { familyStats } from '@/lib/market-stats';
+import { cn } from '@/lib/utils';
 
 export const metadata: Metadata = { title: 'Indice du marché' };
 
@@ -144,13 +148,13 @@ export default async function MarketIndexPage() {
   });
 
   return (
-    <>
+    <FitPage>
       <PageHeader
-        title="Combien vaut le marché des cartes Pokémon ?"
+        title="Combien vaut le marché Pokémon ?"
         description={`La valeur de ${(cards.count + d.count + e.count).toLocaleString('fr-FR')} cartes, displays et ETB, d’après leur cote Cardmarket du jour : les plus chers, ce qui monte, ce qui chute.`}
       />
 
-      <div className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid shrink-0 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Family
           label="Valeur suivie"
           value={total}
@@ -173,152 +177,126 @@ export default async function MarketIndexPage() {
         <Family label="ETB" value={e.value} count={e.count} unit="ETB" change={e.change} />
       </div>
 
-      <Card className="mb-8">
-        <CardHeader>
-          <div className="space-y-1">
-            <CardTitle>La tendance générale</CardTitle>
-            <CardDescription>
-              Valeur totale des displays et ETB cotés, jour après jour ({HISTORY_DAYS} derniers
-              jours) ; la courbe des cartes se construit depuis la mise en place de leur cote
-              quotidienne.
-            </CardDescription>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <TrendChart
-            data={chart}
-            series={[
-              { key: 'displays', label: 'Displays', color: 'var(--chart-1)' },
-              { key: 'etb', label: 'ETB', color: 'var(--chart-2)' },
-              { key: 'cards', label: 'Cartes', color: 'var(--chart-3)' },
-            ]}
-            height="h-72"
-          />
-        </CardContent>
-      </Card>
+      <div
+        className={cn(
+          fitGrid,
+          'lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)] fit:grid-rows-[minmax(0,1.15fr)_minmax(0,1fr)]',
+        )}
+      >
+        <Card className={fitCard}>
+          <CardHeader>
+            <div className="space-y-1">
+              <CardTitle>La tendance générale</CardTitle>
+              <CardDescription>
+                Valeur totale des displays, ETB et cartes cotés, sur {HISTORY_DAYS} jours.
+              </CardDescription>
+            </div>
+            <details className="group relative text-xs text-muted-foreground">
+              <summary className="cursor-pointer list-none rounded-full border px-2.5 py-1 font-semibold hover:text-foreground">
+                Méthode ⓘ
+              </summary>
+              <div className="absolute top-full right-0 z-20 mt-2 w-80 space-y-2 rounded-xl border bg-popover p-3 leading-relaxed shadow-lg">
+                <p>
+                  Cotes : tendance du guide des prix officiel de Cardmarket, publié chaque jour
+                  (toutes langues et états confondus). Les cartes y sont reliées via TCGdex, les
+                  produits scellés via CardNexus, avec des contrôles de cohérence (format, année,
+                  date de sortie).
+                </p>
+                <p>
+                  Variation sur 30 jours : cartes, cote du jour face à la moyenne des 30 derniers
+                  jours (cartes de plus de {CARD_MOVE_MIN} € pour les hausses et baisses) ; scellé,
+                  cote du jour face à celle d’il y a 30 jours, à périmètre constant. Valeur d’une
+                  extension : somme des cotes de ses cartes.
+                </p>
+                <p>Dernière mise à jour : {formatDate(new Date())}.</p>
+              </div>
+            </details>
+          </CardHeader>
+          <CardContent className="fit:flex fit:min-h-0 fit:flex-1 fit:flex-col">
+            <TrendChart
+              data={chart}
+              series={[
+                { key: 'displays', label: 'Displays', color: 'var(--chart-1)' },
+                { key: 'etb', label: 'ETB', color: 'var(--chart-2)' },
+                { key: 'cards', label: 'Cartes', color: 'var(--chart-3)' },
+              ]}
+              height="h-72 fit:h-auto fit:min-h-32 fit:flex-1"
+            />
+          </CardContent>
+        </Card>
 
-      <div className="mb-8 grid gap-6 lg:grid-cols-2 [&>*]:min-w-0">
-        <Card>
+        <Card className={fitCard}>
+          <TabPanels
+            bodyClassName={cn('px-2', fitScroll)}
+            tabs={[
+              { id: 'envolent', label: 'Cartes qui s’envolent', content: <CardRows cards={up} /> },
+              { id: 'chutent', label: 'Qui chutent', content: <CardRows cards={down} /> },
+            ]}
+          />
+        </Card>
+
+        <div className="grid min-w-0 gap-4 sm:grid-cols-2 fit:min-h-0 [&>*]:min-w-0">
+          <Card className={fitCard}>
+            <CardHeader>
+              <CardTitle>Displays et ETB · 30 j</CardTitle>
+            </CardHeader>
+            <TabPanels
+              bodyClassName={cn('px-2', fitScroll)}
+              tabs={[
+                { id: 'montent', label: 'Hausses', content: <SealedRows rows={sealedUp} /> },
+                { id: 'baissent', label: 'Baisses', content: <SealedRows rows={sealedDown} /> },
+                { id: 'chers', label: 'Plus chers', content: <SealedRows rows={priciest} /> },
+              ]}
+            />
+          </Card>
+          <Card className={fitCard}>
+            <CardHeader>
+              <CardTitle>Extensions qui valent le plus</CardTitle>
+            </CardHeader>
+            <CardContent className={cn('px-2', fitScroll)}>
+              <ol className="divide-y">
+                {extensions.map((x, i) => {
+                  const now = toNumber(x.now);
+                  const then = toNumber(x.then);
+                  return (
+                    <li key={x.id}>
+                      <Link
+                        href={`/extensions/${encodeURIComponent(x.tcgdexId)}?onglet=cartes`}
+                        className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors hover:bg-accent/60"
+                      >
+                        <span className="w-5 text-right text-muted-foreground tabular-nums">
+                          {i + 1}
+                        </span>
+                        <span className="min-w-0 flex-1 truncate font-medium">{x.nameFr}</span>
+                        <ChangeBadge value={now && then ? now / then - 1 : null} />
+                        <span className="w-20 text-right font-semibold tabular-nums">
+                          {formatPrice(Math.round(toNumber(x.value) ?? 0))}
+                        </span>
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ol>
+            </CardContent>
+          </Card>
+        </div>
+
+        <Card className={fitCard}>
           <CardHeader>
             <CardTitle>Les cartes les plus chères du moment</CardTitle>
             <Link href="/produits/prix/cartes" className="text-sm text-primary hover:underline">
               Top 100 ›
             </Link>
           </CardHeader>
-          <CardContent className="px-2">
+          <CardContent className={cn('px-2', fitScroll)}>
             <CardRows
               cards={topCards.map((c) => ({ c, change: changeVs(c.price, c.avg30) }))}
               rank
             />
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>Les extensions qui valent le plus</CardTitle>
-          </CardHeader>
-          <CardContent className="px-2">
-            <ol className="divide-y">
-              {extensions.map((x, i) => {
-                const now = toNumber(x.now);
-                const then = toNumber(x.then);
-                return (
-                  <li key={x.id}>
-                    <Link
-                      href={`/extensions/${encodeURIComponent(x.tcgdexId)}?onglet=cartes`}
-                      className="flex items-center gap-3 rounded-lg px-4 py-2 text-sm transition-colors hover:bg-accent/60"
-                    >
-                      <span className="w-6 text-right text-muted-foreground tabular-nums">
-                        {i + 1}
-                      </span>
-                      <span className="min-w-0 flex-1 truncate font-medium">
-                        {x.nameFr}
-                        {x.releaseDate && (
-                          <span className="font-normal text-muted-foreground">
-                            {' '}
-                            · {x.releaseDate.getUTCFullYear()}
-                          </span>
-                        )}
-                      </span>
-                      <ChangeBadge value={now && then ? now / then - 1 : null} />
-                      <span className="w-24 text-right font-semibold tabular-nums">
-                        {formatPrice(toNumber(x.value))}
-                      </span>
-                    </Link>
-                  </li>
-                );
-              })}
-            </ol>
-          </CardContent>
-        </Card>
       </div>
-
-      <h2 className="mb-3 font-display text-xl font-semibold">
-        Les stars et les chutes en 30 jours
-      </h2>
-      <div className="mb-8 grid gap-6 lg:grid-cols-2 [&>*]:min-w-0">
-        <Card>
-          <CardHeader>
-            <CardTitle>Elles s’envolent</CardTitle>
-          </CardHeader>
-          <CardContent className="px-2">
-            <CardRows cards={up} />
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>Elles chutent</CardTitle>
-          </CardHeader>
-          <CardContent className="px-2">
-            <CardRows cards={down} />
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>Displays et ETB qui montent</CardTitle>
-          </CardHeader>
-          <CardContent className="px-2">
-            <SealedRows rows={sealedUp} />
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>Displays et ETB qui baissent</CardTitle>
-          </CardHeader>
-          <CardContent className="px-2">
-            <SealedRows rows={sealedDown} />
-          </CardContent>
-        </Card>
-      </div>
-
-      <Card className="mb-8">
-        <CardHeader>
-          <CardTitle>Les displays et ETB les plus chers</CardTitle>
-        </CardHeader>
-        <CardContent className="px-2">
-          <SealedRows rows={priciest} />
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Méthode</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2 text-sm text-muted-foreground">
-          <p>
-            Cotes : tendance du guide des prix officiel de Cardmarket, publié chaque jour (toutes
-            langues et états confondus). Les cartes y sont reliées via TCGdex, les produits scellés
-            via CardNexus, avec des contrôles de cohérence (format, année, date de sortie).
-          </p>
-          <p>
-            Variation sur 30 jours : cartes, cote du jour face à la moyenne des 30 derniers jours
-            (cartes de plus de {CARD_MOVE_MIN} € pour les hausses et baisses) ; scellé, cote du jour
-            face à celle d’il y a 30 jours, à périmètre constant. Valeur d’une extension : somme des
-            cotes de ses cartes.
-          </p>
-          <p>Dernière mise à jour : {formatDate(new Date())}.</p>
-        </CardContent>
-      </Card>
-    </>
+    </FitPage>
   );
 }
 
@@ -338,9 +316,9 @@ function Family({
   hint?: string;
 }) {
   return (
-    <div className="rounded-xl border bg-card p-4">
+    <div className="min-w-0 rounded-xl border bg-card px-4 py-3">
       <p className="text-xs font-medium text-muted-foreground">{label}</p>
-      <p className="font-display text-2xl font-bold tabular-nums">
+      <p className="font-display text-xl font-bold tabular-nums">
         {formatPrice(Math.round(value))}
       </p>
       <p className="flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">

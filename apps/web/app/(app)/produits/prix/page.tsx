@@ -3,7 +3,7 @@ import { PriceBoard } from './price-board';
 
 export const metadata: Metadata = { title: 'Prix du scellé' };
 
-type Props = { searchParams: Promise<{ serie?: string; tri?: string }> };
+type Props = { searchParams: Promise<{ serie?: string; tri?: string; p?: string }> };
 
 export default async function PricesPage({ searchParams }: Props) {
   const q = await searchParams;

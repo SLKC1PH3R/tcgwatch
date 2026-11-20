@@ -12,6 +12,7 @@ import {
   type ProductTypeKey,
 } from '@tcgwatch/shared';
 import { getEnv } from '@tcgwatch/shared/env';
+import { FitPage } from '@/components/fit-page';
 import { PageHeader } from '@/components/page-header';
 import { Thumb } from '@/components/thumb';
 import { Badge } from '@/components/ui/badge';
@@ -26,6 +27,7 @@ import {
 } from '@/components/ui/table';
 import { latestMarketPrices } from '@/lib/data/collection';
 import { bestOffer, getProducts } from '@/lib/data/products';
+import { fitCard, fitColumn, fitGrid, fitScroll } from '@/lib/fit';
 import { cn } from '@/lib/utils';
 import { Sparkline } from '@/components/sparkline';
 
@@ -79,223 +81,137 @@ export default async function MarketPage({
     );
 
   return (
-    <>
+    <FitPage>
       <PageHeader
         title="Marché secondaire"
         description="Prix constatés hors boutiques. Cardmarket n’est jamais scrapé : saisie manuelle ou API tierces."
       />
 
-      <div className="grid gap-6 xl:grid-cols-[1fr_360px] [&>*]:min-w-0">
-        <div className="space-y-6">
-          <Card className="py-2">
-            <CardHeader className="pt-3">
-              <div className="space-y-1">
-                <CardTitle>Produits scellés</CardTitle>
-                <CardDescription>
-                  {sealed.length} produits FR · prix conseillé à la sortie (Pokécardex), meilleur
-                  prix achetable aujourd’hui chez les revendeurs suivis, prix de revente (annonces
-                  FR sur CardNexus, ou saisie).
-                </CardDescription>
-              </div>
-              <nav aria-label="Période" className="flex flex-wrap gap-1.5">
-                {PERIODS.map((p) => (
-                  <Link
-                    key={p.value}
-                    href={p.value === 'recent' ? '/marche' : `/marche?periode=${p.value}`}
-                    aria-current={period === p.value ? 'page' : undefined}
-                    className={cn(
-                      'inline-flex h-8 items-center rounded-full border px-3.5 text-sm font-medium transition-colors hover:bg-accent',
-                      period === p.value &&
-                        'border-primary bg-primary text-primary-foreground hover:bg-primary/90',
-                    )}
-                  >
-                    {p.label}
-                  </Link>
-                ))}
-              </nav>
-            </CardHeader>
-            <CardContent className="px-2">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Produit</TableHead>
-                    <TableHead className="text-right">Prix conseillé (sortie)</TableHead>
-                    <TableHead className="text-right">Meilleur prix boutique</TableHead>
-                    <TableHead className="text-right">vs conseillé</TableHead>
-                    <TableHead className="text-right">Prix de revente</TableHead>
-                    <TableHead className="text-right">Plus-value</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {sealed.map(({ p, m, best }) => {
-                    const vsMsrp = best && p.msrp ? best.price / p.msrp - 1 : null;
-                    // Plus-value latente : revente (sinon prix boutique actuel) vs prix d'époque.
-                    const current = m?.price ?? null;
-                    const gain = current !== null && p.msrp ? current / p.msrp - 1 : null;
-                    return (
-                      <TableRow key={p.id}>
-                        <TableCell>
-                          <div className="flex min-w-56 items-center gap-3">
-                            <Thumb src={p.displayImage} />
-                            <div className="min-w-0">
-                              <Link
-                                href={`/produits/${p.id}`}
-                                className="line-clamp-2 font-medium hover:underline"
-                              >
-                                {p.name}
-                              </Link>
-                              <p className="text-xs text-muted-foreground">
-                                {PRODUCT_TYPE_LABELS[p.type as ProductTypeKey] ?? p.type}
-                                {p.releaseDate && ` · ${formatDate(p.releaseDate)}`}
-                              </p>
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-right tabular-nums">
-                          {formatPrice(p.msrp)}
-                        </TableCell>
-                        <TableCell className="text-right tabular-nums">
-                          {best ? (
-                            <a
-                              href={best.url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="hover:underline"
+      <div className={cn(fitGrid, 'xl:grid-cols-[minmax(0,1fr)_24rem]')}>
+        <Card className={fitCard}>
+          <CardHeader>
+            <div className="space-y-1">
+              <CardTitle>Produits scellés</CardTitle>
+              <CardDescription>
+                {sealed.length} produits FR · prix conseillé à la sortie (Pokécardex), meilleur prix
+                achetable aujourd’hui chez les revendeurs suivis, prix de revente (annonces FR sur
+                CardNexus, ou saisie).
+              </CardDescription>
+            </div>
+            <nav aria-label="Période" className="flex flex-wrap gap-1.5">
+              {PERIODS.map((p) => (
+                <Link
+                  key={p.value}
+                  href={p.value === 'recent' ? '/marche' : `/marche?periode=${p.value}`}
+                  aria-current={period === p.value ? 'page' : undefined}
+                  className={cn(
+                    'inline-flex h-8 items-center rounded-full border px-3.5 text-sm font-medium transition-colors hover:bg-accent',
+                    period === p.value &&
+                      'border-primary bg-primary text-primary-foreground hover:bg-primary/90',
+                  )}
+                >
+                  {p.label}
+                </Link>
+              ))}
+            </nav>
+          </CardHeader>
+          <CardContent className={cn('px-2', fitScroll)}>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Produit</TableHead>
+                  <TableHead className="text-right">Prix conseillé (sortie)</TableHead>
+                  <TableHead className="text-right">Meilleur prix boutique</TableHead>
+                  <TableHead className="text-right">vs conseillé</TableHead>
+                  <TableHead className="text-right">Prix de revente</TableHead>
+                  <TableHead className="text-right">Plus-value</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {sealed.map(({ p, m, best }) => {
+                  const vsMsrp = best && p.msrp ? best.price / p.msrp - 1 : null;
+                  // Plus-value latente : revente (sinon prix boutique actuel) vs prix d'époque.
+                  const current = m?.price ?? null;
+                  const gain = current !== null && p.msrp ? current / p.msrp - 1 : null;
+                  return (
+                    <TableRow key={p.id}>
+                      <TableCell>
+                        <div className="flex min-w-56 items-center gap-3">
+                          <Thumb src={p.displayImage} />
+                          <div className="min-w-0">
+                            <Link
+                              href={`/produits/${p.id}`}
+                              className="line-clamp-2 font-medium hover:underline"
                             >
-                              {formatPrice(best.price)}
-                              <span className="block text-xs text-muted-foreground">
-                                {best.retailerName}
-                              </span>
-                            </a>
-                          ) : (
-                            '—'
-                          )}
-                        </TableCell>
-                        <TableCell
-                          className={cn(
-                            'text-right tabular-nums',
-                            vsMsrp !== null && vsMsrp > 0.05 && 'text-destructive',
-                            vsMsrp !== null && vsMsrp < -0.02 && 'text-success',
-                          )}
-                        >
-                          {formatPercent(vsMsrp)}
-                        </TableCell>
-                        <TableCell className="text-right tabular-nums">
-                          {m ? (
-                            <>
-                              {formatPrice(m.price)}
-                              <span className="block text-xs text-muted-foreground">
-                                {formatDate(m.date)} · {m.source}
-                              </span>
-                            </>
-                          ) : (
-                            '—'
-                          )}
-                        </TableCell>
-                        <TableCell
-                          className={cn(
-                            'text-right tabular-nums',
-                            gain !== null && gain > 0.05 && 'text-success',
-                            gain !== null && gain < -0.05 && 'text-destructive',
-                          )}
-                        >
-                          {formatPercent(gain)}
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-
-          <Card className="py-2">
-            <CardHeader className="pt-3">
-              <div className="space-y-1">
-                <CardTitle>Cartes phares</CardTitle>
-                <CardDescription>
-                  Choisies automatiquement (cartes secrètes les mieux cotées des dernières
-                  extensions) · cotations Cardmarket agrégées par TCGdex, relevées chaque jour.
-                </CardDescription>
-              </div>
-            </CardHeader>
-            <CardContent className="px-2">
-              {cards.length === 0 ? (
-                <p className="py-6 text-center text-sm text-muted-foreground">
-                  Aucune carte suivie.
-                </p>
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Carte</TableHead>
-                      <TableHead>Extension</TableHead>
-                      <TableHead className="text-right">Prix</TableHead>
-                      <TableHead className="text-right">Variation</TableHead>
-                      <TableHead className="text-center">30 derniers relevés</TableHead>
+                              {p.name}
+                            </Link>
+                            <p className="text-xs text-muted-foreground">
+                              {PRODUCT_TYPE_LABELS[p.type as ProductTypeKey] ?? p.type}
+                              {p.releaseDate && ` · ${formatDate(p.releaseDate)}`}
+                            </p>
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {formatPrice(p.msrp)}
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {best ? (
+                          <a
+                            href={best.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="hover:underline"
+                          >
+                            {formatPrice(best.price)}
+                            <span className="block text-xs text-muted-foreground">
+                              {best.retailerName}
+                            </span>
+                          </a>
+                        ) : (
+                          '—'
+                        )}
+                      </TableCell>
+                      <TableCell
+                        className={cn(
+                          'text-right tabular-nums',
+                          vsMsrp !== null && vsMsrp > 0.05 && 'text-destructive',
+                          vsMsrp !== null && vsMsrp < -0.02 && 'text-success',
+                        )}
+                      >
+                        {formatPercent(vsMsrp)}
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {m ? (
+                          <>
+                            {formatPrice(m.price)}
+                            <span className="block text-xs text-muted-foreground">
+                              {formatDate(m.date)} · {m.source}
+                            </span>
+                          </>
+                        ) : (
+                          '—'
+                        )}
+                      </TableCell>
+                      <TableCell
+                        className={cn(
+                          'text-right tabular-nums',
+                          gain !== null && gain > 0.05 && 'text-success',
+                          gain !== null && gain < -0.05 && 'text-destructive',
+                        )}
+                      >
+                        {formatPercent(gain)}
+                      </TableCell>
                     </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {cards.map((c) => {
-                      const [last, prev] = c.prices;
-                      const lastP = toNumber(last?.price);
-                      const prevP = toNumber(prev?.price);
-                      return (
-                        <TableRow key={c.id}>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              {c.imageUrl && (
-                                // eslint-disable-next-line @next/next/no-img-element
-                                <img
-                                  referrerPolicy="no-referrer"
-                                  src={c.imageUrl}
-                                  alt=""
-                                  className="h-12 rounded"
-                                  loading="lazy"
-                                />
-                              )}
-                              <div>
-                                <Link
-                                  href={`/cartes/${encodeURIComponent(c.tcgdexId)}`}
-                                  className="font-medium hover:underline"
-                                >
-                                  {c.name}
-                                </Link>
-                                <p className="text-xs text-muted-foreground">
-                                  {c.tcgdexId} {c.rarity && `· ${c.rarity}`}
-                                </p>
-                              </div>
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-sm">
-                            {c.release.setCode ?? c.release.nameFr}
-                          </TableCell>
-                          <TableCell className="text-right tabular-nums">
-                            {formatPrice(lastP)}
-                          </TableCell>
-                          <TableCell className="text-right tabular-nums">
-                            {lastP !== null && prevP ? formatPercent(lastP / prevP - 1) : '—'}
-                          </TableCell>
-                          <TableCell className="text-center">
-                            <Sparkline
-                              values={c.prices
-                                .map((p) => toNumber(p.price))
-                                .filter((v): v is number => v !== null)
-                                .reverse()}
-                            />
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
 
-        <div className="space-y-6">
-          <Card>
+        <div className={fitColumn}>
+          <Card className={cn(fitCard, 'shrink-0')}>
             <CardHeader>
               <CardTitle>Sources de prix</CardTitle>
             </CardHeader>
@@ -322,8 +238,76 @@ export default async function MarketPage({
               </p>
             </CardContent>
           </Card>
+          <Card className={cn(fitCard, 'fit:flex-1')}>
+            <CardHeader>
+              <div className="space-y-1">
+                <CardTitle>Cartes phares</CardTitle>
+                <CardDescription>
+                  Cartes secrètes les mieux cotées des dernières extensions, cotations Cardmarket
+                  agrégées par TCGdex, relevées chaque jour.
+                </CardDescription>
+              </div>
+            </CardHeader>
+            <CardContent className={cn('px-2', fitScroll)}>
+              {cards.length === 0 ? (
+                <p className="py-6 text-center text-sm text-muted-foreground">
+                  Aucune carte suivie.
+                </p>
+              ) : (
+                <ul className="divide-y">
+                  {cards.map((c) => {
+                    const [last, prev] = c.prices;
+                    const lastP = toNumber(last?.price);
+                    const prevP = toNumber(prev?.price);
+                    return (
+                      <li key={c.id} className="flex items-center gap-3 px-3 py-2">
+                        {c.imageUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            referrerPolicy="no-referrer"
+                            src={c.imageUrl}
+                            alt=""
+                            className="h-12 w-9 shrink-0 rounded object-contain"
+                            loading="lazy"
+                          />
+                        ) : (
+                          <span className="h-12 w-9 shrink-0 rounded bg-muted" />
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <Link
+                            href={`/cartes/${encodeURIComponent(c.tcgdexId)}`}
+                            className="block truncate text-sm font-medium hover:underline"
+                          >
+                            {c.name}
+                          </Link>
+                          <p className="truncate text-xs text-muted-foreground">
+                            {c.release.setCode ?? c.release.nameFr}
+                            {c.rarity && ` · ${c.rarity}`}
+                          </p>
+                          <Sparkline
+                            width={88}
+                            height={18}
+                            values={c.prices
+                              .map((p) => toNumber(p.price))
+                              .filter((v): v is number => v !== null)
+                              .reverse()}
+                          />
+                        </div>
+                        <div className="shrink-0 text-right">
+                          <p className="text-sm font-semibold tabular-nums">{formatPrice(lastP)}</p>
+                          <p className="text-xs text-muted-foreground tabular-nums">
+                            {lastP !== null && prevP ? formatPercent(lastP / prevP - 1) : '—'}
+                          </p>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </CardContent>
+          </Card>
         </div>
       </div>
-    </>
+    </FitPage>
   );
 }

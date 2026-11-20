@@ -5,7 +5,7 @@ import { PriceBoard } from '../price-board';
 
 type Props = {
   params: Promise<{ categorie: string }>;
-  searchParams: Promise<{ serie?: string; tri?: string }>;
+  searchParams: Promise<{ serie?: string; tri?: string; p?: string }>;
 };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -24,6 +24,7 @@ export default async function CategoryPricesPage({ params, searchParams }: Props
       serie={q.serie}
       sort={q.tri}
       basePath={`/produits/prix/${category.key}`}
+      picked={q.p}
     />
   );
 }
