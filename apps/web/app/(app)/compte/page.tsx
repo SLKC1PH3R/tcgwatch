@@ -34,7 +34,7 @@ export default async function AccountPage() {
   return (
     <>
       <PageHeader title="Mon compte" description={`Inscrit le ${formatDateTime(user.createdAt)}`} />
-      <div className="grid gap-6 lg:grid-cols-2 [&>*]:min-w-0">
+      <div className="mt-4 grid gap-6 lg:grid-cols-2 [&>*]:min-w-0">
         <Card>
           <CardHeader>
             <div className="space-y-1">

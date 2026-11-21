@@ -505,6 +505,10 @@ model Card {
   nameMissing         Boolean        @default(false)
   /// Image TCGdex sans suffixe (/low.webp, /high.webp) ; anglaise si la française manque.
   imageUrl            String?
+  /// Empreinte perceptuelle (pHash) de l'illustration, pour le scanner de cartes.
+  imageHash           String?
+  /// Image d'où vient l'empreinte (recalculée si l'image change).
+  imageHashUrl        String?
   rarity              String?
   illustrator         String?
   category            String? /// Pokémon, Dresseur, Énergie

@@ -64,6 +64,8 @@ const schema = z.object({
   HISTORY_CRON: z.string().default('30 3 * * *'),
   /** Rappel des sorties du lendemain pour les produits suivis (veille au soir). */
   RELEASE_REMINDER_CRON: z.string().default('0 18 * * *'),
+  /** Empreintes des images de cartes pour le scanner (par lots, jusqu'à rattraper le catalogue). */
+  CARD_HASH_CRON: z.string().default('20 * * * *'),
   /** Jours de relevés détaillés gardés (au-delà : une ligne par fiche et par jour). */
   SNAPSHOT_RETENTION_DAYS: z.coerce.number().int().min(1).default(14),
   /** Jours d'alertes gardées dans l'historique des alertes. */

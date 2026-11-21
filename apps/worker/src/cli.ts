@@ -28,6 +28,7 @@ import { linkProductExtensions } from './jobs/link-extensions';
 import { applyCardPrices, resolveCardmarketIds, snapshotMarketIndex } from './jobs/card-prices';
 import { runMarketJob, saveQuotes } from './jobs/market';
 import { linkSealedProducts } from './jobs/sealed-links';
+import { runCardHashes } from './jobs/card-hashes';
 import { fillCardImages } from './jobs/card-images';
 import { runMarketListings } from './jobs/market-listings';
 import { CardmarketGuideProvider } from '@tcgwatch/market';
@@ -107,6 +108,12 @@ try {
         { probe: Boolean(set) },
       );
       ctx.logger.info({ releases: releases.length, filled }, 'Images des cartes complétées');
+      break;
+    }
+    case 'card-hashes': {
+      // Empreintes pour le scanner : un lot (relancer jusqu'à « hashed: 0 »).
+      const n = await runCardHashes(ctx);
+      ctx.logger.info({ hashed: n }, 'Empreintes des cartes calculées');
       break;
     }
     case 'ebay':

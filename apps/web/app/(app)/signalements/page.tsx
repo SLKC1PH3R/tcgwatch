@@ -65,7 +65,7 @@ export default async function ReportsPage({ searchParams }: Props) {
         title="Signalements"
         description="Erreurs remontées par les utilisateurs : prix, stocks, fiches rattachées au mauvais produit."
       />
-      <nav className="mb-4 flex gap-2">
+      <nav className="mt-4 mb-4 flex gap-2">
         {[
           { href: '/signalements', label: `À traiter · ${open}`, on: !closed },
           { href: '/signalements?vue=traites', label: `Traités · ${done}`, on: closed },

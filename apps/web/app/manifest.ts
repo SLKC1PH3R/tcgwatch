@@ -21,6 +21,7 @@ export default function manifest(): MetadataRoute.Manifest {
     shortcuts: [
       { name: 'Alertes', url: '/alertes' },
       { name: 'Ma collection', url: '/collection' },
+      { name: 'Scanner une carte', url: '/collection/cartes/scanner' },
       { name: 'Ajout rapide de cartes', url: '/collection/cartes/ajout-rapide' },
     ],
   };

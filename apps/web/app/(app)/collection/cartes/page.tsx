@@ -1,4 +1,4 @@
-import { BookOpen, Plus, Sparkles } from 'lucide-react';
+import { BookOpen, Plus, ScanLine, Sparkles } from 'lucide-react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { after } from 'next/server';
@@ -37,6 +37,11 @@ export default async function MyCardsPage() {
             </Button>
             <Button asChild variant="outline">
               <Link href="/collection/cartes/vitrines">Vitrines</Link>
+            </Button>
+            <Button asChild variant="outline">
+              <Link href="/collection/cartes/scanner">
+                <ScanLine /> Scanner
+              </Link>
             </Button>
             <Button asChild>
               <Link href="/collection/cartes/ajout-rapide">
