@@ -530,6 +530,7 @@ model Card {
   owned               OwnedCard[]
   binderEntries       BinderCard[]
   showcaseEntries     ShowcaseCard[]
+  dailyPrices         CardPriceDaily[]
 
   @@index([releaseId, number])
   @@index([name])
@@ -565,6 +566,20 @@ model ChaseCard {
   prices     CardPrice[]
   alerts     AlertEvent[]
   createdAt  DateTime     @default(now())
+}
+
+/// Cote Cardmarket quotidienne de chaque carte cotée (guide des prix) : historique de toutes
+/// les cartes, pas seulement des cartes suivies.
+model CardPriceDaily {
+  cardId String
+  card   Card     @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  date   DateTime @db.Date
+  trend  Decimal? @db.Decimal(10, 2)
+  low    Decimal? @db.Decimal(10, 2)
+  avg7   Decimal? @db.Decimal(10, 2)
+  avg30  Decimal? @db.Decimal(10, 2)
+
+  @@id([cardId, date])
 }
 
 model CardPrice {

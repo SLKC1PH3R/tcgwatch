@@ -17,7 +17,7 @@ export interface CardPoint {
  * TCGdex du jour (image haute définition, extension, cotes actuelles).
  */
 export async function getCardPage(tcgdexId: string) {
-  const [tracked, live, local] = await Promise.all([
+  const [tracked, live, local, daily] = await Promise.all([
     prisma.chaseCard.findUnique({
       where: { tcgdexId },
       include: {
@@ -27,6 +27,7 @@ export async function getCardPage(tcgdexId: string) {
     }),
     new TcgdexClient().getCard(tcgdexId).catch(() => null),
     getLocalCard(tcgdexId),
+    prisma.cardPriceDaily.findMany({ where: { cardId: tcgdexId }, orderBy: { date: 'asc' } }),
   ]);
   if (!tracked && !live && !local) return null;
   // La cote du jour lue sur TCGdex sert aussi de cache à la grille de l'extension.
@@ -43,14 +44,23 @@ export async function getCardPage(tcgdexId: string) {
     });
   }
 
-  const history: CardPoint[] = (tracked?.prices ?? []).map((p) => ({
-    day: p.date.toISOString().slice(0, 10),
-    // Anciens relevés : seule la valeur affichée (tendance) était gardée.
-    trend: toNumber(p.trend) ?? toNumber(p.price),
-    low: toNumber(p.low),
-    avg7: toNumber(p.avg7),
-    avg30: toNumber(p.avg30),
-  }));
+  // Historique quotidien de toutes les cartes cotées ; à défaut, celui des cartes suivies.
+  const history: CardPoint[] = daily.length
+    ? daily.map((p) => ({
+        day: p.date.toISOString().slice(0, 10),
+        trend: toNumber(p.trend),
+        low: toNumber(p.low),
+        avg7: toNumber(p.avg7),
+        avg30: toNumber(p.avg30),
+      }))
+    : (tracked?.prices ?? []).map((p) => ({
+        day: p.date.toISOString().slice(0, 10),
+        // Anciens relevés : seule la valeur affichée (tendance) était gardée.
+        trend: toNumber(p.trend) ?? toNumber(p.price),
+        low: toNumber(p.low),
+        avg7: toNumber(p.avg7),
+        avg30: toNumber(p.avg30),
+      }));
   const last = history.at(-1);
   const current: CardmarketQuote | null = live
     ? liveQuote

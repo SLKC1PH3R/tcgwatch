@@ -60,6 +60,7 @@ export async function resolveCardmarketIds(
 export async function applyCardPrices(
   guide: Map<number, CardmarketGuideEntry>,
   singles: Map<number, CardmarketSingle>,
+  date = todayUtc(),
 ): Promise<number> {
   const linked = await prisma.card.findMany({
     where: { cardmarketId: { not: null } },
@@ -119,6 +120,17 @@ export async function applyCardPrices(
       FROM jsonb_to_recordset(${JSON.stringify(chunk)}::jsonb) AS v(
         id text, trend numeric, low numeric, avg1 numeric, avg7 numeric, avg30 numeric)
       WHERE c.id = v.id`;
+    // Historique quotidien (une ligne par carte cotée et par jour ; le dernier relevé du jour gagne).
+    const priced = chunk.filter((r) => r.trend !== null);
+    if (priced.length) {
+      await prisma.$executeRaw`
+        INSERT INTO "CardPriceDaily" ("cardId", "date", "trend", "low", "avg7", "avg30")
+        SELECT v.id, ${date}::date, v.trend, v.low, v.avg7, v.avg30
+        FROM jsonb_to_recordset(${JSON.stringify(priced)}::jsonb) AS v(
+          id text, trend numeric, low numeric, avg7 numeric, avg30 numeric)
+        ON CONFLICT ("cardId", "date") DO UPDATE SET trend = EXCLUDED.trend,
+          low = EXCLUDED.low, avg7 = EXCLUDED.avg7, avg30 = EXCLUDED.avg30`;
+    }
   }
   return rows.length;
 }
