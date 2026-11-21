@@ -23,6 +23,13 @@ const PUBLIC_PATHS = [
   '/icon-512.png',
   '/icon-maskable-512.png',
   '/hors-ligne',
+  // Pages publiques : accueil des visiteurs, légal, méthode, guides.
+  '/bienvenue',
+  '/mentions-legales',
+  '/cgu',
+  '/confidentialite',
+  '/methode',
+  '/guides',
 ];
 
 export function proxy(request: NextRequest) {
@@ -32,7 +39,8 @@ export function proxy(request: NextRequest) {
   }
   if (!request.cookies.has('tcgwatch_session')) {
     const url = request.nextUrl.clone();
-    url.pathname = '/connexion';
+    // Visiteur sur l'accueil : la présentation du site ; ailleurs, la connexion.
+    url.pathname = pathname === '/' ? '/bienvenue' : '/connexion';
     url.search = pathname === '/' ? '' : `?next=${encodeURIComponent(pathname + search)}`;
     return NextResponse.redirect(url);
   }

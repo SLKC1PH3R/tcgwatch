@@ -173,6 +173,17 @@ export function RegisterForm({ firstUser, google }: { firstUser: boolean; google
           <Button type="submit" className="w-full" disabled={pending}>
             {pending ? 'Création…' : 'Créer le compte'}
           </Button>
+          <p className="text-center text-xs text-muted-foreground">
+            En créant un compte, tu acceptes les{' '}
+            <Link href="/cgu" className="underline">
+              conditions d’utilisation
+            </Link>{' '}
+            et la{' '}
+            <Link href="/confidentialite" className="underline">
+              politique de confidentialité
+            </Link>
+            .
+          </p>
           <p className="text-center text-sm text-muted-foreground">
             Déjà inscrit ?{' '}
             <Link href="/connexion" className="font-medium text-primary hover:underline">

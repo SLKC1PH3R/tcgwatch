@@ -55,12 +55,13 @@ export default async function AppLayout({ children }: { children: React.ReactNod
                 </span>
               )}
             </Link>
-            <span
-              className="hidden max-w-40 truncate text-sm text-muted-foreground xl:inline"
-              title={user.email}
+            <Link
+              href="/compte"
+              className="hidden max-w-40 truncate text-sm text-muted-foreground hover:text-foreground xl:inline"
+              title={`${user.email} — mon compte`}
             >
               {user.name ?? user.email}
-            </span>
+            </Link>
             {/* Sur mobile, la déconnexion est en bas du menu plein écran. */}
             <form action={logoutAction} className="hidden lg:block">
               <Button type="submit" variant="ghost" size="icon" aria-label="Se déconnecter">
@@ -74,9 +75,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
                     action={logoutAction}
                     className="flex items-center justify-between gap-3 border-t border-border/60 px-4 py-3"
                   >
-                    <span className="min-w-0 truncate text-sm text-muted-foreground">
-                      {user.name ?? user.email}
-                    </span>
+                    <Link
+                      href="/compte"
+                      className="min-w-0 truncate text-sm text-muted-foreground hover:text-foreground"
+                    >
+                      {user.name ?? user.email} · Mon compte
+                    </Link>
                     <Button type="submit" variant="outline" size="sm">
                       <LogOut />
                       Se déconnecter

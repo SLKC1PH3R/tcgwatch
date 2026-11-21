@@ -263,3 +263,38 @@
   font-family: 'Archivo Variable', 'Unbounded Variable', ui-sans-serif, system-ui, sans-serif;
   font-stretch: 125%;
 }
+
+/* Texte des pages publiques (légal, méthode, guides). */
+@layer components {
+  .prose-tcg {
+    @apply space-y-4 leading-relaxed;
+  }
+  .prose-tcg h2 {
+    @apply pt-6 font-display text-xl font-bold;
+  }
+  .prose-tcg h3 {
+    @apply pt-2 font-semibold;
+  }
+  .prose-tcg p,
+  .prose-tcg li {
+    @apply text-[15px] text-foreground/90;
+  }
+  .prose-tcg ul {
+    @apply list-disc space-y-1.5 pl-5;
+  }
+  .prose-tcg ol {
+    @apply list-decimal space-y-1.5 pl-5;
+  }
+  .prose-tcg a {
+    @apply font-medium text-primary hover:underline;
+  }
+  .prose-tcg table {
+    @apply w-full text-sm;
+  }
+  .prose-tcg th {
+    @apply border-b py-2 pr-3 text-left font-semibold;
+  }
+  .prose-tcg td {
+    @apply border-b py-2 pr-3 align-top;
+  }
+}

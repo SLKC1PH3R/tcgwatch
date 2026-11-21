@@ -31,6 +31,8 @@ const schema = z.object({
   // E-mails (confirmation d'adresse, mot de passe oublié) via l'API Resend
   RESEND_API_KEY: optionalString,
   MAIL_FROM: z.string().default('TCGWatch <noreply@digitalstack.cloud>'),
+  /** Adresse de contact affichée dans les mentions légales et la politique de confidentialité. */
+  CONTACT_EMAIL: z.string().default('contact@digitalstack.cloud'),
 
   // Notifications
   NTFY_URL: optionalString,
