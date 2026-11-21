@@ -63,9 +63,11 @@ export function breakdownByType(
     .map((p) => ({ ...p, share: p.value / total }));
 }
 
+/** Derniers retours en stock (fil commun : une ligne par événement, pas par destinataire). */
 export async function getRecentRestocks(limit = 6) {
   return prisma.alertEvent.findMany({
     where: { type: { in: ['BACK_IN_STOCK', 'PREORDER_OPEN'] } },
+    distinct: ['dedupeKey'],
     include: {
       product: { select: { id: true, name: true, imageUrl: true, images: true } },
       listing: { select: { lastImageUrl: true, retailer: { select: { name: true } } } },
@@ -75,10 +77,10 @@ export async function getRecentRestocks(limit = 6) {
   });
 }
 
-export async function getActiveAlerts(limit = 8) {
+export async function getActiveAlerts(userId: string, limit = 8) {
   const [items, count] = await Promise.all([
     prisma.alertEvent.findMany({
-      where: { acknowledged: false },
+      where: { userId, acknowledged: false },
       include: {
         product: { select: { id: true, name: true } },
         chaseCard: { select: { tcgdexId: true, name: true } },
@@ -86,7 +88,7 @@ export async function getActiveAlerts(limit = 8) {
       orderBy: { createdAt: 'desc' },
       take: limit,
     }),
-    prisma.alertEvent.count({ where: { acknowledged: false } }),
+    prisma.alertEvent.count({ where: { userId, acknowledged: false } }),
   ]);
   return { items, count };
 }
@@ -162,7 +164,7 @@ export async function getTopPriceMoves(limit = 6): Promise<PriceMove[]> {
   return moves.sort((a, b) => Math.abs(b.change) - Math.abs(a.change)).slice(0, limit);
 }
 
-export async function getDashboard() {
+export async function getDashboard(userId: string) {
   const [
     upcoming,
     restocks,
@@ -176,13 +178,13 @@ export async function getDashboard() {
   ] = await Promise.all([
     getUpcomingEvents(10),
     getRecentRestocks(),
-    getActiveAlerts(),
-    getCollection(),
+    getActiveAlerts(userId),
+    getCollection(userId),
     getTopPriceMoves(),
     prisma.listing.count({ where: { state: { not: 'PAUSED' } } }),
     prisma.listing.aggregate({ _max: { lastCheckedAt: true } }),
     // Depuis le premier achat (jusqu'à 5 ans) : la période « Tout » du graphique de l'accueil.
-    getCollectionHistory(5 * 366),
+    getCollectionHistory(userId, 5 * 366),
     getSealedPrices(),
   ]);
   return {

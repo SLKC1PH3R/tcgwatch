@@ -34,7 +34,7 @@ export async function addCollectionItemAction(
   _prev: CollectionState,
   formData: FormData,
 ): Promise<CollectionState> {
-  await requireUser();
+  const user = await requireUser();
   const parsed = itemSchema.safeParse(formToObject(formData));
   if (!parsed.success) return { error: firstIssue(parsed.error) };
 
@@ -51,6 +51,7 @@ export async function addCollectionItemAction(
   const d = parsed.data;
   await prisma.collectionItem.create({
     data: {
+      userId: user.id,
       productId: d.productId,
       quantity: d.quantity,
       purchasePrice: d.purchasePrice,
@@ -68,8 +69,10 @@ export async function addCollectionItemAction(
 }
 
 export async function deleteCollectionItemAction(id: string) {
-  await requireUser();
-  const item = await prisma.collectionItem.delete({ where: { id } });
+  const user = await requireUser();
+  const item = await prisma.collectionItem.findFirst({ where: { id, userId: user.id } });
+  if (!item) return;
+  await prisma.collectionItem.delete({ where: { id: item.id } });
   await deleteUpload(item.photoPath);
   revalidatePath('/collection');
   revalidatePath('/');
@@ -92,11 +95,11 @@ export async function sellCollectionItemAction(
   _prev: CollectionState,
   formData: FormData,
 ): Promise<CollectionState> {
-  await requireUser();
+  const user = await requireUser();
   const parsed = saleSchema.safeParse(formToObject(formData));
   if (!parsed.success) return { error: firstIssue(parsed.error) };
   const d = parsed.data;
-  const item = await prisma.collectionItem.findUnique({ where: { id: d.id } });
+  const item = await prisma.collectionItem.findFirst({ where: { id: d.id, userId: user.id } });
   if (!item || item.soldAt) return { error: 'Ligne introuvable ou déjà vendue.' };
   if (d.quantity > item.quantity) {
     return { error: `Tu n’en as que ${item.quantity} sur cette ligne.` };
@@ -125,6 +128,7 @@ export async function sellCollectionItemAction(
       }),
       prisma.collectionItem.create({
         data: {
+          userId: user.id,
           productId: item.productId,
           quantity: d.quantity,
           purchasePrice: item.purchasePrice,
@@ -145,9 +149,9 @@ export async function sellCollectionItemAction(
 
 /** Annule une vente : la ligne revient dans la collection. */
 export async function cancelSaleAction(id: string) {
-  await requireUser();
-  await prisma.collectionItem.update({
-    where: { id },
+  const user = await requireUser();
+  await prisma.collectionItem.updateMany({
+    where: { id, userId: user.id },
     data: { soldAt: null, salePrice: null, saleFees: null, saleChannel: null },
   });
   revalidatePath('/collection');

@@ -4,6 +4,7 @@ import '@fontsource-variable/manrope';
 import '@fontsource-variable/unbounded';
 import '@fontsource-variable/archivo/wdth.css';
 import './globals.css';
+import { ServiceWorkerRegister } from '@/components/sw-register';
 import { parseTheme } from '@/lib/theme';
 
 export const metadata: Metadata = {
@@ -27,7 +28,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const theme = parseTheme((await cookies()).get('theme')?.value);
   return (
     <html lang="fr" data-theme={theme}>
-      <body>{children}</body>
+      <body>
+        {children}
+        <ServiceWorkerRegister />
+      </body>
     </html>
   );
 }

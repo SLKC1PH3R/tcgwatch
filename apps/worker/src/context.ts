@@ -3,6 +3,7 @@ import { PlaywrightRenderer } from '@tcgwatch/adapters/browser';
 import { getEnv, type Env } from '@tcgwatch/shared/env';
 import { createLogger, type Logger } from '@tcgwatch/shared/logger';
 import { Notifier } from './notify';
+import { PushSender } from './push';
 
 export interface WorkerContext {
   env: Env;
@@ -10,6 +11,8 @@ export interface WorkerContext {
   fetcher: PoliteFetcher;
   browser?: BrowserRenderer;
   notifier: Notifier;
+  /** Notifications du navigateur (absent sans clés VAPID). */
+  push?: Pick<PushSender, 'sendToUser'>;
   /** Horodatages des dernières exécutions (exposés par le healthcheck). */
   status: {
     startedAt: Date;
@@ -43,5 +46,6 @@ export function createContext(): WorkerContext {
     },
     logger,
   );
-  return { env, logger, fetcher, browser, notifier, status: { startedAt: new Date() } };
+  const push = PushSender.fromEnv(env, logger);
+  return { env, logger, fetcher, browser, notifier, push, status: { startedAt: new Date() } };
 }

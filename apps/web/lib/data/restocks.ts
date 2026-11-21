@@ -57,6 +57,8 @@ export async function getRestocks(filters: RestockFilters, limit = 300) {
   };
   const events = await prisma.alertEvent.findMany({
     where,
+    // Une ligne par retour en stock (l'alerte est journalisée pour chaque destinataire).
+    distinct: ['dedupeKey'],
     orderBy: { createdAt: 'desc' },
     take: limit,
     select: {

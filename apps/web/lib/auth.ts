@@ -1,7 +1,7 @@
 import 'server-only';
 import { createHash, randomBytes } from 'node:crypto';
 import { cookies, headers } from 'next/headers';
-import { redirect } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import { cache } from 'react';
 import { prisma } from '@tcgwatch/db';
 import { getEnv } from '@tcgwatch/shared/env';
@@ -14,6 +14,8 @@ export interface SessionUser {
   id: string;
   email: string;
   name: string | null;
+  role: 'USER' | 'ADMIN';
+  emailVerified: boolean;
 }
 
 /** Crée une session en base et pose le cookie httpOnly (à appeler dans une Server Action). */
@@ -45,20 +47,30 @@ export const getCurrentUser = cache(async (): Promise<SessionUser | null> => {
   if (!token) return null;
   const session = await prisma.session.findUnique({
     where: { id: hashToken(token) },
-    include: { user: { select: { id: true, email: true, name: true } } },
+    include: {
+      user: { select: { id: true, email: true, name: true, role: true, emailVerifiedAt: true } },
+    },
   });
   if (!session) return null;
   if (session.expiresAt < new Date()) {
     await prisma.session.delete({ where: { id: session.id } }).catch(() => undefined);
     return null;
   }
-  return session.user;
+  const { emailVerifiedAt, ...user } = session.user;
+  return { ...user, emailVerified: emailVerifiedAt !== null };
 });
 
 /** Protège une page ou une action : redirige vers /connexion si non connecté. */
 export async function requireUser(): Promise<SessionUser> {
   const user = await getCurrentUser();
   if (!user) redirect('/connexion');
+  return user;
+}
+
+/** Réservé aux administrateurs (catalogue, boutiques, signalements) : 404 pour les autres. */
+export async function requireAdmin(): Promise<SessionUser> {
+  const user = await requireUser();
+  if (user.role !== 'ADMIN') notFound();
   return user;
 }
 

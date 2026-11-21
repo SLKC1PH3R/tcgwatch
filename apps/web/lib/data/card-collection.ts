@@ -19,7 +19,14 @@ export interface CollectionCard {
   release: { code: string; name: string; total: number | null };
 }
 
-const cardSelect = {
+/** Champs d'une carte, avec les exemplaires possédés par cet utilisateur. */
+export const cardSelectFor = (userId: string) =>
+  ({
+    ...cardFields,
+    owned: { where: { userId }, select: { variant: true, quantity: true } },
+  }) as const;
+
+const cardFields = {
   id: true,
   localId: true,
   number: true,
@@ -28,7 +35,6 @@ const cardSelect = {
   imageUrl: true,
   priceTrend: true,
   variants: true,
-  owned: { select: { variant: true, quantity: true } },
   release: { select: { tcgdexId: true, nameFr: true, cardCountOfficial: true } },
 } as const;
 
@@ -77,7 +83,7 @@ export interface ReleaseProgress {
 }
 
 /** Vue d'ensemble : valeur, nombre de cartes, avancement par extension, derniers ajouts. */
-export async function getCardCollection() {
+export async function getCardCollection(userId: string) {
   const [rows, recent] = await Promise.all([
     prisma.$queryRaw<
       {
@@ -99,12 +105,14 @@ export async function getCardCollection() {
         sum(o.quantity * coalesce(c."priceTrend", 0)) AS value
       FROM "OwnedCard" o JOIN "Card" c ON c.id = o."cardId" JOIN "Release" r ON r.id = c."releaseId"
       LEFT JOIN "Serie" s ON s.id = r."serieId"
+      WHERE o."userId" = ${userId}
       GROUP BY r.id, s.name
       ORDER BY max(o."updatedAt") DESC`,
     prisma.ownedCard.findMany({
+      where: { userId },
       orderBy: { updatedAt: 'desc' },
       take: 12,
-      select: { card: { select: cardSelect } },
+      select: { card: { select: cardSelectFor(userId) } },
     }),
   ]);
   const releases: ReleaseProgress[] = rows.map((r) => ({
@@ -146,7 +154,7 @@ export async function getCardReleases() {
 }
 
 /** Toutes les cartes d'une extension avec les exemplaires possédés. */
-export async function getReleaseCards(code: string) {
+export async function getReleaseCards(userId: string, code: string) {
   const release = await prisma.release.findUnique({
     where: { tcgdexId: code },
     select: { id: true, tcgdexId: true, nameFr: true, cardCountOfficial: true },
@@ -155,13 +163,13 @@ export async function getReleaseCards(code: string) {
   const cards = await prisma.card.findMany({
     where: { releaseId: release.id },
     orderBy: [{ number: { sort: 'asc', nulls: 'last' } }, { localId: 'asc' }],
-    select: cardSelect,
+    select: cardSelectFor(userId),
   });
   return { release, cards: cards.map(toCollectionCard) };
 }
 
 /** Recherche de cartes par nom (toutes extensions), pour les classeurs et vitrines. */
-export async function searchCards(q: string, onlyOwned = false, take = 36) {
+export async function searchCards(userId: string, q: string, onlyOwned = false, take = 36) {
   const words = fold(q)
     .split(/[^a-z0-9]+/)
     .filter(Boolean);
@@ -174,18 +182,19 @@ export async function searchCards(q: string, onlyOwned = false, take = 36) {
       words.map((w) => Prisma.sql`${folded} LIKE ${`%${w}%`}`),
       ' AND ',
     )}
-    ${onlyOwned ? Prisma.sql`AND EXISTS (SELECT 1 FROM "OwnedCard" o WHERE o."cardId" = c.id)` : Prisma.empty}
+    ${onlyOwned ? Prisma.sql`AND EXISTS (SELECT 1 FROM "OwnedCard" o WHERE o."cardId" = c.id AND o."userId" = ${userId})` : Prisma.empty}
     ORDER BY c."priceTrend" DESC NULLS LAST LIMIT ${take}`;
   const cards = await prisma.card.findMany({
     where: { id: { in: ids.map((i) => i.id) } },
-    select: cardSelect,
+    select: cardSelectFor(userId),
   });
   const order = new Map(ids.map((i, n) => [i.id, n]));
   return cards.sort((a, b) => order.get(a.id)! - order.get(b.id)!).map(toCollectionCard);
 }
 
-export async function getBinders() {
+export async function getBinders(userId: string) {
   const binders = await prisma.cardBinder.findMany({
+    where: { userId },
     orderBy: { updatedAt: 'desc' },
     select: {
       id: true,
@@ -200,13 +209,13 @@ export async function getBinders() {
   const counts = releaseIds.length
     ? await prisma.$queryRaw<{ releaseId: string; total: bigint; owned: bigint }[]>`
         SELECT c."releaseId", count(*) AS total,
-          count(*) FILTER (WHERE EXISTS (SELECT 1 FROM "OwnedCard" o WHERE o."cardId" = c.id)) AS owned
+          count(*) FILTER (WHERE EXISTS (SELECT 1 FROM "OwnedCard" o WHERE o."cardId" = c.id AND o."userId" = ${userId})) AS owned
         FROM "Card" c WHERE c."releaseId" = ANY(${releaseIds}) GROUP BY 1`
     : [];
   const byRelease = new Map(counts.map((c) => [c.releaseId, c]));
   const customOwned = await prisma.binderCard.groupBy({
     by: ['binderId'],
-    where: { card: { owned: { some: {} } } },
+    where: { binder: { userId }, card: { owned: { some: { userId } } } },
     _count: true,
   });
   const ownedByBinder = new Map(customOwned.map((c) => [c.binderId, c._count]));
@@ -223,26 +232,30 @@ export async function getBinders() {
   });
 }
 
-export async function getBinder(id: string) {
-  const binder = await prisma.cardBinder.findUnique({
-    where: { id },
+export async function getBinder(userId: string, id: string) {
+  const binder = await prisma.cardBinder.findFirst({
+    where: { id, userId },
     select: {
       id: true,
       name: true,
       description: true,
       release: { select: { tcgdexId: true, nameFr: true } },
-      cards: { orderBy: { position: 'asc' }, select: { card: { select: cardSelect } } },
+      cards: {
+        orderBy: { position: 'asc' },
+        select: { card: { select: cardSelectFor(userId) } },
+      },
     },
   });
   if (!binder) return null;
   const cards = binder.release
-    ? ((await getReleaseCards(binder.release.tcgdexId!))?.cards ?? [])
+    ? ((await getReleaseCards(userId, binder.release.tcgdexId!))?.cards ?? [])
     : binder.cards.map((b) => toCollectionCard(b.card));
   return { ...binder, cards };
 }
 
-export async function getShowcases() {
+export async function getShowcases(userId: string) {
   return prisma.showcase.findMany({
+    where: { userId },
     orderBy: { updatedAt: 'desc' },
     select: {
       id: true,
@@ -262,11 +275,13 @@ export async function getShowcases() {
   });
 }
 
-export async function getShowcase(where: { id: string } | { slug: string }) {
-  const s = await prisma.showcase.findUnique({
+/** Vitrine d'un utilisateur (par id) ou vitrine publique (par slug, cartes de son auteur). */
+export async function getShowcase(where: { id: string; userId: string } | { slug: string }) {
+  const s = await prisma.showcase.findFirst({
     where,
     select: {
       id: true,
+      userId: true,
       title: true,
       description: true,
       slug: true,
@@ -274,9 +289,24 @@ export async function getShowcase(where: { id: string } | { slug: string }) {
       showPrices: true,
       wanted: true,
       updatedAt: true,
-      cards: { orderBy: { position: 'asc' }, select: { card: { select: cardSelect } } },
+      cards: {
+        orderBy: { position: 'asc' },
+        select: {
+          card: {
+            select: {
+              ...cardFields,
+              owned: { select: { userId: true, variant: true, quantity: true } },
+            },
+          },
+        },
+      },
     },
   });
   if (!s) return null;
-  return { ...s, cards: s.cards.map((c) => toCollectionCard(c.card)) };
+  return {
+    ...s,
+    cards: s.cards.map((c) =>
+      toCollectionCard({ ...c.card, owned: c.card.owned.filter((o) => o.userId === s.userId) }),
+    ),
+  };
 }

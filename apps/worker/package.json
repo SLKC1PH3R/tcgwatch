@@ -18,13 +18,15 @@
     "pg": "^8.16.3",
     "pino": "^10.4.0",
     "playwright": "^1.65.0",
-    "prisma": "^7.10.1"
+    "prisma": "^7.10.1",
+    "web-push": "^3.6.7"
   },
   "devDependencies": {
     "@tcgwatch/adapters": "workspace:*",
     "@tcgwatch/db": "workspace:*",
     "@tcgwatch/market": "workspace:*",
     "@tcgwatch/shared": "workspace:*",
+    "@types/web-push": "^3.6.4",
     "tsup": "^9.0.0",
     "tsx": "^4.23.15"
   }

@@ -23,6 +23,7 @@ import {
 } from '../../actions';
 import { fitCard, fitGrid, fitScroll } from '@/lib/fit';
 import { cn } from '@/lib/utils';
+import { requireUser } from '@/lib/auth';
 
 export const metadata: Metadata = { title: 'Vitrine' };
 
@@ -33,7 +34,8 @@ type Props = {
 
 export default async function ShowcasePage({ params, searchParams }: Props) {
   const [{ id }, query] = await Promise.all([params, searchParams]);
-  const showcase = await getShowcase({ id });
+  const user = await requireUser();
+  const showcase = await getShowcase({ id, userId: user.id });
   if (!showcase) notFound();
   const url = `${getEnv().APP_URL.replace(/\/$/, '')}/vitrine/${showcase.slug}`;
   const value = showcase.cards.reduce((s, c) => s + (c.price ?? 0), 0);

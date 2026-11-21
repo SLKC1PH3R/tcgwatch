@@ -15,6 +15,7 @@ import { getShowcases } from '@/lib/data/card-collection';
 import { createShowcaseAction } from '../actions';
 import { fitCard, fitGrid, fitScroll } from '@/lib/fit';
 import { cn } from '@/lib/utils';
+import { requireUser } from '@/lib/auth';
 
 export const metadata: Metadata = { title: 'Vitrines' };
 
@@ -23,7 +24,8 @@ type Props = { searchParams: Promise<{ erreur?: string }> };
 /** Vitrines : sélections de cartes à montrer, avec un lien public à partager. */
 export default async function ShowcasesPage({ searchParams }: Props) {
   const { erreur } = await searchParams;
-  const showcases = await getShowcases();
+  const user = await requireUser();
+  const showcases = await getShowcases(user.id);
 
   return (
     <FitPage>

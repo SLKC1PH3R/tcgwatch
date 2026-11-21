@@ -10,6 +10,7 @@ import { ago } from '@/lib/time';
 import { ALERT_STYLE } from '@/lib/alerts';
 import { cn } from '@/lib/utils';
 import { acknowledgeAlertAction, acknowledgeAllAlertsAction } from './produits/actions';
+import { requireUser } from '@/lib/auth';
 
 /** Couleurs de la répartition par type (ordre : du plus gros au plus petit). */
 const SHARE_COLORS = [
@@ -65,7 +66,8 @@ const countdown = (date: Date, today: number) => {
 };
 
 export default async function DashboardPage() {
-  const d = await getDashboard();
+  const user = await requireUser();
+  const d = await getDashboard(user.id);
   const v = d.valuation;
   const gainPositive = v.unrealizedGain >= 0;
   const today = todayUtc().getTime();

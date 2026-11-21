@@ -28,6 +28,7 @@ import { fitCard, fitColumn, fitGrid, fitScroll } from '@/lib/fit';
 import { ago } from '@/lib/time';
 import { cn } from '@/lib/utils';
 import { removeMyProductAction, saveMyProductAction } from './actions';
+import { requireUser } from '@/lib/auth';
 
 export const metadata: Metadata = { title: 'Mes produits' };
 
@@ -51,8 +52,9 @@ type Props = { searchParams: Promise<{ erreur?: string; ajouter?: string; ebay?:
  */
 export default async function MyProductsPage({ searchParams }: Props) {
   const { erreur, ajouter, ebay: ebayFilter } = await searchParams;
+  const user = await requireUser();
   const [{ products, listings }, options] = await Promise.all([
-    getMyProducts(),
+    getMyProducts(user.id),
     prisma.product.findMany({
       where: { targetPrice: null },
       select: {

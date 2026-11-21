@@ -9,6 +9,7 @@ import { BrandLogo } from '@/components/brand-logo';
 import { MainNav } from '@/components/main-nav';
 import { MobileNav } from '@/components/mobile-nav';
 import { ThemeToggle } from '@/components/theme-toggle';
+import { VerifyBanner } from '@/components/verify-banner';
 import { parseTheme } from '@/lib/theme';
 import { PageTrail } from '@/components/page-trail';
 import { SearchBox } from '@/components/search-box';
@@ -16,7 +17,7 @@ import { logoutAction } from '../(auth)/actions';
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const user = await requireUser();
-  const unread = await prisma.alertEvent.count({ where: { acknowledged: false } });
+  const unread = await prisma.alertEvent.count({ where: { userId: user.id, acknowledged: false } });
   const theme = parseTheme((await cookies()).get('theme')?.value);
   return (
     // Une page qui porte data-fit-screen (l'accueil) occupe exactement la hauteur de l'écran
@@ -88,6 +89,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         </div>
       </header>
       <main className="mx-auto w-full max-w-7xl px-4 py-6 md:px-8 md:py-10 fit:has-[[data-fit-screen]]:flex fit:has-[[data-fit-screen]]:min-h-0 fit:has-[[data-fit-screen]]:max-w-[1680px] fit:has-[[data-fit-screen]]:flex-1 fit:has-[[data-fit-screen]]:flex-col fit:has-[[data-fit-screen]]:py-5">
+        {!user.emailVerified && (
+          <div className="mb-3 shrink-0">
+            <VerifyBanner email={user.email} />
+          </div>
+        )}
         <Suspense>
           <PageTrail />
         </Suspense>

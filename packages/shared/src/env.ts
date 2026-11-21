@@ -24,12 +24,23 @@ const schema = z.object({
   SESSION_TTL_DAYS: z.coerce.number().int().positive().default(30),
   ALLOW_REGISTRATION: bool(false),
   COOKIE_SECURE: bool(true),
+  /** Connexion avec Google (OAuth) : identifiants d'un client « Application Web ». */
+  GOOGLE_CLIENT_ID: optionalString,
+  GOOGLE_CLIENT_SECRET: optionalString,
+
+  // E-mails (confirmation d'adresse, mot de passe oublié) via l'API Resend
+  RESEND_API_KEY: optionalString,
+  MAIL_FROM: z.string().default('TCGWatch <noreply@digitalstack.cloud>'),
 
   // Notifications
   NTFY_URL: optionalString,
   NTFY_TOKEN: optionalString,
   TELEGRAM_BOT_TOKEN: optionalString,
   TELEGRAM_CHAT_ID: optionalString,
+  /** Notifications du navigateur (Web Push) : paire de clés VAPID (npx web-push generate-vapid-keys). */
+  VAPID_PUBLIC_KEY: optionalString,
+  VAPID_PRIVATE_KEY: optionalString,
+  VAPID_SUBJECT: z.string().default('mailto:contact@digitalstack.cloud'),
 
   // Scraping
   DEFAULT_CHECK_INTERVAL_MIN: z.coerce.number().int().min(5).default(30),

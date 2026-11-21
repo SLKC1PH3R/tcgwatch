@@ -28,7 +28,13 @@ const productInclude = {
   },
 } satisfies Prisma.ProductInclude;
 
-type ProductRow = Prisma.ProductGetPayload<{ include: typeof productInclude }>;
+/** Avec le suivi de l'utilisateur (bon prix) ; sans utilisateur, aucun suivi. */
+const includeFor = (userId?: string) => ({
+  ...productInclude,
+  follows: { where: { userId: userId ?? '' }, select: { targetPrice: true } },
+});
+
+type ProductRow = Prisma.ProductGetPayload<{ include: ReturnType<typeof includeFor> }>;
 
 export interface ListingDTO {
   id: string;
@@ -160,7 +166,7 @@ function toProductDTO(p: ProductRow): ProductDTO {
     description: p.description,
     brand: p.brand,
     msrp: toNumber(p.msrp),
-    targetPrice: toNumber(p.targetPrice),
+    targetPrice: toNumber(p.follows[0]?.targetPrice ?? null),
     releaseDate: p.releaseDate,
     notes: p.notes,
     release: p.release,
@@ -169,16 +175,16 @@ function toProductDTO(p: ProductRow): ProductDTO {
   };
 }
 
-export async function getProducts(): Promise<ProductDTO[]> {
+export async function getProducts(userId?: string): Promise<ProductDTO[]> {
   const rows = await prisma.product.findMany({
-    include: productInclude,
+    include: includeFor(userId),
     orderBy: [{ release: { releaseDate: 'desc' } }, { name: 'asc' }],
   });
   return rows.map(toProductDTO);
 }
 
-export async function getProduct(id: string): Promise<ProductDTO | null> {
-  const row = await prisma.product.findUnique({ where: { id }, include: productInclude });
+export async function getProduct(id: string, userId?: string): Promise<ProductDTO | null> {
+  const row = await prisma.product.findUnique({ where: { id }, include: includeFor(userId) });
   return row ? toProductDTO(row) : null;
 }
 
@@ -222,11 +228,11 @@ export async function getProductOptions() {
 export type ProductOption = Awaited<ReturnType<typeof getProductOptions>>[number];
 
 /** Produits par identifiants (comparateur des formats d'une extension). */
-export async function getProductsByIds(ids: string[]): Promise<ProductDTO[]> {
+export async function getProductsByIds(ids: string[], userId?: string): Promise<ProductDTO[]> {
   if (ids.length === 0) return [];
   const rows = await prisma.product.findMany({
     where: { id: { in: ids } },
-    include: productInclude,
+    include: includeFor(userId),
     orderBy: { name: 'asc' },
   });
   return rows.map(toProductDTO);

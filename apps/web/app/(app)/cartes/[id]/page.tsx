@@ -17,6 +17,7 @@ import { getCardPage } from '@/lib/data/cards';
 import { searchCards, type LocalCard } from '@/lib/data/encyclopedia';
 import { fitCard, fitColumn, fitGrid, fitScroll } from '@/lib/fit';
 import { PERIODS, periodOf, periodStart } from '@/lib/data/history';
+import { requireUser } from '@/lib/auth';
 import { cn } from '@/lib/utils';
 import { prisma } from '@tcgwatch/db';
 import { adjustOwnedCardAction } from '../../collection/cartes/actions';
@@ -35,11 +36,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function CardPage({ params, searchParams }: Props) {
   const [{ id }, { erreur, periode }] = await Promise.all([params, searchParams]);
   const tcgdexId = decodeURIComponent(id);
+  const user = await requireUser();
   const card = await getCardPage(tcgdexId);
   if (!card) notFound();
   const owned = card.local
     ? await prisma.ownedCard.findMany({
-        where: { cardId: tcgdexId },
+        where: { cardId: tcgdexId, userId: user.id },
         select: { variant: true, quantity: true },
       })
     : [];
@@ -101,7 +103,7 @@ export default async function CardPage({ params, searchParams }: Props) {
           </span>
         }
         actions={
-          card.tracked ? (
+          user.role !== 'ADMIN' ? undefined : card.tracked ? (
             <form action={unfollowCardAction.bind(null, card.tcgdexId)}>
               <Button type="submit" variant="outline">
                 <Trash2 /> Ne plus suivre
@@ -278,7 +280,7 @@ export default async function CardPage({ params, searchParams }: Props) {
                 </ul>
               </div>
             )}
-            {card.tracked && (
+            {card.tracked && user.role === 'ADMIN' && (
               <div className="space-y-3 rounded-xl border bg-popover/40 p-3">
                 <div className="space-y-1">
                   <p className="flex items-center gap-2 text-sm font-semibold">

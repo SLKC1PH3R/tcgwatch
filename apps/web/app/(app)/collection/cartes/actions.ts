@@ -26,7 +26,7 @@ export async function saveQuickAddAction(
   code: string,
   payload: { variant: string; quantities: Record<string, number> },
 ): Promise<{ saved: number; error?: string }> {
-  await requireUser();
+  const user = await requireUser();
   const parsed = quickSchema.safeParse(payload);
   if (!parsed.success) return { saved: 0, error: firstIssue(parsed.error) };
   const { variant, quantities } = parsed.data;
@@ -38,11 +38,11 @@ export async function saveQuickAddAction(
     cards.map(({ id }) =>
       quantities[id]! > 0
         ? prisma.ownedCard.upsert({
-            where: { cardId_variant: { cardId: id, variant } },
+            where: { userId_cardId_variant: { userId: user.id, cardId: id, variant } },
             update: { quantity: quantities[id]! },
-            create: { cardId: id, variant, quantity: quantities[id]! },
+            create: { userId: user.id, cardId: id, variant, quantity: quantities[id]! },
           })
-        : prisma.ownedCard.deleteMany({ where: { cardId: id, variant } }),
+        : prisma.ownedCard.deleteMany({ where: { userId: user.id, cardId: id, variant } }),
     ),
   );
   revalidatePath(BASE, 'layout');
@@ -51,10 +51,10 @@ export async function saveQuickAddAction(
 
 /** +1 / −1 sur une carte (fiche carte, classeurs). */
 export async function adjustOwnedCardAction(cardId: string, delta: 1 | -1, variant = 'normal') {
-  await requireUser();
+  const user = await requireUser();
   if (!VARIANTS.includes(variant as never)) return;
   const current = await prisma.ownedCard.findUnique({
-    where: { cardId_variant: { cardId, variant } },
+    where: { userId_cardId_variant: { userId: user.id, cardId, variant } },
   });
   const next = (current?.quantity ?? 0) + delta;
   if (next <= 0) {
@@ -62,7 +62,7 @@ export async function adjustOwnedCardAction(cardId: string, delta: 1 | -1, varia
   } else if (current) {
     await prisma.ownedCard.update({ where: { id: current.id }, data: { quantity: next } });
   } else {
-    await prisma.ownedCard.create({ data: { cardId, variant, quantity: next } });
+    await prisma.ownedCard.create({ data: { userId: user.id, cardId, variant, quantity: next } });
   }
   revalidatePath(BASE, 'layout');
   revalidatePath(`/cartes/${cardId}`);
@@ -77,7 +77,7 @@ const binderSchema = z.object({
 });
 
 export async function createBinderAction(formData: FormData) {
-  await requireUser();
+  const user = await requireUser();
   const parsed = binderSchema.safeParse(formToObject(formData));
   if (!parsed.success)
     redirect(`${BASE}/classeurs?erreur=${encodeURIComponent(firstIssue(parsed.error))}`);
@@ -95,6 +95,7 @@ export async function createBinderAction(formData: FormData) {
   }
   const binder = await prisma.cardBinder.create({
     data: {
+      userId: user.id,
       name: name ?? release!.nameFr,
       description: description ?? null,
       releaseId: release?.id ?? null,
@@ -104,24 +105,25 @@ export async function createBinderAction(formData: FormData) {
 }
 
 export async function updateBinderAction(id: string, formData: FormData) {
-  await requireUser();
+  const user = await requireUser();
   const parsed = binderSchema.safeParse(formToObject(formData));
   if (!parsed.success || !parsed.data.name) return;
-  await prisma.cardBinder.update({
-    where: { id },
+  await prisma.cardBinder.updateMany({
+    where: { id, userId: user.id },
     data: { name: parsed.data.name, description: parsed.data.description ?? null },
   });
   revalidatePath(`${BASE}/classeurs/${id}`);
 }
 
 export async function deleteBinderAction(id: string) {
-  await requireUser();
-  await prisma.cardBinder.delete({ where: { id } });
+  const user = await requireUser();
+  await prisma.cardBinder.deleteMany({ where: { id, userId: user.id } });
   redirect(`${BASE}/classeurs`);
 }
 
 export async function addBinderCardAction(binderId: string, cardId: string) {
-  await requireUser();
+  const user = await requireUser();
+  if (!(await prisma.cardBinder.count({ where: { id: binderId, userId: user.id } }))) return;
   const last = await prisma.binderCard.aggregate({ where: { binderId }, _max: { position: true } });
   await prisma.binderCard.upsert({
     where: { binderId_cardId: { binderId, cardId } },
@@ -133,8 +135,8 @@ export async function addBinderCardAction(binderId: string, cardId: string) {
 }
 
 export async function removeBinderCardAction(binderId: string, cardId: string) {
-  await requireUser();
-  await prisma.binderCard.deleteMany({ where: { binderId, cardId } });
+  const user = await requireUser();
+  await prisma.binderCard.deleteMany({ where: { binderId, cardId, binder: { userId: user.id } } });
   revalidatePath(`${BASE}/classeurs/${binderId}`);
 }
 
@@ -146,13 +148,14 @@ const showcaseSchema = z.object({
 });
 
 export async function createShowcaseAction(formData: FormData) {
-  await requireUser();
+  const user = await requireUser();
   const parsed = showcaseSchema.safeParse(formToObject(formData));
   if (!parsed.success) {
     redirect(`${BASE}/vitrines?erreur=${encodeURIComponent(firstIssue(parsed.error))}`);
   }
   const showcase = await prisma.showcase.create({
     data: {
+      userId: user.id,
       title: parsed.data.title,
       description: parsed.data.description ?? null,
       slug: randomBytes(9).toString('base64url'),
@@ -163,14 +166,14 @@ export async function createShowcaseAction(formData: FormData) {
 }
 
 export async function updateShowcaseAction(id: string, formData: FormData) {
-  await requireUser();
+  const user = await requireUser();
   const data = formToObject(formData);
   const parsed = showcaseSchema.safeParse(data);
   if (!parsed.success) {
     redirect(`${BASE}/vitrines/${id}?erreur=${encodeURIComponent(firstIssue(parsed.error))}`);
   }
-  await prisma.showcase.update({
-    where: { id },
+  await prisma.showcase.updateMany({
+    where: { id, userId: user.id },
     data: {
       title: parsed.data.title,
       description: parsed.data.description ?? null,
@@ -185,22 +188,23 @@ export async function updateShowcaseAction(id: string, formData: FormData) {
 
 /** Nouveau lien public (l'ancien ne fonctionne plus). */
 export async function renewShowcaseLinkAction(id: string) {
-  await requireUser();
-  await prisma.showcase.update({
-    where: { id },
+  const user = await requireUser();
+  await prisma.showcase.updateMany({
+    where: { id, userId: user.id },
     data: { slug: randomBytes(9).toString('base64url') },
   });
   revalidatePath(`${BASE}/vitrines/${id}`);
 }
 
 export async function deleteShowcaseAction(id: string) {
-  await requireUser();
-  await prisma.showcase.delete({ where: { id } });
+  const user = await requireUser();
+  await prisma.showcase.deleteMany({ where: { id, userId: user.id } });
   redirect(`${BASE}/vitrines`);
 }
 
 export async function addShowcaseCardAction(showcaseId: string, cardId: string) {
-  await requireUser();
+  const user = await requireUser();
+  if (!(await prisma.showcase.count({ where: { id: showcaseId, userId: user.id } }))) return;
   const last = await prisma.showcaseCard.aggregate({
     where: { showcaseId },
     _max: { position: true },
@@ -215,7 +219,9 @@ export async function addShowcaseCardAction(showcaseId: string, cardId: string) 
 }
 
 export async function removeShowcaseCardAction(showcaseId: string, cardId: string) {
-  await requireUser();
-  await prisma.showcaseCard.deleteMany({ where: { showcaseId, cardId } });
+  const user = await requireUser();
+  await prisma.showcaseCard.deleteMany({
+    where: { showcaseId, cardId, showcase: { userId: user.id } },
+  });
   revalidatePath(`${BASE}/vitrines/${showcaseId}`);
 }

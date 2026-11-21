@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { RETAILER_DIRECTORY } from '@tcgwatch/adapters';
 import { prisma } from '@tcgwatch/db';
-import { requireUser } from '@/lib/auth';
+import { requireAdmin } from '@/lib/auth';
 import { firstIssue, formToObject, optionalPrice } from '@/lib/form';
 
 export interface ShippingState {
@@ -20,7 +20,7 @@ export async function saveRetailerShippingAction(
   _prev: ShippingState,
   formData: FormData,
 ): Promise<ShippingState> {
-  await requireUser();
+  await requireAdmin();
   const parsed = shippingSchema.safeParse(formToObject(formData));
   if (!parsed.success) return { error: firstIssue(parsed.error) };
   await prisma.retailer.update({
@@ -37,7 +37,7 @@ export async function saveRetailerShippingAction(
 
 /** Revient aux frais de port de l'annuaire (mis à jour avec le code). */
 export async function resetRetailerShippingAction(id: string) {
-  await requireUser();
+  await requireAdmin();
   const retailer = await prisma.retailer.findUnique({ where: { id }, select: { domain: true } });
   if (!retailer) return;
   const info = RETAILER_DIRECTORY.find((d) => d.domain === retailer.domain);

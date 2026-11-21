@@ -90,14 +90,84 @@ enum SealCondition {
 
 // ─── Authentification ────────────────────────────────────
 
+enum Role {
+  USER
+  /// Gère le catalogue, les boutiques, les signalements ; reçoit toutes les alertes produit.
+  ADMIN
+}
+
 model User {
-  id           String    @id @default(cuid())
-  email        String    @unique
-  name         String?
-  passwordHash String
-  sessions     Session[]
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  id              String           @id @default(cuid())
+  email           String           @unique
+  name            String?
+  /// Null pour un compte créé avec Google.
+  passwordHash    String?
+  role            Role             @default(USER)
+  /// E-mail confirmé (lien reçu par e-mail, ou compte Google).
+  emailVerifiedAt DateTime?
+  /// Identifiant Google (« sub ») du compte lié.
+  googleId        String?          @unique
+  sessions        Session[]
+  tokens          AuthToken[]
+  follows         ProductFollow[]
+  collection      CollectionItem[]
+  ownedCards      OwnedCard[]
+  binders         CardBinder[]
+  showcases       Showcase[]
+  alertSettings   AlertSettings?
+  alerts          AlertEvent[]
+  pushDevices     PushSubscription[]
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+}
+
+/// Appareil abonné aux notifications du navigateur (Web Push).
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  /// Navigateur et appareil (affichés dans les réglages).
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+enum AuthTokenKind {
+  VERIFY_EMAIL
+  RESET_PASSWORD
+}
+
+/// Jeton à usage unique envoyé par e-mail ; l'identifiant est le SHA-256 du jeton brut.
+model AuthToken {
+  id        String        @id
+  userId    String
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind      AuthTokenKind
+  expiresAt DateTime
+  createdAt DateTime      @default(now())
+
+  @@index([userId, kind])
+}
+
+/// Produit suivi par un utilisateur (« Mes produits ») : son bon prix et ses alertes coupées.
+/// Product.targetPrice garde le plus haut bon prix des suiveurs (déclencheur des alertes).
+model ProductFollow {
+  id          String      @id @default(cuid())
+  userId      String
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  productId   String
+  product     Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+  targetPrice Decimal?    @db.Decimal(10, 2)
+  mutedAlerts AlertType[] @default([])
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@unique([userId, productId])
+  @@index([productId])
 }
 
 /// L'identifiant est le SHA-256 du jeton envoyé dans le cookie (le jeton brut n'est jamais stocké).
@@ -175,9 +245,10 @@ model Product {
   description       String?
   brand             String?
   msrp              Decimal?         @db.Decimal(10, 2) /// prix public conseillé
-  /// Types d'alertes coupés pour ce produit (journalisés, pas envoyés).
-  mutedAlerts       AlertType[]      @default([])
-  targetPrice       Decimal?         @db.Decimal(10, 2) /// seuil d'alerte par défaut (surchargé par Listing.targetPrice)
+  /// Plus haut bon prix des utilisateurs qui suivent le produit (tenu à jour par le site) :
+  /// déclenche les alertes de prix, filtrées ensuite par le bon prix de chacun.
+  targetPrice       Decimal?         @db.Decimal(10, 2)
+  follows           ProductFollow[]
   releaseDate       DateTime?        @db.Date /// date propre au produit (ex. "Sortie prévue le" revendeur)
   releaseDateSource ReleaseSource?
   notes             String?
@@ -309,7 +380,9 @@ model ListingDaily {
 
 /// Réglages des alertes (une seule ligne, id « default »).
 model AlertSettings {
-  id         String      @id @default("default")
+  id         String      @id @default(cuid())
+  userId     String      @unique
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   /// Heures silencieuses, en minutes depuis minuit (heure de Paris) ; null : désactivées.
   quietStart Int?
   quietEnd   Int?
@@ -320,6 +393,9 @@ model AlertSettings {
 
 model AlertEvent {
   id           String     @id @default(cuid())
+  /// Destinataire : une alerte est journalisée une fois par utilisateur concerné.
+  userId       String
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   type         AlertType
   /// Produit concerné (null pour une alerte de carte).
   productId    String?
@@ -335,6 +411,8 @@ model AlertEvent {
   dedupeKey    String
   sentNtfy     Boolean    @default(false)
   sentTelegram Boolean    @default(false)
+  /// Envoyée en notification du navigateur (au moins un appareil).
+  sentPush     Boolean    @default(false)
   acknowledged Boolean    @default(false)
   /// Envoyée sans son (heures silencieuses).
   silent       Boolean    @default(false)
@@ -342,7 +420,7 @@ model AlertEvent {
   muted        Boolean    @default(false)
   createdAt    DateTime   @default(now())
 
-  @@index([acknowledged, createdAt])
+  @@index([userId, acknowledged, createdAt])
   @@index([dedupeKey, createdAt])
   @@index([type, createdAt])
 }
@@ -469,6 +547,8 @@ model CardPrice {
 
 model CollectionItem {
   id            String        @id @default(cuid())
+  userId        String
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   productId     String
   product       Product       @relation(fields: [productId], references: [id], onDelete: Restrict)
   quantity      Int           @default(1)
@@ -489,6 +569,7 @@ model CollectionItem {
   updatedAt     DateTime      @updatedAt
 
   @@index([productId])
+  @@index([userId])
 }
 
 /// Prix du marché de l'occasion, un résumé par jour et par source (annonces eBay neuves, en
@@ -539,6 +620,8 @@ model MarketListing {
 /// Cartes de la collection : une ligne par carte et par variante (normale, reverse…).
 model OwnedCard {
   id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   cardId        String
   card          Card     @relation(fields: [cardId], references: [id], onDelete: Cascade)
   /// normal, reverse, holo, firstEdition
@@ -548,14 +631,16 @@ model OwnedCard {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  @@unique([cardId, variant])
-  @@index([createdAt])
+  @@unique([userId, cardId, variant])
+  @@index([userId, createdAt])
 }
 
 /// Classeur de cartes : celui d'une extension (toutes ses cartes, possédées ou manquantes)
 /// ou un classeur personnel (cartes choisies une à une).
 model CardBinder {
   id          String       @id @default(cuid())
+  userId      String
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   name        String
   description String?
   /// Extension du classeur (null = classeur personnel).
@@ -564,6 +649,8 @@ model CardBinder {
   cards       BinderCard[]
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
+
+  @@index([userId])
 }
 
 model BinderCard {
@@ -581,6 +668,8 @@ model BinderCard {
 /// Vitrine : sélection de cartes à montrer, partageable par un lien public (slug secret).
 model Showcase {
   id          String         @id @default(cuid())
+  userId      String
+  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   title       String
   description String?
   /// Partie du lien public /vitrine/{slug} (aléatoire, impossible à deviner).
@@ -594,6 +683,8 @@ model Showcase {
   cards       ShowcaseCard[]
   createdAt   DateTime       @default(now())
   updatedAt   DateTime       @updatedAt
+
+  @@index([userId])
 }
 
 model ShowcaseCard {

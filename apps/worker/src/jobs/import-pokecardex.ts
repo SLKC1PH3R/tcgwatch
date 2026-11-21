@@ -282,6 +282,19 @@ async function mergeManualDuplicates(ctx: Pick<WorkerContext, 'logger'>): Promis
           where: { productId: dup.id },
           data: { productId: target.id },
         });
+        // Suivis du doublon reportés sur le produit gardé (sans écraser un suivi existant).
+        for (const f of await tx.productFollow.findMany({ where: { productId: dup.id } })) {
+          await tx.productFollow.upsert({
+            where: { userId_productId: { userId: f.userId, productId: target.id } },
+            create: {
+              userId: f.userId,
+              productId: target.id,
+              targetPrice: f.targetPrice,
+              mutedAlerts: f.mutedAlerts,
+            },
+            update: {},
+          });
+        }
         // Le doublon d’abord : l’EAN est unique.
         await tx.product.delete({ where: { id: dup.id } });
         await tx.product.update({

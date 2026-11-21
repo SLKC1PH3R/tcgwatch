@@ -9,6 +9,7 @@ import { getCardReleases, getReleaseCards } from '@/lib/data/card-collection';
 import { fitCard, fitGrid, fitScroll } from '@/lib/fit';
 import { cn } from '@/lib/utils';
 import { QuickAdd } from './quick-add';
+import { requireUser } from '@/lib/auth';
 
 export const metadata: Metadata = { title: 'Ajout rapide de cartes' };
 
@@ -20,9 +21,10 @@ type Props = { searchParams: Promise<{ extension?: string }> };
  */
 export default async function QuickAddPage({ searchParams }: Props) {
   const { extension } = await searchParams;
+  const user = await requireUser();
   const releases = await getCardReleases();
   const code = extension ?? releases[0]?.tcgdexId ?? undefined;
-  const data = code ? await getReleaseCards(code) : null;
+  const data = code ? await getReleaseCards(user.id, code) : null;
   if (extension && !data) notFound();
 
   return (

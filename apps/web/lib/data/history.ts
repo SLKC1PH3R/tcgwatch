@@ -60,7 +60,7 @@ const isKept = (d: { excluded: boolean | null; suspect: boolean }) =>
  * prix marché, périodes de rupture et repères (plus bas historique, plus bas 30 j).
  * Les jours mis de côté (prix aberrant) ou exclus à la main ne comptent pas.
  */
-export async function getPriceHistory(productId: string, days: number | null) {
+export async function getPriceHistory(productId: string, days: number | null, userId?: string) {
   const [daily, market, purchases, secondhand] = await Promise.all([
     prisma.listingDaily.findMany({
       where: { listing: { productId } },
@@ -93,7 +93,8 @@ export async function getPriceHistory(productId: string, days: number | null) {
       orderBy: { date: 'asc' },
     }),
     prisma.collectionItem.findMany({
-      where: { productId, soldAt: null },
+      // Prix d'achat moyen : ceux de l'utilisateur (aucun sans utilisateur).
+      where: { productId, soldAt: null, userId: userId ?? '' },
       select: { quantity: true, purchasePrice: true },
     }),
     prisma.secondhandDaily.findMany({

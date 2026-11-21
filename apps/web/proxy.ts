@@ -6,7 +6,24 @@ import { NextResponse, type NextRequest } from 'next/server';
  */
 // /cards : illustrations de la page de connexion (fichiers statiques de public/).
 // /vitrine : vitrines de cartes partagées par lien (seulement celles rendues publiques).
-const PUBLIC_PATHS = ['/connexion', '/inscription', '/api/health', '/cards', '/vitrine'];
+// /mot-de-passe, /verifier-email, /api/auth : récupération du compte et connexion Google.
+const PUBLIC_PATHS = [
+  '/connexion',
+  '/inscription',
+  '/mot-de-passe',
+  '/verifier-email',
+  '/api/auth',
+  '/api/health',
+  '/cards',
+  '/vitrine',
+  // Appli installable : service worker, manifeste, icônes, page hors-ligne.
+  '/sw.js',
+  '/manifest.webmanifest',
+  '/icon-192.png',
+  '/icon-512.png',
+  '/icon-maskable-512.png',
+  '/hors-ligne',
+];
 
 export function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl;

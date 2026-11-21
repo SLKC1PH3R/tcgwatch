@@ -25,6 +25,7 @@ import { cancelSaleAction, deleteCollectionItemAction } from './actions';
 import { AddPurchaseDialog } from './add-purchase-dialog';
 import { CONDITION_LABELS } from './collection-form';
 import { SellDialog } from './sell-dialog';
+import { requireUser } from '@/lib/auth';
 
 export const metadata: Metadata = { title: 'Ma collection' };
 
@@ -55,10 +56,15 @@ export default async function CollectionPage({ searchParams }: Props) {
   const { tri, categorie, vue } = await searchParams;
   const soldView = vue === 'vendus';
   const today = new Date().toISOString().slice(0, 10);
+  const user = await requireUser();
   const category = PRICE_CATEGORIES.find((c) => c.key === categorie);
   const sort: Sort = SORTS.find((s) => s.value === tri)?.value ?? 'plus-value';
   const [{ rows: allRows, sold: allSold, realized, valuation: v }, products, history] =
-    await Promise.all([getCollection(), getProductOptions(), getCollectionHistory(5 * 366)]);
+    await Promise.all([
+      getCollection(user.id),
+      getProductOptions(),
+      getCollectionHistory(user.id, 5 * 366),
+    ]);
   const breakdown = breakdownByType(allRows, v.cards.value);
   // Filtre par type (ETB, display…) : la valorisation en tête reste celle de tout le scellé.
   const inCategory = (r: { product: { name: string; type: string } }) =>

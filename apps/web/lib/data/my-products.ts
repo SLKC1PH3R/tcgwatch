@@ -43,14 +43,16 @@ export interface MyListing {
 }
 
 /** Produits avec un bon prix (« Mes produits ») : où en est chaque source par rapport à lui. */
-export async function getMyProducts(): Promise<{ products: MyProduct[]; listings: MyListing[] }> {
+export async function getMyProducts(
+  userId: string,
+): Promise<{ products: MyProduct[]; listings: MyListing[] }> {
   const watched = await prisma.product.findMany({
-    where: { targetPrice: { not: null } },
+    where: { follows: { some: { userId, targetPrice: { not: null } } } },
     select: {
       id: true,
       name: true,
       type: true,
-      targetPrice: true,
+      follows: { where: { userId }, select: { targetPrice: true } },
       marketQuery: true,
       cardmarketName: true,
       cardmarketCategory: true,
@@ -88,7 +90,7 @@ export async function getMyProducts(): Promise<{ products: MyProduct[]; listings
   for (const w of watched) {
     const base = prices.get(w.id);
     if (!base) continue;
-    const target = toNumber(w.targetPrice)!;
+    const target = toNumber(w.follows[0]!.targetPrice)!;
     const cardmarketLow = toNumber(w.marketPrices[0]?.low);
     const query = marketSearchQuery(w);
     const verdict: Verdict =

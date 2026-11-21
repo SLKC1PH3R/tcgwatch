@@ -28,6 +28,7 @@ import {
   removeBinderCardAction,
   updateBinderAction,
 } from '../../actions';
+import { requireUser } from '@/lib/auth';
 
 export const metadata: Metadata = { title: 'Classeur' };
 
@@ -49,7 +50,8 @@ type Props = {
 
 export default async function BinderPage({ params, searchParams }: Props) {
   const [{ id }, query] = await Promise.all([params, searchParams]);
-  const binder = await getBinder(id);
+  const user = await requireUser();
+  const binder = await getBinder(user.id, id);
   if (!binder) notFound();
   const isSet = Boolean(binder.release);
   const filters = parseCardFilters(query);

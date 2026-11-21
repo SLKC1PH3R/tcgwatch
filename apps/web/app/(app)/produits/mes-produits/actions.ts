@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation';
 import { z } from 'zod';
 import { prisma } from '@tcgwatch/db';
 import { requireUser } from '@/lib/auth';
+import { setFollowTarget, unfollow } from '@/lib/follows';
 import { firstIssue, formToObject, optionalText, requiredPrice } from '@/lib/form';
 
 const PATH = '/produits/mes-produits';
@@ -23,7 +24,7 @@ function fail(message: string): never {
  * est aussi le prix cible des alertes boutiques, eBay et Cardmarket.
  */
 export async function saveMyProductAction(formData: FormData) {
-  await requireUser();
+  const user = await requireUser();
   const data = formToObject(formData);
   const parsed = schema.safeParse(data);
   if (!parsed.success) fail(firstIssue(parsed.error));
@@ -32,13 +33,14 @@ export async function saveMyProductAction(formData: FormData) {
     select: { id: true },
   });
   if (!product) fail('Produit introuvable');
-  await prisma.product.update({
-    where: { id: product.id },
-    data: {
-      targetPrice: parsed.data.targetPrice,
-      marketQuery: parsed.data.marketQuery ?? null,
-    },
-  });
+  await setFollowTarget(user.id, product.id, parsed.data.targetPrice);
+  // Mots-clés des recherches d'annonces : communs à tous, réglés par un administrateur.
+  if (user.role === 'ADMIN') {
+    await prisma.product.update({
+      where: { id: product.id },
+      data: { marketQuery: parsed.data.marketQuery ?? null },
+    });
+  }
   revalidatePath(PATH);
   revalidatePath(`/produits/${product.id}`);
   redirect(`${PATH}#p-${product.id}`);
@@ -46,14 +48,13 @@ export async function saveMyProductAction(formData: FormData) {
 
 /** Retire un produit de « Mes produits » (plus de bon prix, annonces eBay effacées). */
 export async function removeMyProductAction(productId: string) {
-  await requireUser();
-  await prisma.$transaction([
-    prisma.product.update({
-      where: { id: productId },
-      data: { targetPrice: null, marketQuery: null },
-    }),
-    prisma.marketListing.deleteMany({ where: { productId } }),
-  ]);
+  const user = await requireUser();
+  await unfollow(user.id, productId);
+  // Plus personne avec un bon prix : annonces eBay effacées.
+  const followed = await prisma.productFollow.count({
+    where: { productId, targetPrice: { not: null } },
+  });
+  if (followed === 0) await prisma.marketListing.deleteMany({ where: { productId } });
   revalidatePath(PATH);
   revalidatePath(`/produits/${productId}`);
 }

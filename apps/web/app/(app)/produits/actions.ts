@@ -4,7 +4,8 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
 import { prisma } from '@tcgwatch/db';
-import { requireUser } from '@/lib/auth';
+import { requireAdmin, requireUser } from '@/lib/auth';
+import { setFollowTarget, unfollow } from '@/lib/follows';
 import { firstIssue, formToObject, optionalPrice } from '@/lib/form';
 
 /*
@@ -15,15 +16,18 @@ import { firstIssue, formToObject, optionalPrice } from '@/lib/form';
 // ─── Alertes ─────────────────────────────────────────────
 
 export async function acknowledgeAlertAction(id: string) {
-  await requireUser();
-  await prisma.alertEvent.update({ where: { id }, data: { acknowledged: true } });
+  const user = await requireUser();
+  await prisma.alertEvent.updateMany({
+    where: { id, userId: user.id },
+    data: { acknowledged: true },
+  });
   revalidatePath('/');
 }
 
 export async function acknowledgeAllAlertsAction() {
-  await requireUser();
+  const user = await requireUser();
   await prisma.alertEvent.updateMany({
-    where: { acknowledged: false },
+    where: { userId: user.id, acknowledged: false },
     data: { acknowledged: true },
   });
   revalidatePath('/');
@@ -40,7 +44,7 @@ export async function setDailyExclusionAction(
   day: string,
   excluded: boolean | null,
 ) {
-  await requireUser();
+  await requireAdmin();
   if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return;
   const listing = await prisma.listing.findUnique({
     where: { id: listingId },
@@ -59,14 +63,12 @@ const targetSchema = z.object({ targetPrice: optionalPrice });
 
 /** Prix cible du produit, modifié directement depuis l'en-tête de la fiche (vide = aucun). */
 export async function setProductTargetAction(productId: string, formData: FormData) {
-  await requireUser();
+  const user = await requireUser();
   const parsed = targetSchema.safeParse(formToObject(formData));
   if (!parsed.success) {
     redirect(`/produits/${productId}?erreur=${encodeURIComponent(firstIssue(parsed.error))}`);
   }
-  await prisma.product.update({
-    where: { id: productId },
-    data: { targetPrice: parsed.data.targetPrice },
-  });
+  if (parsed.data.targetPrice === null) await unfollow(user.id, productId);
+  else await setFollowTarget(user.id, productId, parsed.data.targetPrice);
   revalidatePath(`/produits/${productId}`);
 }

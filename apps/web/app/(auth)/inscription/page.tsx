@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation';
 import { prisma } from '@tcgwatch/db';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { getCurrentUser, isRegistrationOpen } from '@/lib/auth';
+import { googleEnabled } from '@/lib/google-oauth';
 import { RegisterForm } from '../auth-forms';
 
 export const metadata: Metadata = { title: 'Inscription' };
@@ -29,5 +30,5 @@ export default async function RegisterPage() {
     );
   }
   const firstUser = (await prisma.user.count()) === 0;
-  return <RegisterForm firstUser={firstUser} />;
+  return <RegisterForm firstUser={firstUser} google={googleEnabled()} />;
 }

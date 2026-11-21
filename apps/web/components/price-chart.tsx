@@ -63,6 +63,7 @@ export function PriceChart({
   hasBest,
   hasMarket,
   hasSecondhand = false,
+  editable = false,
   outOfStock,
   allTimeLow,
   low30,
@@ -76,6 +77,8 @@ export function PriceChart({
   hasMarket: boolean;
   /** Médiane quotidienne des annonces d'occasion (3ᵉ courbe). */
   hasSecondhand?: boolean;
+  /** Exclusion de points aberrants (administrateurs). */
+  editable?: boolean;
   outOfStock: { from: string; to: string }[];
   allTimeLow: number | null;
   low30: number | null;
@@ -201,13 +204,14 @@ export function PriceChart({
           </LineChart>
         </ResponsiveContainer>
       </div>
-      {selected && points[selected] ? (
-        <DayPanel day={selected} points={points[selected]} onClose={() => setSelected(null)} />
-      ) : (
-        <p className="text-xs text-muted-foreground">
-          Un prix semble faux ? Cliquez sur le jour concerné pour exclure ce point.
-        </p>
-      )}
+      {editable &&
+        (selected && points[selected] ? (
+          <DayPanel day={selected} points={points[selected]} onClose={() => setSelected(null)} />
+        ) : (
+          <p className="text-xs text-muted-foreground">
+            Un prix semble faux ? Cliquez sur le jour concerné pour exclure ce point.
+          </p>
+        ))}
     </div>
   );
 }

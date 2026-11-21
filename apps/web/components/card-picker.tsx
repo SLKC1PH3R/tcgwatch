@@ -3,6 +3,7 @@ import { CollectionCardTile } from '@/components/collection-card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { searchCards } from '@/lib/data/card-collection';
+import { requireUser } from '@/lib/auth';
 
 /**
  * Recherche de cartes par nom (formulaire GET `?q=`) et bouton « Ajouter » pour chacune.
@@ -21,7 +22,8 @@ export async function CardPicker({
   exclude: Set<string>;
   addAction: (cardId: string) => () => Promise<void>;
 }) {
-  const results = q ? await searchCards(q, mine) : [];
+  const user = await requireUser();
+  const results = q ? await searchCards(user.id, q, mine) : [];
   return (
     // Conteneur de référence : la grille suit la largeur disponible (colonne étroite ou page).
     <div className="@container space-y-4">

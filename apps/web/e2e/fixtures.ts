@@ -2,6 +2,8 @@ import { test as base, expect } from '@playwright/test';
 
 /** Jeton de session du compte de test (créé par global-setup.ts). */
 export const SESSION_TOKEN = 'e2e-session-token-0123456789';
+/** Second compte (simple utilisateur) : vérifie le cloisonnement des données. */
+export const OTHER_SESSION_TOKEN = 'e2e-other-session-token-9876543210';
 export const PRODUCT_ID = 'e2e-product-display';
 export const ITEM_ID = 'e2e-collection-item';
 

@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { fitCard, fitGrid, fitScroll, fitSplit3 } from '@/lib/fit';
 import { EXCLUDED_SITES, getRetailers, type RetailerRow } from '@/lib/data/retailers';
+import { requireUser } from '@/lib/auth';
 import { cn } from '@/lib/utils';
 import { resetRetailerShippingAction } from './actions';
 import { ShippingForm } from './shipping-form';
@@ -62,6 +63,8 @@ interface Props {
 
 export default async function RetailersPage({ searchParams }: Props) {
   const { q = '', cat, statut, suivies, port, r: picked } = await searchParams;
+  const user = await requireUser();
+  const admin = user.role === 'ADMIN';
   const retailers = await getRetailers();
   const kind = KIND_ORDER.find((k) => k.toLowerCase() === cat);
   const access = ACCESS_ORDER.find((a) => a.toLowerCase() === statut);
@@ -123,9 +126,11 @@ export default async function RetailersPage({ searchParams }: Props) {
         title="Revendeurs"
         description={`${retailers.length} sites français vendant du Pokémon TCG, dont ${byAccess.OK} relevés de façon fiable. ${EXCLUDED_SITES.join(', ').replace(/, ([^,]*)$/, ' et $1')} sont volontairement exclus.`}
         actions={
-          <Button asChild variant="outline">
-            <Link href="/revendeurs/etat">État des relevés</Link>
-          </Button>
+          admin ? (
+            <Button asChild variant="outline">
+              <Link href="/revendeurs/etat">État des relevés</Link>
+            </Button>
+          ) : undefined
         }
       />
 
@@ -321,7 +326,7 @@ export default async function RetailersPage({ searchParams }: Props) {
                   </span>
                 </div>
                 <p className="text-sm font-semibold">{shippingLabel(selected)}</p>
-                {selected.id ? (
+                {selected.id && admin ? (
                   <details className="text-sm">
                     <summary className="cursor-pointer text-xs text-primary">Modifier</summary>
                     <div className="mt-2 space-y-2">

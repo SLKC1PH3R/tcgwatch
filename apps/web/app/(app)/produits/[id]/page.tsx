@@ -34,6 +34,7 @@ import { getPriceHistory, PERIODS, periodOf } from '@/lib/data/history';
 import { fitCard, fitColumn, fitGrid, fitScroll } from '@/lib/fit';
 import { ALERT_STYLE, PRODUCT_ALERT_TYPES } from '@/lib/alerts';
 import { setProductAlertMuteAction } from '../../alertes/actions';
+import { requireUser } from '@/lib/auth';
 import { cn } from '@/lib/utils';
 import { getProduct } from '@/lib/data/products';
 import { getChaseIndicator, getFormatComparison, getProductExtension } from '@/lib/data/release';
@@ -52,10 +53,15 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function ProductPage({ params, searchParams }: Props) {
   const [{ id }, { erreur, periode }] = await Promise.all([params, searchParams]);
-  const product = await getProduct(id);
+  const user = await requireUser();
+  const product = await getProduct(id, user.id);
   const muted = new Set(
-    (await prisma.product.findUnique({ where: { id }, select: { mutedAlerts: true } }))
-      ?.mutedAlerts ?? [],
+    (
+      await prisma.productFollow.findUnique({
+        where: { userId_productId: { userId: user.id, productId: id } },
+        select: { mutedAlerts: true },
+      })
+    )?.mutedAlerts ?? [],
   );
   if (!product) notFound();
   const period = periodOf(periode);
@@ -63,9 +69,9 @@ export default async function ProductPage({ params, searchParams }: Props) {
   const extension = await getProductExtension(product.id);
   const showChase = product.type === 'DISPLAY' || product.type === 'ETB';
   const [history, alerts, retailers, formats, chase] = await Promise.all([
-    getPriceHistory(id, period.days),
+    getPriceHistory(id, period.days, user.id),
     prisma.alertEvent.findMany({
-      where: { productId: id },
+      where: { productId: id, userId: user.id },
       orderBy: { createdAt: 'desc' },
       take: 10,
     }),
@@ -347,6 +353,7 @@ export default async function ProductPage({ params, searchParams }: Props) {
                 hasBest={history.hasBest}
                 hasMarket={history.hasMarket}
                 hasSecondhand={history.hasSecondhand}
+                editable={user.role === 'ADMIN'}
                 outOfStock={history.outOfStock}
                 allTimeLow={history.allTimeLow}
                 low30={history.low30}

@@ -11,8 +11,9 @@ function cell(value: unknown): string {
 const num = (n: number | null) => (n === null ? '' : n.toFixed(2).replace('.', ','));
 
 export async function GET() {
-  if (!(await getCurrentUser())) return new Response('Non autorisé', { status: 401 });
-  const { rows, sold } = await getCollection();
+  const user = await getCurrentUser();
+  if (!user) return new Response('Non autorisé', { status: 401 });
+  const { rows, sold } = await getCollection(user.id);
   const day = (d: Date | null) => (d ? d.toISOString().slice(0, 10) : '');
 
   const header = [

@@ -22,21 +22,21 @@ export function reminderMessage(products: ReleasingProduct[]): string {
 }
 
 /**
- * La veille d'une sortie : un seul rappel regroupant les produits suivis (Mes produits ou
- * fiches revendeurs actives) qui sortent le lendemain (date du produit, sinon de sa sortie).
+ * La veille d'une sortie : un rappel par utilisateur, regroupant ses produits suivis qui sortent
+ * le lendemain (date du produit, sinon de sa sortie). Les administrateurs reçoivent aussi les
+ * produits suivis chez les revendeurs (fiches actives).
  */
 export async function runReleaseReminders(ctx: WorkerContext): Promise<number> {
   const tomorrow = new Date(todayUtc().getTime() + DAY_MS);
-  const followed = {
-    OR: [
-      { targetPrice: { not: null } },
-      { listings: { some: { state: { not: 'PAUSED' as const } } } },
-    ],
-  };
   const products = await prisma.product.findMany({
     where: {
       AND: [
-        followed,
+        {
+          OR: [
+            { follows: { some: {} } },
+            { listings: { some: { state: { not: 'PAUSED' as const } } } },
+          ],
+        },
         {
           OR: [
             { releaseDate: tomorrow },
@@ -45,26 +45,48 @@ export async function runReleaseReminders(ctx: WorkerContext): Promise<number> {
         },
       ],
     },
-    select: { id: true, name: true, targetPrice: true },
+    select: {
+      id: true,
+      name: true,
+      targetPrice: true,
+      follows: { select: { userId: true } },
+      _count: { select: { listings: { where: { state: { not: 'PAUSED' } } } } },
+    },
     orderBy: [{ targetPrice: { sort: 'desc', nulls: 'last' } }, { name: 'asc' }],
   });
   if (products.length === 0) return 0;
 
+  const admins = await prisma.user.findMany({ where: { role: 'ADMIN' }, select: { id: true } });
+  const perUser = new Map<string, ReleasingProduct[]>();
+  const add = (userId: string, p: ReleasingProduct) =>
+    perUser.set(userId, [...(perUser.get(userId) ?? []), p]);
+  for (const p of products) {
+    const followers = new Set(p.follows.map((f) => f.userId));
+    if (p._count.listings > 0) for (const a of admins) followers.add(a.id);
+    for (const userId of followers) add(userId, p);
+  }
+
   const day = tomorrow.toISOString().slice(0, 10);
-  const single = products.length === 1 ? products[0]! : null;
-  await dispatchAlert(ctx, {
-    type: 'RELEASE_DATE',
-    dedupeKey: `RELEASE_REMINDER:${day}`,
-    productId: single?.id,
-    title: single
-      ? `📅 Sortie demain : ${single.name}`
-      : `📅 Demain, ${products.length} produits suivis sortent`,
-    message: single ? 'Pense à vérifier les boutiques dès l’ouverture.' : reminderMessage(products),
-    url: single ? `${ctx.env.APP_URL}/produits/${single.id}` : `${ctx.env.APP_URL}/calendrier`,
-    linkLabel: single ? 'Voir le produit' : 'Voir le calendrier',
-    priority: 'default',
-    tags: ['date'],
-  });
-  ctx.logger.info({ day, products: products.length }, 'Rappel des sorties du lendemain');
+  for (const [userId, list] of perUser) {
+    const single = list.length === 1 ? list[0]! : null;
+    await dispatchAlert(ctx, {
+      type: 'RELEASE_DATE',
+      dedupeKey: `RELEASE_REMINDER:${day}`,
+      recipients: [userId],
+      productId: single?.id,
+      title: single
+        ? `📅 Sortie demain : ${single.name}`
+        : `📅 Demain, ${list.length} produits suivis sortent`,
+      message: single ? 'Pense à vérifier les boutiques dès l’ouverture.' : reminderMessage(list),
+      url: single ? `${ctx.env.APP_URL}/produits/${single.id}` : `${ctx.env.APP_URL}/calendrier`,
+      linkLabel: single ? 'Voir le produit' : 'Voir le calendrier',
+      priority: 'default',
+      tags: ['date'],
+    });
+  }
+  ctx.logger.info(
+    { day, products: products.length, users: perUser.size },
+    'Rappel des sorties du lendemain',
+  );
   return products.length;
 }

@@ -13,12 +13,14 @@ import { getCardCollection } from '@/lib/data/card-collection';
 import { refreshOwnedCardPrices } from '@/lib/data/extensions';
 import { fitCard, fitGrid, fitScroll } from '@/lib/fit';
 import { cn } from '@/lib/utils';
+import { requireUser } from '@/lib/auth';
 
 export const metadata: Metadata = { title: 'Mes cartes' };
 
 /** Vue d'ensemble des cartes : valeur, avancement par extension, derniers ajouts. */
 export default async function MyCardsPage() {
-  const { releases, latest, distinct, copies, value } = await getCardCollection();
+  const user = await requireUser();
+  const { releases, latest, distinct, copies, value } = await getCardCollection(user.id);
   after(() => refreshOwnedCardPrices().then(() => undefined));
 
   return (

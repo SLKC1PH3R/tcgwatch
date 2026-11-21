@@ -13,6 +13,7 @@ import { getBinders, getCardReleases } from '@/lib/data/card-collection';
 import { fitCard, fitColumn, fitGrid, fitScroll } from '@/lib/fit';
 import { cn } from '@/lib/utils';
 import { createBinderAction } from '../actions';
+import { requireUser } from '@/lib/auth';
 
 export const metadata: Metadata = { title: 'Classeurs' };
 
@@ -21,7 +22,8 @@ type Props = { searchParams: Promise<{ erreur?: string }> };
 /** Classeurs : un par extension (toutes ses cartes, manquantes grisées) ou personnels. */
 export default async function BindersPage({ searchParams }: Props) {
   const { erreur } = await searchParams;
-  const [binders, releases] = await Promise.all([getBinders(), getCardReleases()]);
+  const user = await requireUser();
+  const [binders, releases] = await Promise.all([getBinders(user.id), getCardReleases()]);
 
   return (
     <FitPage>

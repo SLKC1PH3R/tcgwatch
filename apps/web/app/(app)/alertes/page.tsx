@@ -10,6 +10,9 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ALERT_STYLE, ALERT_TYPES, PRODUCT_ALERT_TYPES, ago, toClock } from '@/lib/alerts';
 import { fitCard, fitColumn, fitGrid, fitScroll } from '@/lib/fit';
+import { getEnv } from '@tcgwatch/shared/env';
+import { PushToggle } from '@/components/push-toggle';
+import { requireUser } from '@/lib/auth';
 import { cn } from '@/lib/utils';
 import {
   markAllSeenAction,
@@ -27,9 +30,12 @@ const PAGE_SIZE = 150;
 
 export default async function AlertsPage({ searchParams }: Props) {
   const { etat, type: rawType } = await searchParams;
+  const user = await requireUser();
+  const vapidKey = getEnv().VAPID_PUBLIC_KEY;
   const unreadOnly = etat === 'non-vues';
   const type = ALERT_TYPES.find((t) => t === rawType);
   const where: Prisma.AlertEventWhereInput = {
+    userId: user.id,
     ...(unreadOnly ? { acknowledged: false } : {}),
     ...(type ? { type } : {}),
   };
@@ -51,24 +57,37 @@ export default async function AlertsPage({ searchParams }: Props) {
         muted: true,
         sentNtfy: true,
         sentTelegram: true,
+        sentPush: true,
         createdAt: true,
-        product: { select: { id: true, name: true, imageUrl: true, mutedAlerts: true } },
+        product: {
+          select: {
+            id: true,
+            name: true,
+            imageUrl: true,
+            follows: { where: { userId: user.id }, select: { mutedAlerts: true } },
+          },
+        },
         chaseCard: { select: { name: true, imageUrl: true } },
       },
     }),
-    prisma.alertEvent.count(),
-    prisma.alertEvent.count({ where: { acknowledged: false } }),
+    prisma.alertEvent.count({ where: { userId: user.id } }),
+    prisma.alertEvent.count({ where: { userId: user.id, acknowledged: false } }),
     prisma.alertEvent.groupBy({
       by: ['type'],
-      where: unreadOnly ? { acknowledged: false } : {},
+      where: { userId: user.id, ...(unreadOnly ? { acknowledged: false } : {}) },
       _count: { _all: true },
     }),
-    prisma.alertSettings.findUnique({ where: { id: 'default' } }),
-    prisma.product.findMany({
-      where: { NOT: { mutedAlerts: { isEmpty: true } } },
-      select: { id: true, name: true, imageUrl: true, mutedAlerts: true },
-      orderBy: { name: 'asc' },
-    }),
+    prisma.alertSettings.findUnique({ where: { userId: user.id } }),
+    prisma.productFollow
+      .findMany({
+        where: { userId: user.id, NOT: { mutedAlerts: { isEmpty: true } } },
+        select: {
+          mutedAlerts: true,
+          product: { select: { id: true, name: true, imageUrl: true } },
+        },
+        orderBy: { product: { name: 'asc' } },
+      })
+      .then((rows) => rows.map((r) => ({ ...r.product, mutedAlerts: r.mutedAlerts }))),
   ]);
   const typeCount = new Map(byType.map((t) => [t.type, t._count._all]));
   const mutedTypes = new Set(settings?.mutedTypes ?? []);
@@ -173,7 +192,7 @@ export default async function AlertsPage({ searchParams }: Props) {
                 {alerts.map((a) => {
                   const style = ALERT_STYLE[a.type];
                   const image = a.product?.imageUrl ?? a.chaseCard?.imageUrl ?? null;
-                  const productMuted = a.product?.mutedAlerts.includes(a.type) ?? false;
+                  const productMuted = a.product?.follows[0]?.mutedAlerts.includes(a.type) ?? false;
                   return (
                     <li
                       key={a.id}
@@ -208,6 +227,7 @@ export default async function AlertsPage({ searchParams }: Props) {
                           {!a.muted &&
                             !a.sentNtfy &&
                             !a.sentTelegram &&
+                            !a.sentPush &&
                             a.type !== 'RELEASE_DATE' && (
                               <Badge variant="destructive">Pas envoyée</Badge>
                             )}
@@ -299,7 +319,18 @@ export default async function AlertsPage({ searchParams }: Props) {
                 </CardDescription>
               </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-4">
+              {vapidKey && (
+                <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border p-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold">Notifications du navigateur</p>
+                    <p className="text-xs text-muted-foreground">
+                      Alertes sur cet appareil, même site fermé.
+                    </p>
+                  </div>
+                  <PushToggle publicKey={vapidKey} />
+                </div>
+              )}
               <form action={saveQuietHoursAction} className="space-y-3">
                 <label className="flex items-center gap-2 text-sm">
                   <input type="checkbox" name="actives" value="1" defaultChecked={quietOn} />

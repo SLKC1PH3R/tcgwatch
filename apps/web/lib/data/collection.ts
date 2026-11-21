@@ -21,8 +21,9 @@ export async function latestMarketPrices(): Promise<
  * Cartes possédées valorisées à leur cote Cardmarket (tendance). Sans prix d'achat saisi, une
  * carte compte pour 0 € investi : elle vient en général d'un booster déjà payé.
  */
-async function getOwnedCardLines() {
+async function getOwnedCardLines(userId: string) {
   const owned = await prisma.ownedCard.findMany({
+    where: { userId },
     select: {
       cardId: true,
       quantity: true,
@@ -40,15 +41,16 @@ async function getOwnedCardLines() {
   }));
 }
 
-export async function getCollection() {
+export async function getCollection(userId: string) {
   const [items, market, products, cardLines] = await Promise.all([
     prisma.collectionItem.findMany({
+      where: { userId },
       include: { product: { select: { id: true, name: true, type: true, imageUrl: true } } },
       orderBy: [{ purchaseDate: 'desc' }, { createdAt: 'desc' }],
     }),
     latestMarketPrices(),
-    getProducts(),
-    getOwnedCardLines(),
+    getProducts(userId),
+    getOwnedCardLines(userId),
   ]);
 
   const retail = new Map<string, number>();
@@ -177,9 +179,10 @@ export type CollectionPoint = {
  * Valeur de la collection jour par jour, reconstruite à partir des prix marché et des résumés
  * quotidiens des boutiques (dernier prix connu à chaque date), à côté du total investi.
  */
-export async function getCollectionHistory(days = 365): Promise<CollectionPoint[]> {
+export async function getCollectionHistory(userId: string, days = 365): Promise<CollectionPoint[]> {
   const [items, cardLines] = await Promise.all([
     prisma.collectionItem.findMany({
+      where: { userId },
       select: {
         productId: true,
         quantity: true,
@@ -189,7 +192,7 @@ export async function getCollectionHistory(days = 365): Promise<CollectionPoint[
         soldAt: true,
       },
     }),
-    getOwnedCardLines(),
+    getOwnedCardLines(userId),
   ]);
   if (items.length === 0 && cardLines.length === 0) return [];
   const ids = [...new Set(items.map((i) => i.productId))];

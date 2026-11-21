@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ago } from '@/lib/alerts';
 import { fitCard, fitGrid, fitScroll } from '@/lib/fit';
+import { requireAdmin } from '@/lib/auth';
 import { cn } from '@/lib/utils';
 
 export const metadata: Metadata = { title: 'État des relevés' };
@@ -30,6 +31,7 @@ type Props = { searchParams: Promise<{ etat?: string; r?: string }> };
  * Utile quand un site change sa structure ou se met à bloquer les requêtes.
  */
 export default async function ScrapeStatusPage({ searchParams }: Props) {
+  await requireAdmin();
   const { etat, r: picked } = await searchParams;
   const now = new Date();
   const retailers = await prisma.retailer.findMany({

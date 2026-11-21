@@ -6,7 +6,7 @@ import { prisma } from '@tcgwatch/db';
 import { cardmarketQuote, tcgdexAsset, TcgdexClient, LOCAL_CARD_IMAGES } from '@tcgwatch/market';
 import { todayUtc } from '@tcgwatch/shared';
 import { z } from 'zod';
-import { requireUser } from '@/lib/auth';
+import { requireAdmin, requireUser } from '@/lib/auth';
 import { firstIssue, formToObject, optionalPrice } from '@/lib/form';
 
 const cardPath = (tcgdexId: string) => `/cartes/${encodeURIComponent(tcgdexId)}`;
@@ -16,7 +16,8 @@ const cardPath = (tcgdexId: string) => `/cartes/${encodeURIComponent(tcgdexId)}`
  * du jour viennent de TCGdex ; le worker relève ensuite ses cotes chaque jour.
  */
 export async function followCardAction(tcgdexId: string) {
-  await requireUser();
+  // Cartes suivies (cote quotidienne, alertes) : communes au site, gérées par un admin.
+  await requireAdmin();
   if (await prisma.chaseCard.findUnique({ where: { tcgdexId } })) redirect(cardPath(tcgdexId));
 
   const card = await new TcgdexClient().getCard(tcgdexId).catch(() => null);
@@ -102,7 +103,8 @@ export async function trackCardAction(cardId: string, returnTo: string) {
 
 /** Arrête le suivi d'une carte (son historique de cotes est supprimé). */
 export async function unfollowCardAction(tcgdexId: string) {
-  await requireUser();
+  // Cartes suivies (cote quotidienne, alertes) : communes au site, gérées par un admin.
+  await requireAdmin();
   await prisma.chaseCard.deleteMany({ where: { tcgdexId } });
   revalidatePath('/marche');
   revalidatePath(cardPath(tcgdexId));
@@ -112,7 +114,8 @@ const thresholdsSchema = z.object({ alertBelow: optionalPrice, alertAbove: optio
 
 /** Seuils d'alerte d'une carte suivie (tendance sous / au-dessus de X €), vides = aucun. */
 export async function setCardAlertAction(tcgdexId: string, formData: FormData) {
-  await requireUser();
+  // Cartes suivies (cote quotidienne, alertes) : communes au site, gérées par un admin.
+  await requireAdmin();
   const parsed = thresholdsSchema.safeParse(formToObject(formData));
   if (!parsed.success) {
     redirect(`${cardPath(tcgdexId)}?erreur=${encodeURIComponent(firstIssue(parsed.error))}`);
