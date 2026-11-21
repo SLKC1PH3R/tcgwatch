@@ -140,6 +140,18 @@ export const NAV: NavEntry[] = [
               p.startsWith('/cartes') ||
               (p.startsWith('/extensions') && q.get('onglet') === 'cartes'),
           },
+          {
+            href: '/guides',
+            label: 'Guides',
+            hint: 'Repérer les faux, scellé ou cartes, FR ou JP',
+            active: (p) => p.startsWith('/guides'),
+          },
+          {
+            href: '/methode',
+            label: 'Méthode',
+            hint: 'D’où viennent les prix et comment ils sont calculés',
+            active: (p) => p.startsWith('/methode'),
+          },
         ],
       },
     ],
