@@ -118,6 +118,8 @@ async function main() {
   await exclusive(ctx, 'retailers', () => syncRetailers(ctx))();
   // Fiches d'accessoires rapprochées à tort d'un produit : retirées dès le démarrage.
   await exclusive(ctx, 'accessories', () => purgeAccessoryListings(ctx))();
+  // Empreintes du scanner : rattrapage dès le démarrage, sans attendre le passage horaire.
+  void cardHashJob();
 
   // Premier démarrage (ou encyclopédie pas encore importée) → import TCGdex immédiat.
   const [imported, series, cards] = await Promise.all([

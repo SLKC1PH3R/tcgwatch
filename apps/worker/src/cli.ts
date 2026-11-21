@@ -111,7 +111,7 @@ try {
       break;
     }
     case 'card-hashes': {
-      // Empreintes pour le scanner : un lot (relancer jusqu'à « hashed: 0 »).
+      // Empreintes pour le scanner : enchaîne les lots jusqu'à tout traiter (50 min au plus).
       const n = await runCardHashes(ctx);
       ctx.logger.info({ hashed: n }, 'Empreintes des cartes calculées');
       break;

@@ -4,7 +4,7 @@ import { ART_CROP, phash, PHASH_SIZE } from '@tcgwatch/shared';
 import sharp from 'sharp';
 import type { WorkerContext } from '../context';
 
-/** Cartes traitées par passage (les premières passes rattrapent tout le catalogue). */
+/** Cartes par lot (requête et journal). */
 export const HASH_BATCH = 1500;
 const PAUSE_MS = 150;
 
@@ -35,34 +35,87 @@ export async function cardImageHash(bytes: Buffer): Promise<string> {
   return phash(data);
 }
 
+/** Durée maximale d'un passage : rend la main avant le passage horaire suivant. */
+const RUN_BUDGET_MS = 50 * 60_000;
+/** Images téléchargées en parallèle. */
+const CONCURRENCY = 3;
+
 /**
- * Empreintes des cartes sans empreinte (ou dont l'image a changé), par lots : alimente le
- * scanner. Une image injoignable est simplement retentée au passage suivant.
+ * Empreintes des cartes sans empreinte (ou dont l'image a changé) : enchaîne les lots jusqu'à
+ * avoir tout traité, dans la limite de 50 minutes par passage. Une image absente ou illisible
+ * est marquée (pas retentée tant que l'image ne change pas) ; une erreur réseau est retentée
+ * au passage suivant.
  */
-export async function runCardHashes(ctx: Pick<WorkerContext, 'logger' | 'env'>): Promise<number> {
-  const cards = await prisma.$queryRaw<{ id: string; imageUrl: string }[]>`
-    SELECT id, "imageUrl" FROM "Card"
-    WHERE "imageUrl" IS NOT NULL AND ("imageHashUrl" IS NULL OR "imageHashUrl" <> "imageUrl")
-    ORDER BY "updatedAt" DESC
-    LIMIT ${Prisma.raw(String(HASH_BATCH))}`;
+export async function runCardHashes(
+  ctx: Pick<WorkerContext, 'logger' | 'env'>,
+  budgetMs = RUN_BUDGET_MS,
+): Promise<number> {
+  const started = Date.now();
+  const retryLater: string[] = [];
   let done = 0;
-  for (const c of cards) {
-    const url = referenceImage(c.imageUrl, ctx.env.APP_URL);
-    if (!url) continue;
-    try {
-      const res = await fetch(url, { signal: AbortSignal.timeout(15_000) });
-      if (!res.ok) continue;
-      const hash = await cardImageHash(Buffer.from(await res.arrayBuffer()));
-      await prisma.card.update({
-        where: { id: c.id },
-        data: { imageHash: hash, imageHashUrl: c.imageUrl },
-      });
-      done++;
-    } catch (err) {
-      ctx.logger.debug({ err, card: c.id }, 'Empreinte de carte impossible');
+  for (;;) {
+    const cards = await prisma.$queryRaw<{ id: string; imageUrl: string }[]>`
+      SELECT id, "imageUrl" FROM "Card"
+      WHERE "imageUrl" IS NOT NULL
+        AND ("imageHashUrl" IS NULL OR "imageHashUrl" <> "imageUrl")
+        AND NOT (id = ANY(${retryLater}::text[]))
+      ORDER BY "updatedAt" DESC
+      LIMIT ${Prisma.raw(String(HASH_BATCH))}`;
+    if (cards.length === 0) break;
+
+    let batchDone = 0;
+    for (let i = 0; i < cards.length; i += CONCURRENCY) {
+      await Promise.all(
+        cards.slice(i, i + CONCURRENCY).map(async (c) => {
+          const url = referenceImage(c.imageUrl, ctx.env.APP_URL);
+          if (!url) {
+            await markUnusable(c);
+            return;
+          }
+          let res: Response;
+          try {
+            res = await fetch(url, { signal: AbortSignal.timeout(15_000) });
+          } catch {
+            retryLater.push(c.id);
+            return;
+          }
+          if (res.status >= 500 || res.status === 429) {
+            retryLater.push(c.id);
+            return;
+          }
+          if (!res.ok) {
+            await markUnusable(c);
+            return;
+          }
+          try {
+            const hash = await cardImageHash(Buffer.from(await res.arrayBuffer()));
+            await prisma.card.update({
+              where: { id: c.id },
+              data: { imageHash: hash, imageHashUrl: c.imageUrl },
+            });
+            batchDone++;
+          } catch (err) {
+            ctx.logger.debug({ err, card: c.id }, 'Image de carte illisible');
+            await markUnusable(c);
+          }
+        }),
+      );
+      await new Promise((r) => setTimeout(r, PAUSE_MS));
     }
-    await new Promise((r) => setTimeout(r, PAUSE_MS));
+    done += batchDone;
+    ctx.logger.info(
+      { hashed: batchDone, batch: cards.length, total: done },
+      'Empreintes des cartes',
+    );
+    if (Date.now() - started > budgetMs) break;
   }
-  if (cards.length) ctx.logger.info({ hashed: done, batch: cards.length }, 'Empreintes des cartes');
   return done;
+}
+
+/** Image absente ou illisible : pas d'empreinte, pas de nouvel essai tant qu'elle ne change pas. */
+async function markUnusable(c: { id: string; imageUrl: string }) {
+  await prisma.card.update({
+    where: { id: c.id },
+    data: { imageHash: null, imageHashUrl: c.imageUrl },
+  });
 }
