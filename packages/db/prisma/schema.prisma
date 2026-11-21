@@ -117,8 +117,45 @@ model User {
   alertSettings   AlertSettings?
   alerts          AlertEvent[]
   pushDevices     PushSubscription[]
+  reports         ErrorReport[]
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
+}
+
+enum ReportKind {
+  /// Prix faux (mauvais montant, prix d'un autre format…)
+  PRICE
+  /// Stock faux (annoncé en stock, épuisé, précommande…)
+  STOCK
+  /// Fiche rattachée au mauvais produit (accessoire, autre extension…)
+  MATCH
+  OTHER
+}
+
+enum ReportStatus {
+  OPEN
+  RESOLVED
+  REJECTED
+}
+
+/// Erreur signalée par un utilisateur sur un prix, un stock ou un rapprochement.
+model ErrorReport {
+  id         String       @id @default(cuid())
+  userId     String
+  user       User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind       ReportKind
+  productId  String?
+  listingId  String?
+  cardId     String?
+  /// Page d'où vient le signalement.
+  path       String?
+  message    String
+  status     ReportStatus @default(OPEN)
+  adminNote  String?
+  resolvedAt DateTime?
+  createdAt  DateTime     @default(now())
+
+  @@index([status, createdAt])
 }
 
 /// Appareil abonné aux notifications du navigateur (Web Push).

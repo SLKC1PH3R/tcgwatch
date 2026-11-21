@@ -194,6 +194,8 @@ export async function getPriceHistory(productId: string, days: number | null, us
     owned: qty,
     lastMarket,
     lastMarketMedian: lastQuote ? toNumber(lastQuote.median) : null,
+    /** Date de la dernière cote (source et date affichées avec le chiffre). */
+    lastMarketDate: lastQuote?.date ?? null,
     lastMarketListings: lastQuote?.listingCount ?? null,
     lastMarketSource: lastQuote?.source ?? null,
     /** Dernière médiane d'occasion (eBay) : prix, plus bas et nombre d'annonces. */

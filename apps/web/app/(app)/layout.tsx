@@ -1,4 +1,4 @@
-import { Bell, LogOut } from 'lucide-react';
+import { Bell, Flag, LogOut } from 'lucide-react';
 import Link from 'next/link';
 import { Suspense } from 'react';
 import { cookies } from 'next/headers';
@@ -17,7 +17,10 @@ import { logoutAction } from '../(auth)/actions';
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const user = await requireUser();
-  const unread = await prisma.alertEvent.count({ where: { userId: user.id, acknowledged: false } });
+  const [unread, reports] = await Promise.all([
+    prisma.alertEvent.count({ where: { userId: user.id, acknowledged: false } }),
+    user.role === 'ADMIN' ? prisma.errorReport.count({ where: { status: 'OPEN' } }) : 0,
+  ]);
   const theme = parseTheme((await cookies()).get('theme')?.value);
   return (
     // Une page qui porte data-fit-screen (l'accueil) occupe exactement la hauteur de l'écran
@@ -42,6 +45,19 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               <SearchBox className="w-32 sm:w-56 xl:w-48 2xl:w-56" />
             </Suspense>
             <ThemeToggle initial={theme} />
+            {reports > 0 && (
+              <Link
+                href="/signalements"
+                title="Signalements à traiter"
+                aria-label={`${reports} signalement${reports > 1 ? 's' : ''} à traiter`}
+                className="relative flex size-9 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-accent"
+              >
+                <Flag className="size-4" />
+                <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold text-background tabular-nums">
+                  {reports}
+                </span>
+              </Link>
+            )}
             <Link
               href="/alertes"
               aria-label={unread > 0 ? `Alertes, ${unread} pas encore vues` : 'Alertes'}

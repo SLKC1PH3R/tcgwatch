@@ -17,6 +17,7 @@ import { getCardPage } from '@/lib/data/cards';
 import { searchCards, type LocalCard } from '@/lib/data/encyclopedia';
 import { fitCard, fitColumn, fitGrid, fitScroll } from '@/lib/fit';
 import { PERIODS, periodOf, periodStart } from '@/lib/data/history';
+import { ReportButton } from '@/components/report-button';
 import { requireUser } from '@/lib/auth';
 import { cn } from '@/lib/utils';
 import { prisma } from '@tcgwatch/db';
@@ -332,6 +333,11 @@ export default async function CardPage({ params, searchParams }: Props) {
             >
               Fiche TCGdex <ExternalLink className="size-3" />
             </a>
+            <ReportButton
+              cardId={card.tcgdexId}
+              subject={`Carte ${card.tcgdexId}`}
+              className="ml-4"
+            />
           </CardContent>
         </Card>
       </div>

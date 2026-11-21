@@ -209,6 +209,11 @@ export default async function MarketIndexPage() {
                   extension : somme des cotes de ses cartes.
                 </p>
                 <p>Dernière mise à jour : {formatDate(new Date())}.</p>
+                <p>
+                  <Link href="/methode" className="text-primary hover:underline">
+                    Toute la méthode
+                  </Link>
+                </p>
               </div>
             </details>
           </CardHeader>

@@ -35,6 +35,7 @@ import { fitCard, fitColumn, fitGrid, fitScroll } from '@/lib/fit';
 import { ALERT_STYLE, PRODUCT_ALERT_TYPES } from '@/lib/alerts';
 import { setProductAlertMuteAction } from '../../alertes/actions';
 import { requireUser } from '@/lib/auth';
+import { ReportButton } from '@/components/report-button';
 import { cn } from '@/lib/utils';
 import { getProduct } from '@/lib/data/products';
 import { getChaseIndicator, getFormatComparison, getProductExtension } from '@/lib/data/release';
@@ -66,6 +67,8 @@ export default async function ProductPage({ params, searchParams }: Props) {
   if (!product) notFound();
   const period = periodOf(periode);
 
+  const bestChecked =
+    product.listings.find((l) => l.id === product.best?.listingId)?.lastCheckedAt ?? null;
   const extension = await getProductExtension(product.id);
   const showChase = product.type === 'DISPLAY' || product.type === 'ETB';
   const [history, alerts, retailers, formats, chase] = await Promise.all([
@@ -165,6 +168,7 @@ export default async function ProductPage({ params, searchParams }: Props) {
               <h1 className="font-display text-2xl leading-tight font-bold tracking-tight text-balance">
                 {product.name}
               </h1>
+              <ReportButton productId={product.id} subject={product.name} defaultKind="OTHER" />
               <div className="pt-2">
                 {product.targetPrice === null ? (
                   <Button asChild size="sm">
@@ -246,7 +250,7 @@ export default async function ProductPage({ params, searchParams }: Props) {
                           ? ' · port offert'
                           : ' · livré'
                         : ''
-                    }`
+                    }${bestChecked ? ` · relevé ${ago(bestChecked)}` : ''}`
                   : 'pas achetable actuellement'
               }
               hintClass={product.best ? 'text-success' : undefined}
@@ -266,6 +270,7 @@ export default async function ProductPage({ params, searchParams }: Props) {
                   history.lastMarketMedian !== null
                     ? `médiane ${formatPrice(history.lastMarketMedian)}`
                     : null,
+                  history.lastMarketDate ? `au ${formatDate(history.lastMarketDate)}` : null,
                 ]
                   .filter(Boolean)
                   .join(' · ') || 'aucun relevé'
@@ -277,7 +282,7 @@ export default async function ProductPage({ params, searchParams }: Props) {
               valueClass="text-chart-5"
               hint={
                 history.secondhand
-                  ? `médiane de ${history.secondhand.count} annonces · dès ${formatPrice(history.secondhand.low)}`
+                  ? `médiane de ${history.secondhand.count} annonces · dès ${formatPrice(history.secondhand.low)} · au ${formatDate(history.secondhand.date)}`
                   : 'pas encore de relevé'
               }
             />
@@ -410,7 +415,7 @@ export default async function ProductPage({ params, searchParams }: Props) {
                                     </span>
                                   )}
                                 </td>
-                                <td className="py-3 pl-3 text-right">
+                                <td className="py-3 pl-3 text-right whitespace-nowrap">
                                   <Button
                                     asChild
                                     size="sm"
@@ -422,6 +427,13 @@ export default async function ProductPage({ params, searchParams }: Props) {
                                       Acheter
                                     </a>
                                   </Button>
+                                  <ReportButton
+                                    compact
+                                    productId={product.id}
+                                    listingId={l.id}
+                                    subject={`${l.retailerName} · ${formatPrice(l.price)} · ${product.name}`}
+                                    className="ml-2 align-middle"
+                                  />
                                 </td>
                               </tr>
                             ))}
