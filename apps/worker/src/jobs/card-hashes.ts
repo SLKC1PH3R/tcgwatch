@@ -1,6 +1,6 @@
 import { Prisma, prisma } from '@tcgwatch/db';
 import { tcgdexAsset } from '@tcgwatch/market';
-import { ART_CROP, phash, PHASH_SIZE } from '@tcgwatch/shared';
+import { scanSignature, type ScanSignature } from '@tcgwatch/shared';
 import sharp from 'sharp';
 import type { WorkerContext } from '../context';
 
@@ -14,25 +14,17 @@ export function referenceImage(imageUrl: string, appUrl: string): string | null 
   return tcgdexAsset(imageUrl, '/low.webp') ?? null;
 }
 
-/** Empreinte de l'illustration d'une image de carte (octets PNG / WebP / JPEG). */
-export async function cardImageHash(bytes: Buffer): Promise<string> {
-  const img = sharp(bytes).removeAlpha();
-  const meta = await img.metadata();
-  const w = meta.width ?? 0;
-  const h = meta.height ?? 0;
-  if (!w || !h) throw new Error('image vide');
-  const { data } = await img
-    .extract({
-      left: Math.round(ART_CROP.left * w),
-      top: Math.round(ART_CROP.top * h),
-      width: Math.round(ART_CROP.width * w),
-      height: Math.round(ART_CROP.height * h),
-    })
-    .resize(PHASH_SIZE, PHASH_SIZE, { fit: 'fill', kernel: 'cubic' })
-    .grayscale()
+/**
+ * Empreinte et couleurs de l'illustration d'une image de carte (octets PNG / WebP / JPEG) : même
+ * calcul que le navigateur (pixels bruts puis réduction partagée), pour des distances comparables.
+ */
+export async function cardImageHash(bytes: Buffer): Promise<ScanSignature> {
+  const { data, info } = await sharp(bytes)
+    .ensureAlpha()
     .raw()
     .toBuffer({ resolveWithObject: true });
-  return phash(data);
+  if (!info.width || !info.height) throw new Error('image vide');
+  return scanSignature(data, info.width, info.height);
 }
 
 /** Durée maximale d'un passage : rend la main avant le passage horaire suivant. */
@@ -41,7 +33,7 @@ const RUN_BUDGET_MS = 50 * 60_000;
 const CONCURRENCY = 3;
 
 /**
- * Empreintes des cartes sans empreinte (ou dont l'image a changé) : enchaîne les lots jusqu'à
+ * Empreintes des cartes sans empreinte (ou dont l'image a changé, ou sans signature couleur) : enchaîne les lots jusqu'à
  * avoir tout traité, dans la limite de 50 minutes par passage. Une image absente ou illisible
  * est marquée (pas retentée tant que l'image ne change pas) ; une erreur réseau est retentée
  * au passage suivant.
@@ -57,7 +49,8 @@ export async function runCardHashes(
     const cards = await prisma.$queryRaw<{ id: string; imageUrl: string }[]>`
       SELECT id, "imageUrl" FROM "Card"
       WHERE "imageUrl" IS NOT NULL
-        AND ("imageHashUrl" IS NULL OR "imageHashUrl" <> "imageUrl")
+        AND ("imageHashUrl" IS NULL OR "imageHashUrl" <> "imageUrl"
+             OR ("imageHash" IS NOT NULL AND "imageColor" IS NULL))
         AND NOT (id = ANY(${retryLater}::text[]))
       ORDER BY "updatedAt" DESC
       LIMIT ${Prisma.raw(String(HASH_BATCH))}`;
@@ -88,10 +81,10 @@ export async function runCardHashes(
             return;
           }
           try {
-            const hash = await cardImageHash(Buffer.from(await res.arrayBuffer()));
+            const sig = await cardImageHash(Buffer.from(await res.arrayBuffer()));
             await prisma.card.update({
               where: { id: c.id },
-              data: { imageHash: hash, imageHashUrl: c.imageUrl },
+              data: { imageHash: sig.hash, imageColor: sig.color, imageHashUrl: c.imageUrl },
             });
             batchDone++;
           } catch (err) {
@@ -116,6 +109,6 @@ export async function runCardHashes(
 async function markUnusable(c: { id: string; imageUrl: string }) {
   await prisma.card.update({
     where: { id: c.id },
-    data: { imageHash: null, imageHashUrl: c.imageUrl },
+    data: { imageHash: null, imageColor: null, imageHashUrl: c.imageUrl },
   });
 }

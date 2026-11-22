@@ -2,7 +2,13 @@
 
 import { Camera, CameraOff, Check, ImageUp, Plus, ScanLine } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState, useTransition } from 'react';
-import { ART_CROP, downscaleGray, formatPrice, phash } from '@tcgwatch/shared';
+import {
+  cardCrops,
+  formatPrice,
+  GUIDE_HEIGHT,
+  scanSignature,
+  type ScanSignature,
+} from '@tcgwatch/shared';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { adjustOwnedCardAction } from '../actions';
@@ -15,7 +21,7 @@ interface Match {
   release: string;
   price: number | null;
   owned: number;
-  distance: number;
+  score: number;
   variants: string[];
 }
 
@@ -26,29 +32,34 @@ const VARIANT_LABELS: Record<string, string> = {
   firstEdition: '1re éd.',
 };
 
-/** Cadre de visée : proportions d'une carte (63 × 88 mm), 78 % de la hauteur de l'image. */
-const GUIDE_HEIGHT = 0.78;
-const CARD_RATIO = 63 / 88;
-
-/** Distance sous laquelle la carte est considérée comme reconnue (scan automatique en pause). */
-const SURE = 10;
+/** Image analysée : réduite à 720 px de haut au plus (largement assez pour une empreinte 32 × 32). */
+const MAX_SIDE = 720;
 
 /**
- * Empreinte de la carte cadrée : zone du cadre de visée dans l'image, puis zone de
- * l'illustration dans la carte (mêmes proportions que les images de référence).
+ * Empreintes de la carte selon plusieurs cadrages possibles (cadre de visée, variations de taille
+ * et de position, image entière si elle est déjà recadrée sur la carte) : le serveur garde le plus
+ * proche pour chaque carte connue.
  */
-function hashFrame(source: CanvasImageSource, width: number, height: number): string | null {
-  const gh = height * GUIDE_HEIGHT;
-  const gw = gh * CARD_RATIO;
-  if (gw > width) return null;
+function signatures(source: CanvasImageSource, width: number, height: number): ScanSignature[] {
+  const k = Math.min(1, MAX_SIDE / Math.max(width, height));
+  const w = Math.max(1, Math.round(width * k));
+  const h = Math.max(1, Math.round(height * k));
   const canvas = document.createElement('canvas');
-  canvas.width = Math.round(gw);
-  canvas.height = Math.round(gh);
+  canvas.width = w;
+  canvas.height = h;
   const ctx = canvas.getContext('2d', { willReadFrequently: true });
-  if (!ctx) return null;
-  ctx.drawImage(source, (width - gw) / 2, (height - gh) / 2, gw, gh, 0, 0, gw, gh);
-  const { data } = ctx.getImageData(0, 0, canvas.width, canvas.height);
-  return phash(downscaleGray(data, canvas.width, canvas.height, ART_CROP));
+  if (!ctx) return [];
+  ctx.drawImage(source, 0, 0, w, h);
+  const { data } = ctx.getImageData(0, 0, w, h);
+  return cardCrops(w, h).map((crop) => scanSignature(data, w, h, crop));
+}
+
+/** Libellé de ressemblance d'un résultat. */
+function likeness(score: number, sure: boolean) {
+  if (sure) return 'Carte reconnue';
+  if (score <= 14) return 'Très ressemblante';
+  if (score <= 20) return 'Ressemblante';
+  return 'Ressemblance faible';
 }
 
 export function CardScanner({ releases }: { releases: { code: string; name: string }[] }) {
@@ -59,23 +70,25 @@ export function CardScanner({ releases }: { releases: { code: string; name: stri
   const [auto, setAuto] = useState(true);
   const [release, setRelease] = useState('');
   const [matches, setMatches] = useState<Match[] | null>(null);
+  const [confident, setConfident] = useState(false);
   const [added, setAdded] = useState<string | null>(null);
   const [pending, start] = useTransition();
 
   const lookup = useCallback(
-    async (hash: string | null) => {
-      if (!hash || busy.current) return;
+    async (candidates: ScanSignature[]) => {
+      if (candidates.length === 0 || busy.current) return;
       busy.current = true;
       try {
         const res = await fetch('/api/scan', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ hash, release: release || undefined }),
+          body: JSON.stringify({ candidates, release: release || undefined }),
         });
         if (!res.ok) return;
-        const { matches: found } = (await res.json()) as { matches: Match[] };
-        setMatches(found);
-        if (found[0] && found[0].distance <= SURE) setAuto(false);
+        const result = (await res.json()) as { matches: Match[]; confident: boolean };
+        setMatches(result.matches);
+        setConfident(result.confident);
+        if (result.confident) setAuto(false);
       } finally {
         busy.current = false;
       }
@@ -86,7 +99,7 @@ export function CardScanner({ releases }: { releases: { code: string; name: stri
   const scan = useCallback(() => {
     const v = video.current;
     if (!v || v.readyState < 2) return;
-    void lookup(hashFrame(v, v.videoWidth, v.videoHeight));
+    void lookup(signatures(v, v.videoWidth, v.videoHeight));
   }, [lookup]);
 
   const startCamera = async () => {
@@ -128,7 +141,8 @@ export function CardScanner({ releases }: { releases: { code: string; name: stri
 
   const fromFile = async (file: File) => {
     const bitmap = await createImageBitmap(file);
-    await lookup(hashFrame(bitmap, bitmap.width, bitmap.height));
+    await lookup(signatures(bitmap, bitmap.width, bitmap.height));
+    bitmap.close();
   };
 
   const add = (m: Match, variant: string) =>
@@ -136,6 +150,7 @@ export function CardScanner({ releases }: { releases: { code: string; name: stri
       await adjustOwnedCardAction(m.id, 1, variant);
       setAdded(`${m.name} (${VARIANT_LABELS[variant] ?? variant}) ajoutée`);
       setMatches(null);
+      setConfident(false);
       setAuto(true);
     });
 
@@ -148,9 +163,10 @@ export function CardScanner({ releases }: { releases: { code: string; name: stri
             <div
               aria-hidden
               className={cn(
-                'pointer-events-none absolute top-1/2 left-1/2 aspect-[63/88] h-[78%] -translate-x-1/2 -translate-y-1/2 rounded-xl border-2 shadow-[0_0_0_9999px_rgba(0,0,0,0.45)]',
-                matches?.[0] && matches[0].distance <= SURE ? 'border-success' : 'border-white/80',
+                'pointer-events-none absolute top-1/2 left-1/2 aspect-[63/88] -translate-x-1/2 -translate-y-1/2 rounded-xl border-2 shadow-[0_0_0_9999px_rgba(0,0,0,0.45)]',
+                confident ? 'border-success' : 'border-white/80',
               )}
+              style={{ height: `${GUIDE_HEIGHT * 100}%` }}
             />
           ) : (
             <div className="absolute inset-0 grid place-items-center p-6 text-center text-sm text-white/80">
@@ -207,8 +223,8 @@ export function CardScanner({ releases }: { releases: { code: string; name: stri
           </select>
         </div>
         <p className="text-xs text-muted-foreground">
-          Astuce : choisir l’extension rend la reconnaissance bien plus sûre. Pour une photo, cadre
-          la carte au centre, en hauteur.
+          Astuce : choisir l’extension rend la reconnaissance encore plus sûre. Pour une photo,
+          cadre la carte au centre, ou importe une image recadrée sur la carte.
         </p>
       </div>
 
@@ -228,54 +244,61 @@ export function CardScanner({ releases }: { releases: { code: string; name: stri
             Aucune carte reconnue. Rapproche la carte, évite les reflets, ou choisis l’extension.
           </p>
         ) : (
-          <ul className="space-y-2">
-            {matches.map((m, i) => (
-              <li
-                key={m.id}
-                className={cn(
-                  'flex gap-3 rounded-xl border p-2.5',
-                  i === 0 && m.distance <= SURE && 'border-success/60 bg-success/5',
-                )}
-              >
-                {m.image ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={m.image} alt="" className="h-24 w-auto shrink-0 rounded-md" />
-                ) : (
-                  <div className="h-24 w-[4.3rem] shrink-0 rounded-md bg-muted" />
-                )}
-                <div className="min-w-0 flex-1 space-y-1">
-                  <p className="text-sm font-semibold">
-                    {m.name}{' '}
-                    <span className="font-normal text-muted-foreground">· {m.localId}</span>
-                  </p>
-                  <p className="truncate text-xs text-muted-foreground">
-                    {m.release}
-                    {m.price !== null ? ` · cote ${formatPrice(m.price)}` : ''}
-                    {m.owned > 0 ? ` · déjà ×${m.owned}` : ''}
-                  </p>
-                  <p className="text-[11px] text-muted-foreground">
-                    {m.distance <= SURE ? 'Correspondance sûre' : 'Ressemblance'} ({64 - m.distance}
-                    /64)
-                  </p>
-                  <div className="flex flex-wrap gap-1.5 pt-1">
-                    {m.variants.map((v) => (
-                      <Button
-                        key={v}
-                        type="button"
-                        size="sm"
-                        variant={i === 0 ? 'default' : 'outline'}
-                        className="h-7 rounded-full text-xs"
-                        disabled={pending}
-                        onClick={() => add(m, v)}
-                      >
-                        <Plus /> {VARIANT_LABELS[v] ?? v}
-                      </Button>
-                    ))}
+          <>
+            {!confident && (
+              <p className="text-xs text-muted-foreground">
+                Pas de certitude : vérifie la carte avant de l’ajouter. Choisir l’extension ou
+                recadrer la photo sur la carte aide beaucoup.
+              </p>
+            )}
+            <ul className="space-y-2">
+              {matches.map((m, i) => (
+                <li
+                  key={m.id}
+                  className={cn(
+                    'flex gap-3 rounded-xl border p-2.5',
+                    i === 0 && confident && 'border-success/60 bg-success/5',
+                  )}
+                >
+                  {m.image ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={m.image} alt="" className="h-24 w-auto shrink-0 rounded-md" />
+                  ) : (
+                    <div className="h-24 w-[4.3rem] shrink-0 rounded-md bg-muted" />
+                  )}
+                  <div className="min-w-0 flex-1 space-y-1">
+                    <p className="text-sm font-semibold">
+                      {m.name}{' '}
+                      <span className="font-normal text-muted-foreground">· {m.localId}</span>
+                    </p>
+                    <p className="truncate text-xs text-muted-foreground">
+                      {m.release}
+                      {m.price !== null ? ` · cote ${formatPrice(m.price)}` : ''}
+                      {m.owned > 0 ? ` · déjà ×${m.owned}` : ''}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground">
+                      {likeness(m.score, i === 0 && confident)}
+                    </p>
+                    <div className="flex flex-wrap gap-1.5 pt-1">
+                      {m.variants.map((v) => (
+                        <Button
+                          key={v}
+                          type="button"
+                          size="sm"
+                          variant={i === 0 ? 'default' : 'outline'}
+                          className="h-7 rounded-full text-xs"
+                          disabled={pending}
+                          onClick={() => add(m, v)}
+                        >
+                          <Plus /> {VARIANT_LABELS[v] ?? v}
+                        </Button>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              </li>
-            ))}
-          </ul>
+                </li>
+              ))}
+            </ul>
+          </>
         )}
       </div>
     </div>

@@ -113,3 +113,167 @@ export function downscaleGray(
   }
   return out;
 }
+
+/** Grille de la signature couleur (cases par côté). */
+export const COLOR_GRID = 4;
+
+/**
+ * Signature couleur d'une zone : chromaticité moyenne (r / (r+g+b), g / (r+g+b)) de chaque case
+ * d'une grille 4 × 4. Indépendante de la luminosité, elle sépare les variantes qui ne diffèrent
+ * que par la teinte (même illustration recolorée). Renvoie 64 caractères hexadécimaux.
+ */
+export function colorSignature(
+  rgba: ArrayLike<number>,
+  width: number,
+  height: number,
+  crop = { left: 0, top: 0, width: 1, height: 1 },
+): string {
+  const G = COLOR_GRID;
+  const x0 = crop.left * width;
+  const y0 = crop.top * height;
+  const cw = crop.width * width;
+  const ch = crop.height * height;
+  let out = '';
+  for (let gy = 0; gy < G; gy++) {
+    for (let gx = 0; gx < G; gx++) {
+      const xs = Math.floor(x0 + (gx * cw) / G);
+      const xe = Math.max(xs + 1, Math.floor(x0 + ((gx + 1) * cw) / G));
+      const ys = Math.floor(y0 + (gy * ch) / G);
+      const ye = Math.max(ys + 1, Math.floor(y0 + ((gy + 1) * ch) / G));
+      // Échantillonnage d'un pixel sur deux : largement suffisant pour une moyenne.
+      let r = 0;
+      let g = 0;
+      let b = 0;
+      for (let y = ys; y < ye && y < height; y += 2) {
+        for (let x = xs; x < xe && x < width; x += 2) {
+          const i = (y * width + x) * 4;
+          r += rgba[i]!;
+          g += rgba[i + 1]!;
+          b += rgba[i + 2]!;
+        }
+      }
+      const sum = r + g + b || 1;
+      const byte = (v: number) =>
+        Math.max(0, Math.min(255, Math.round((v / sum) * 255)))
+          .toString(16)
+          .padStart(2, '0');
+      out += byte(r) + byte(g);
+    }
+  }
+  return out;
+}
+
+/**
+ * Écart de couleur entre deux signatures : moyenne des écarts de chromaticité, ramenée à
+ * l'échelle 0-64 d'une distance de Hamming (0 = mêmes teintes).
+ */
+export function colorDistance(a: string, b: string): number {
+  const n = Math.min(a.length, b.length) / 2;
+  if (!n) return 0;
+  let sum = 0;
+  for (let i = 0; i < n; i++) {
+    sum += Math.abs(
+      parseInt(a.slice(i * 2, i * 2 + 2), 16) - parseInt(b.slice(i * 2, i * 2 + 2), 16),
+    );
+  }
+  return (sum / n) * (64 / 85);
+}
+
+export interface Crop {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+}
+
+/** Zone `inner` (fractions de la zone `outer`) exprimée en fractions de l'image entière. */
+export const composeCrop = (outer: Crop, inner: Crop): Crop => ({
+  left: outer.left + inner.left * outer.width,
+  top: outer.top + inner.top * outer.height,
+  width: inner.width * outer.width,
+  height: inner.height * outer.height,
+});
+
+/** Proportions d'une carte (63 × 88 mm). */
+export const CARD_RATIO = 63 / 88;
+/** Cadre de visée de la caméra : carte haute de 78 % de l'image, centrée. */
+export const GUIDE_HEIGHT = 0.78;
+
+/** Carte centrée de hauteur `h` (fraction de la hauteur de l'image), décalée de (dx, dy). */
+function centeredCard(width: number, height: number, h: number, dx = 0, dy = 0): Crop | null {
+  const ch = h * height;
+  const cw = ch * CARD_RATIO;
+  if (cw > width || ch > height) return null;
+  const left = (width - cw) / 2 / width + dx;
+  const top = (height - ch) / 2 / height + dy;
+  if (left < 0 || top < 0 || left + cw / width > 1 || top + ch / height > 1) return null;
+  return { left, top, width: cw / width, height: ch / height };
+}
+
+/**
+ * Cadrages possibles de la carte dans une image : le cadre de visée (et de légères variations
+ * de taille et de position, la carte n'étant jamais parfaitement placée) et, pour une photo
+ * importée, l'image entière quand elle a déjà les proportions d'une carte (image recadrée,
+ * capture d'écran). Le serveur garde, pour chaque carte connue, le cadrage le plus proche.
+ */
+export function cardCrops(width: number, height: number): Crop[] {
+  const crops: Crop[] = [];
+  const ratio = width / height;
+  // Image déjà recadrée sur la carte (à ± 12 % près).
+  if (Math.abs(ratio - CARD_RATIO) / CARD_RATIO < 0.12) {
+    crops.push({ left: 0, top: 0, width: 1, height: 1 });
+    const inset = 0.02;
+    crops.push({ left: inset, top: inset, width: 1 - 2 * inset, height: 1 - 2 * inset });
+  }
+  // La plus grande carte centrée qui tient dans l'image (photo en hauteur, carte remplissant le cadre).
+  const fit = Math.min(1, width / (height * CARD_RATIO));
+  for (const h of [GUIDE_HEIGHT, 0.72, 0.84, 0.9, 0.96]) {
+    const c = centeredCard(width, height, Math.min(h, fit));
+    if (c) crops.push(c);
+  }
+  for (const [dx, dy] of [
+    [0, -0.02],
+    [0, 0.02],
+    [-0.015, 0],
+    [0.015, 0],
+  ] as const) {
+    const c = centeredCard(width, height, Math.min(GUIDE_HEIGHT, fit), dx, dy);
+    if (c) crops.push(c);
+  }
+  // Doublons (image carrée, etc.) retirés.
+  const seen = new Set<string>();
+  return crops.filter((c) => {
+    const k = [c.left, c.top, c.width, c.height].map((v) => v.toFixed(3)).join();
+    if (seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  });
+}
+
+export interface ScanSignature {
+  /** pHash de l'illustration (16 hex). */
+  hash: string;
+  /** Signature couleur de l'illustration (64 hex). */
+  color: string;
+}
+
+/** Empreinte et couleurs de l'illustration d'une carte située dans `card` (fractions de l'image). */
+export function scanSignature(
+  rgba: ArrayLike<number>,
+  width: number,
+  height: number,
+  card: Crop = { left: 0, top: 0, width: 1, height: 1 },
+): ScanSignature {
+  const art = composeCrop(card, ART_CROP);
+  return {
+    hash: phash(downscaleGray(rgba, width, height, art)),
+    color: colorSignature(rgba, width, height, art),
+  };
+}
+
+/** Poids de l'écart de couleur dans le score de ressemblance. */
+export const COLOR_WEIGHT = 0.5;
+
+/** Score de ressemblance (plus bas = plus proche) : forme de l'illustration + teintes. */
+export const scanScore = (hamming: number, color: number | null) =>
+  hamming + (color === null ? 0 : COLOR_WEIGHT * color);
