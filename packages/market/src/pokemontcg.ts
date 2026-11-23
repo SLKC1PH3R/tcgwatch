@@ -88,7 +88,7 @@ const subset = (a: Set<string>, b: Set<string>) => [...a].every((t) => b.has(t))
 /**
  * Extension pokemontcg.io correspondant à une extension TCGdex (nom anglais, nombre de
  * cartes) : même nom ; sinon un nom contenu dans l'autre avec le même nombre de cartes ;
- * sinon le même identifiant sans points (« sm7.5 » → « sm75 ») et le même nombre de cartes.
+ * sinon le même identifiant normalisé (« me06 » = « me6 », « sv08.5 » = « sv8pt5 »).
  * Un seul candidat, sinon rien.
  */
 export function matchPokemonTcgSet(
@@ -108,9 +108,16 @@ export function matchPokemonTcgSet(
     }),
   );
   if (contained) return contained;
-  const id = set.id.replace(/\./g, '').toLowerCase();
-  return one(sets.filter((s) => s.id.toLowerCase() === id && sameCount(s)));
+  const id = setIdKey(set.id);
+  return one(sets.filter((s) => setIdKey(s.id) === id));
 }
+
+/** Identifiant d'extension comparable entre TCGdex et pokemontcg.io. */
+export const setIdKey = (id: string) =>
+  id
+    .toLowerCase()
+    .replace(/pt(?=\d)|\./g, '')
+    .replace(/\d+/g, (n) => String(Number(n)));
 
 const numberKey = (n: string) => n.replace(/^0+(?=.)/, '').toUpperCase();
 

@@ -1,5 +1,10 @@
 import { prisma } from '@tcgwatch/db';
-import { mergeSetCards, TcgdexClient, type MergedCard } from '@tcgwatch/market';
+import {
+  inferMissingReverses,
+  mergeSetCards,
+  TcgdexClient,
+  type MergedCard,
+} from '@tcgwatch/market';
 import type { WorkerContext } from '../context';
 import { fillCardImages } from './card-images';
 
@@ -81,7 +86,7 @@ export async function importCards(
       // L'une après l'autre : TCGdex répond 503 quand les requêtes s'enchaînent trop vite.
       const fr = await client.setCards(release.tcgdexId!, 'fr');
       const en = await client.setCards(release.tcgdexId!, 'en').catch(() => []);
-      const cards = mergeSetCards(fr, en);
+      const cards = inferMissingReverses(release.tcgdexId!, mergeSetCards(fr, en));
       await upsertCards(release.id, cards);
       await prisma.release.update({
         where: { id: release.id },

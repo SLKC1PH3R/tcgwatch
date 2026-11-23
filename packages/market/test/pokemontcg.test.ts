@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { matchPokemonTcgImages, matchPokemonTcgSet, pokemonTcgLargeImage } from '../src/pokemontcg';
+import {
+  matchPokemonTcgImages,
+  matchPokemonTcgSet,
+  pokemonTcgLargeImage,
+  setIdKey,
+} from '../src/pokemontcg';
 import { tcgdexAsset } from '../src/tcgdex';
 
 const sets = [
@@ -20,6 +25,10 @@ describe('images pokemontcg.io', () => {
       'sm75',
     );
     expect(matchPokemonTcgSet({ id: 'x', name: 'Unknown', total: 3 }, sets)).toBeNull();
+    // Identifiants TCGdex et pokemontcg.io écrits différemment.
+    expect(setIdKey('me06')).toBe(setIdKey('me6'));
+    expect(setIdKey('sv08.5')).toBe(setIdKey('sv8pt5'));
+    expect(setIdKey('me02.5')).toBe(setIdKey('me2pt5'));
   });
 
   it('associe les cartes par numéro et nom, sinon par nom unique', () => {

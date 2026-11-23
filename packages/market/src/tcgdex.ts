@@ -362,6 +362,30 @@ export function mergeSetCards(fr: TcgdexSetCard[], en: TcgdexSetCard[]) {
   });
 }
 
+/** Raretés qui existent en reverse dans les extensions modernes (français et anglais). */
+const REVERSE_RARITIES = new Set(['commune', 'peu commune', 'rare', 'common', 'uncommon']);
+/** Extensions des séries modernes (Noir & Blanc à Méga-Évolution), hors sous-ensembles. */
+const MODERN_SET = /^(bw|xy|sm|swsh|sv|me)\d/i;
+
+/**
+ * Reverses supposées quand TCGdex n'en indique aucune pour toute une extension moderne (données
+ * pas encore publiées : nouvelle extension) : communes, peu communes et rares en ont une. Remplacé
+ * par les vraies variantes dès que TCGdex les publie (relecture hebdomadaire).
+ */
+export function inferMissingReverses(setId: string, cards: MergedCard[]): MergedCard[] {
+  if (!MODERN_SET.test(setId) || cards.some((c) => c.variants.includes('reverse'))) return cards;
+  return cards.map((c) => {
+    if (!c.rarity || !REVERSE_RARITIES.has(c.rarity.toLowerCase())) return c;
+    const base = c.variants.length ? c.variants : ['normal'];
+    return { ...c, variants: cardVariantsOrder([...base, 'reverse']) };
+  });
+}
+
+const cardVariantsOrder = (list: string[]) => [
+  ...VARIANT_ORDER.filter((v) => list.includes(v)),
+  ...list.filter((v) => !(VARIANT_ORDER as readonly string[]).includes(v)).sort(),
+];
+
 const VARIANT_ORDER = ['normal', 'reverse', 'holo', 'firstEdition'] as const;
 
 /**
@@ -379,9 +403,6 @@ export function cardVariants(...cards: (TcgdexSetCard | undefined)[]): string[] 
       if (d.stamp?.includes('1st-edition')) found.add('firstEdition');
     }
   }
-  return [
-    ...VARIANT_ORDER.filter((v) => found.has(v)),
-    ...[...found].filter((v) => !(VARIANT_ORDER as readonly string[]).includes(v)).sort(),
-  ];
+  return cardVariantsOrder([...found]);
 }
 export type MergedCard = ReturnType<typeof mergeSetCards>[number];

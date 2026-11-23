@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { cardNumber, cardVariants, mergeSetCards, type TcgdexSetCard } from '../src/tcgdex';
+import {
+  cardNumber,
+  cardVariants,
+  inferMissingReverses,
+  mergeSetCards,
+  type TcgdexSetCard,
+} from '../src/tcgdex';
 
 const card = (over: Partial<TcgdexSetCard>): TcgdexSetCard => ({
   id: 'dp1-1',
@@ -51,5 +57,21 @@ describe('cartes TCGdex', () => {
       ),
     ).toEqual(['normal', 'reverse', 'holo', 'firstEdition']);
     expect(cardVariants(card({}), undefined)).toEqual([]);
+  });
+
+  it('reverses supposées pour une extension moderne sans aucune reverse', () => {
+    const merged = mergeSetCards(
+      [
+        card({ id: 'me06-001', localId: '001', rarity: 'Commune' }),
+        card({ id: 'me06-090', localId: '090', rarity: 'Double rare', variants: { holo: true } }),
+      ],
+      [],
+    );
+    const out = inferMissingReverses('me06', merged);
+    expect(out[0]!.variants).toEqual(['normal', 'reverse']);
+    expect(out[1]!.variants).toEqual(['holo']);
+    // Extension ancienne ou reverses déjà connues : inchangé.
+    expect(inferMissingReverses('base1', merged)).toBe(merged);
+    expect(inferMissingReverses('me06', out)).toBe(out);
   });
 });
