@@ -2,6 +2,7 @@ import 'server-only';
 import { Prisma, prisma } from '@tcgwatch/db';
 import { tcgdexAsset } from '@tcgwatch/market';
 import { fold, toNumber } from '@tcgwatch/shared';
+import type { SetProgress } from '@/lib/card-sets';
 
 /** Carte affichée dans la collection, un classeur ou une vitrine. */
 export interface CollectionCard {
@@ -80,6 +81,7 @@ export interface ReleaseProgress {
   total: number;
   copies: number;
   value: number;
+  progress: SetProgress;
 }
 
 /** Vue d'ensemble : valeur, nombre de cartes, avancement par extension, derniers ajouts. */
@@ -93,7 +95,10 @@ export async function getCardCollection(userId: string) {
         serie: string | null;
         logo: string | null;
         total: bigint;
+        reversible: bigint;
         owned: bigint;
+        classic: bigint;
+        reverse: bigint;
         copies: bigint;
         value: unknown;
       }[]
@@ -101,7 +106,11 @@ export async function getCardCollection(userId: string) {
       SELECT r.id AS "releaseId", r."tcgdexId" AS code, r."nameFr" AS name,
         s.name AS serie, r."imageUrl" AS logo,
         (SELECT count(*) FROM "Card" x WHERE x."releaseId" = r.id) AS total,
-        count(DISTINCT o."cardId") AS owned, sum(o.quantity) AS copies,
+        (SELECT count(*) FROM "Card" x WHERE x."releaseId" = r.id AND 'reverse' = ANY(x.variants)) AS reversible,
+        count(DISTINCT o."cardId") AS owned,
+        count(DISTINCT o."cardId") FILTER (WHERE o.variant <> 'reverse' AND o.quantity > 0) AS classic,
+        count(DISTINCT o."cardId") FILTER (WHERE o.variant = 'reverse' AND o.quantity > 0 AND 'reverse' = ANY(c.variants)) AS reverse,
+        sum(o.quantity) AS copies,
         sum(o.quantity * coalesce(c."priceTrend", 0)) AS value
       FROM "OwnedCard" o JOIN "Card" c ON c.id = o."cardId" JOIN "Release" r ON r.id = c."releaseId"
       LEFT JOIN "Serie" s ON s.id = r."serieId"
@@ -124,6 +133,16 @@ export async function getCardCollection(userId: string) {
     total: Number(r.total),
     copies: Number(r.copies),
     value: toNumber(r.value as never) ?? 0,
+    progress: {
+      full: { owned: Number(r.classic), total: Number(r.total) },
+      master:
+        Number(r.reversible) > 0
+          ? {
+              owned: Number(r.classic) + Number(r.reverse),
+              total: Number(r.total) + Number(r.reversible),
+            }
+          : null,
+    },
   }));
   const seen = new Set<string>();
   const latest = recent
@@ -218,9 +237,13 @@ export async function getBinders(userId: string) {
   // Avancement des classeurs d'extension : cartes possédées / cartes de l'extension.
   const releaseIds = binders.flatMap((b) => (b.release ? [b.release.id] : []));
   const counts = releaseIds.length
-    ? await prisma.$queryRaw<{ releaseId: string; total: bigint; owned: bigint }[]>`
+    ? await prisma.$queryRaw<
+        { releaseId: string; total: bigint; reversible: bigint; classic: bigint; reverse: bigint }[]
+      >`
         SELECT c."releaseId", count(*) AS total,
-          count(*) FILTER (WHERE EXISTS (SELECT 1 FROM "OwnedCard" o WHERE o."cardId" = c.id AND o."userId" = ${userId})) AS owned
+          count(*) FILTER (WHERE 'reverse' = ANY(c.variants)) AS reversible,
+          count(*) FILTER (WHERE EXISTS (SELECT 1 FROM "OwnedCard" o WHERE o."cardId" = c.id AND o."userId" = ${userId} AND o.variant <> 'reverse' AND o.quantity > 0)) AS classic,
+          count(*) FILTER (WHERE 'reverse' = ANY(c.variants) AND EXISTS (SELECT 1 FROM "OwnedCard" o WHERE o."cardId" = c.id AND o."userId" = ${userId} AND o.variant = 'reverse' AND o.quantity > 0)) AS reverse
         FROM "Card" c WHERE c."releaseId" = ANY(${releaseIds}) GROUP BY 1`
     : [];
   const byRelease = new Map(counts.map((c) => [c.releaseId, c]));
@@ -237,8 +260,21 @@ export async function getBinders(userId: string) {
       name: b.name,
       description: b.description,
       release: b.release,
-      total: r ? Number(r.total) : b._count.cards,
-      owned: r ? Number(r.owned) : (ownedByBinder.get(b.id) ?? 0),
+      progress: (r
+        ? {
+            full: { owned: Number(r.classic), total: Number(r.total) },
+            master:
+              Number(r.reversible) > 0
+                ? {
+                    owned: Number(r.classic) + Number(r.reverse),
+                    total: Number(r.total) + Number(r.reversible),
+                  }
+                : null,
+          }
+        : {
+            full: { owned: ownedByBinder.get(b.id) ?? 0, total: b._count.cards },
+            master: null,
+          }) satisfies SetProgress,
     };
   });
 }

@@ -19,6 +19,14 @@ import {
   parseCardFilters,
   rarityCounts,
 } from '@/lib/card-filters';
+import {
+  parseSetMode,
+  percent,
+  SET_MODES,
+  type SetMode,
+  setProgress,
+  setSlots,
+} from '@/lib/card-sets';
 import { getBinder } from '@/lib/data/card-collection';
 import { fitCard, fitGrid, fitScroll } from '@/lib/fit';
 import { cn } from '@/lib/utils';
@@ -46,6 +54,8 @@ type Props = {
     rarete?: string;
     reverse?: string;
     vue?: string;
+    /** Full Set ou Master Set (extensions avec reverses). */
+    set?: string;
   }>;
 };
 
@@ -56,7 +66,17 @@ export default async function BinderPage({ params, searchParams }: Props) {
   if (!binder) notFound();
   const isSet = Boolean(binder.release);
   const filters = parseCardFilters(query);
-  const filtered = filterCards(binder.cards, filters);
+  const progress = setProgress(binder.cards);
+  // Master Set : uniquement pour une extension dont des cartes existent en reverse.
+  const mode: SetMode = isSet && progress.master ? parseSetMode(query.set) : 'full';
+  // Emplacements du classeur (en Master Set, la reverse suit la carte), filtrés par possession.
+  const filtered = setSlots(
+    filterCards(binder.cards, { ...filters, owned: 'toutes' }),
+    mode,
+  ).filter(
+    (s) =>
+      filters.owned === 'toutes' || (filters.owned === 'manquantes' ? s.owned === 0 : s.owned > 0),
+  );
   const groups = rarityCounts(binder.cards);
   const spreads = Math.max(1, Math.ceil(filtered.length / PER_SPREAD));
   const spread = Math.min(spreads, Math.max(1, Number(query.page) || 1));
@@ -64,9 +84,12 @@ export default async function BinderPage({ params, searchParams }: Props) {
   const pages = [shown.slice(0, PER_PAGE), shown.slice(PER_PAGE)];
   const owned = binder.cards.filter((c) => c.owned > 0);
   const value = owned.reduce((s, c) => s + (c.price ?? 0) * c.owned, 0);
+  const current = mode === 'master' ? progress.master! : progress.full;
+  const slotCount = mode === 'master' ? progress.master!.total : binder.cards.length;
   const base = `/collection/cartes/classeurs/${binder.id}`;
-  const filtersHref = (f: CardFilters, page = 1) => {
+  const filtersHref = (f: CardFilters, page = 1, m: SetMode = mode) => {
     const params = new URLSearchParams(cardFiltersQuery(f));
+    if (m === 'master') params.set('set', 'master');
     if (page > 1) params.set('page', String(page));
     const qs = params.toString();
     return qs ? `${base}?${qs}` : base;
@@ -93,7 +116,7 @@ export default async function BinderPage({ params, searchParams }: Props) {
       {count !== undefined && <span className="tabular-nums opacity-70">{count}</span>}
     </Link>
   );
-  const filtering = filtered.length !== binder.cards.length;
+  const filtering = filtered.length !== slotCount;
 
   return (
     <FitPage>
@@ -101,18 +124,41 @@ export default async function BinderPage({ params, searchParams }: Props) {
         title={binder.name}
         description={
           isSet
-            ? `Classeur de l’extension ${binder.release!.nameFr} : ${owned.length}/${binder.cards.length} cartes possédées, valeur ${formatPrice(value)}. Les cartes manquantes sont en gris.`
+            ? `${mode === 'master' ? 'Master Set (cartes classiques + reverses)' : 'Full Set'} de l’extension ${binder.release!.nameFr} : ${current.owned}/${current.total} (${percent(current)} %), valeur ${formatPrice(value)}. Les emplacements manquants sont en gris.`
             : `${binder.cards.length} carte${binder.cards.length > 1 ? 's' : ''}, dont ${owned.length} possédée${owned.length > 1 ? 's' : ''} · valeur ${formatPrice(value)}.${binder.description ? ` ${binder.description}` : ''}`
         }
         actions={
           isSet ? (
-            <Button asChild variant="outline">
-              <Link
-                href={`/collection/cartes/ajout-rapide?extension=${encodeURIComponent(binder.release!.tcgdexId!)}`}
-              >
-                Ajout rapide
-              </Link>
-            </Button>
+            <>
+              {progress.master && (
+                <nav aria-label="Classeur" className="flex rounded-lg border p-0.5">
+                  {SET_MODES.map((m) => (
+                    <Link
+                      key={m.key}
+                      href={filtersHref(filters, 1, m.key)}
+                      aria-current={mode === m.key ? 'page' : undefined}
+                      className={cn(
+                        'rounded-md px-3 py-1.5 text-sm font-medium',
+                        mode === m.key
+                          ? m.key === 'master'
+                            ? 'bg-info text-black'
+                            : 'bg-primary text-primary-foreground'
+                          : 'hover:bg-accent',
+                      )}
+                    >
+                      {m.label}
+                    </Link>
+                  ))}
+                </nav>
+              )}
+              <Button asChild variant="outline">
+                <Link
+                  href={`/collection/cartes/ajout-rapide?extension=${encodeURIComponent(binder.release!.tcgdexId!)}${mode === 'master' ? '&set=master' : ''}`}
+                >
+                  Ajout rapide
+                </Link>
+              </Button>
+            </>
           ) : undefined
         }
       />
@@ -143,34 +189,39 @@ export default async function BinderPage({ params, searchParams }: Props) {
                         className="rounded-2xl border bg-muted/30 p-3 sm:p-4"
                       >
                         <div className="grid grid-cols-3 gap-2 sm:gap-3 fit:mx-auto fit:max-w-[calc((100dvh-27.5rem)*0.72)]">
-                          {page.map((c) => (
-                            <CollectionCardTile key={c.id} card={c} dimMissing>
+                          {page.map(({ key, card: c, variant, owned: n }) => (
+                            <CollectionCardTile
+                              key={key}
+                              card={{ ...c, owned: n }}
+                              reverse={variant === 'reverse'}
+                              dimMissing
+                            >
                               <div className="flex items-center justify-between gap-1">
                                 {isSet ? (
                                   <>
                                     <form
-                                      action={adjustOwnedCardAction.bind(null, c.id, -1, 'normal')}
+                                      action={adjustOwnedCardAction.bind(null, c.id, -1, variant)}
                                     >
                                       <Button
                                         type="submit"
                                         size="icon"
                                         variant="ghost"
                                         className="size-7"
-                                        disabled={!c.byVariant.normal}
-                                        aria-label={`Retirer un ${c.name}`}
+                                        disabled={!c.byVariant[variant]}
+                                        aria-label={`Retirer un ${c.name}${variant === 'reverse' ? ' reverse' : ''}`}
                                       >
                                         <Minus />
                                       </Button>
                                     </form>
                                     <form
-                                      action={adjustOwnedCardAction.bind(null, c.id, 1, 'normal')}
+                                      action={adjustOwnedCardAction.bind(null, c.id, 1, variant)}
                                     >
                                       <Button
                                         type="submit"
                                         size="icon"
                                         variant="ghost"
                                         className="size-7"
-                                        aria-label={`Ajouter un ${c.name}`}
+                                        aria-label={`Ajouter un ${c.name}${variant === 'reverse' ? ' reverse' : ''}`}
                                       >
                                         <Plus />
                                       </Button>
@@ -243,6 +294,7 @@ export default async function BinderPage({ params, searchParams }: Props) {
                     filters.owned === 'possedees',
                   )}
                   {isSet &&
+                    mode === 'full' &&
                     chip(
                       'Existe en reverse',
                       { ...filters, reverse: !filters.reverse },
@@ -275,8 +327,7 @@ export default async function BinderPage({ params, searchParams }: Props) {
                 )}
                 {filtering && (
                   <p className="text-sm text-muted-foreground">
-                    {filtered.length} carte{filtered.length > 1 ? 's' : ''} sur{' '}
-                    {binder.cards.length} ·{' '}
+                    {filtered.length} emplacement{filtered.length > 1 ? 's' : ''} sur {slotCount} ·{' '}
                     <Link href={base} className="text-primary hover:underline">
                       Retirer les filtres
                     </Link>

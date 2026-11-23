@@ -3,7 +3,9 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { FitPage } from '@/components/fit-page';
 import { FormError } from '@/components/form-message';
+import { BinderSetChoice } from '@/components/binder-set-choice';
 import { ExtensionPicker } from '@/components/extension-picker';
+import { SetProgressBars } from '@/components/set-progress-bars';
 import { PageHeader } from '@/components/page-header';
 import { SafeImg } from '@/components/safe-img';
 import { Button } from '@/components/ui/button';
@@ -101,58 +103,69 @@ export default async function BindersPage({ searchParams }: Props) {
             ) : (
               <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
                 {binders.map((b) => {
-                  const pct = b.total ? Math.round((b.owned / b.total) * 100) : 0;
-                  return (
-                    <li key={b.id}>
-                      <Link
-                        href={`/collection/cartes/classeurs/${b.id}`}
-                        className="flex h-full flex-col gap-3 rounded-xl border bg-popover/40 p-4 transition-colors hover:bg-accent"
-                      >
-                        <div className="flex items-center gap-3">
-                          {b.release?.imageUrl ? (
+                  const href = `/collection/cartes/classeurs/${b.id}`;
+                  const tile =
+                    'flex h-full w-full flex-col gap-3 rounded-xl border bg-popover/40 p-4 text-left transition-colors hover:bg-accent';
+                  const content = (
+                    <>
+                      <div className="flex items-center gap-3">
+                        {b.release?.imageUrl ? (
+                          <SafeImg
+                            src={b.release.imageUrl}
+                            alt=""
+                            className="h-9 w-20 shrink-0 object-contain"
+                          />
+                        ) : b.release?.symbolUrl ? (
+                          // Logo pas encore publié : symbole de l'extension.
+                          <span className="grid h-9 w-20 shrink-0 place-items-center">
                             <SafeImg
-                              src={b.release.imageUrl}
+                              src={b.release.symbolUrl}
                               alt=""
-                              className="h-9 w-20 shrink-0 object-contain"
+                              className="size-8 object-contain"
                             />
-                          ) : b.release?.symbolUrl ? (
-                            // Logo pas encore publié : symbole de l'extension.
-                            <span className="grid h-9 w-20 shrink-0 place-items-center">
-                              <SafeImg
-                                src={b.release.symbolUrl}
-                                alt=""
-                                className="size-8 object-contain"
-                              />
-                            </span>
-                          ) : b.release?.serieRef?.logoUrl ? (
-                            <SafeImg
-                              src={b.release.serieRef.logoUrl}
-                              alt=""
-                              className="h-9 w-20 shrink-0 object-contain"
-                            />
-                          ) : (
-                            <BookOpen className="size-8 text-primary" />
-                          )}
-                          <div className="min-w-0">
-                            <p className="truncate font-semibold">{b.name}</p>
-                            <p className="truncate text-xs text-muted-foreground">
-                              {b.release ? 'Classeur d’extension' : 'Classeur personnel'}
-                              {b.description ? ` · ${b.description}` : ''}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="space-y-1">
-                          <div className="h-2 overflow-hidden rounded-full bg-muted">
-                            <div
-                              className="h-full rounded-full bg-primary"
-                              style={{ width: `${pct}%` }}
-                            />
-                          </div>
-                          <p className="text-xs text-muted-foreground tabular-nums">
-                            {b.owned}/{b.total} cartes possédées
+                          </span>
+                        ) : b.release?.serieRef?.logoUrl ? (
+                          <SafeImg
+                            src={b.release.serieRef.logoUrl}
+                            alt=""
+                            className="h-9 w-20 shrink-0 object-contain"
+                          />
+                        ) : (
+                          <BookOpen className="size-8 text-primary" />
+                        )}
+                        <div className="min-w-0">
+                          <p className="truncate font-semibold">{b.name}</p>
+                          <p className="truncate text-xs text-muted-foreground">
+                            {b.release ? 'Classeur d’extension' : 'Classeur personnel'}
+                            {b.description ? ` · ${b.description}` : ''}
                           </p>
                         </div>
-                      </Link>
+                      </div>
+                      <SetProgressBars progress={b.progress} />
+                      {!b.progress.master && (
+                        <p className="text-xs text-muted-foreground tabular-nums">
+                          {b.progress.full.owned}/{b.progress.full.total} cartes possédées
+                        </p>
+                      )}
+                    </>
+                  );
+                  const { master } = b.progress;
+                  return (
+                    <li key={b.id}>
+                      {b.release && master ? (
+                        <BinderSetChoice
+                          href={href}
+                          name={b.name}
+                          progress={{ ...b.progress, master }}
+                          className={tile}
+                        >
+                          {content}
+                        </BinderSetChoice>
+                      ) : (
+                        <Link href={href} className={tile}>
+                          {content}
+                        </Link>
+                      )}
                     </li>
                   );
                 })}

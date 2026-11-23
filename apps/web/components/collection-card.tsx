@@ -14,6 +14,7 @@ export function CollectionCardTile({
   showPrice = true,
   showOwned = true,
   link = true,
+  reverse = false,
   children,
 }: {
   card: CollectionCard;
@@ -21,11 +22,13 @@ export function CollectionCardTile({
   showPrice?: boolean;
   showOwned?: boolean;
   link?: boolean;
+  /** Emplacement de la version reverse (Master Set) : reflet et pastille bleue. */
+  reverse?: boolean;
   children?: React.ReactNode;
 }) {
   const missing = dimMissing && card.owned === 0;
   const img = (
-    <div className="relative">
+    <div className="relative overflow-hidden rounded-lg">
       <SafeImg
         src={card.image}
         alt={card.name}
@@ -34,8 +37,21 @@ export function CollectionCardTile({
           missing && 'opacity-30 grayscale',
         )}
       />
+      {reverse && (
+        <>
+          <span className="pointer-events-none absolute inset-0 bg-gradient-to-br from-white/0 via-sky-300/25 to-fuchsia-300/20 mix-blend-screen" />
+          <span className="absolute top-1.5 left-1.5 rounded-full bg-info px-1.5 py-0.5 text-[10px] font-bold text-black shadow">
+            Reverse
+          </span>
+        </>
+      )}
       {showOwned && card.owned > 0 && (
-        <span className="absolute top-1.5 right-1.5 rounded-full bg-primary px-2 py-0.5 text-xs font-bold text-primary-foreground shadow">
+        <span
+          className={cn(
+            'absolute top-1.5 right-1.5 rounded-full px-2 py-0.5 text-xs font-bold shadow',
+            reverse ? 'bg-info text-black' : 'bg-primary text-primary-foreground',
+          )}
+        >
           ×{card.owned}
         </span>
       )}

@@ -9,18 +9,19 @@ import { getCardReleases, getReleaseCards } from '@/lib/data/card-collection';
 import { fitCard, fitGrid, fitScroll } from '@/lib/fit';
 import { cn } from '@/lib/utils';
 import { QuickAdd } from './quick-add';
+import { parseSetMode } from '@/lib/card-sets';
 import { requireUser } from '@/lib/auth';
 
 export const metadata: Metadata = { title: 'Ajout rapide de cartes' };
 
-type Props = { searchParams: Promise<{ extension?: string }> };
+type Props = { searchParams: Promise<{ extension?: string; set?: string }> };
 
 /**
  * Ajout rapide : toutes les cartes d'une extension, un toucher = un exemplaire de plus.
  * Les quantités sont enregistrées en une fois.
  */
 export default async function QuickAddPage({ searchParams }: Props) {
-  const { extension } = await searchParams;
+  const { extension, set } = await searchParams;
   const user = await requireUser();
   const releases = await getCardReleases();
   const code = extension ?? releases[0]?.tcgdexId ?? undefined;
@@ -31,7 +32,7 @@ export default async function QuickAddPage({ searchParams }: Props) {
     <FitPage>
       <PageHeader
         title="Ajout rapide"
-        description="Choisis une extension, touche les cartes que tu possèdes (un toucher = un exemplaire), puis enregistre. Bascule sur « Reverse » pour compter tes reverses à part."
+        description="Choisis une extension, touche les cartes que tu possèdes (un toucher = un exemplaire), puis enregistre. En « Master Set », chaque reverse a sa propre case, juste après la carte classique."
       />
       <div className={cn(fitGrid, 'lg:grid-cols-[15rem_minmax(0,1fr)]')}>
         <Card className={cn(fitCard, 'px-3')}>
@@ -80,6 +81,7 @@ export default async function QuickAddPage({ searchParams }: Props) {
             code={data.release.tcgdexId!}
             name={data.release.nameFr}
             cards={data.cards}
+            initialMode={parseSetMode(set)}
           />
         ) : (
           <p className="text-sm text-muted-foreground">

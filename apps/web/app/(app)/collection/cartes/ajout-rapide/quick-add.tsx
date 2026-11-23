@@ -6,7 +6,8 @@ import { SafeImg } from '@/components/safe-img';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { RarityIcon } from '@/components/rarity-icon';
-import { type CardFilters, filterCards, hasReverse, rarityCounts } from '@/lib/card-filters';
+import { type CardFilters, filterCards, rarityCounts } from '@/lib/card-filters';
+import { hasReverseSlot, percent, SET_MODES, type SetMode } from '@/lib/card-sets';
 import type { CollectionCard } from '@/lib/data/card-collection';
 import { fitCard, fitScroll } from '@/lib/fit';
 import { cn } from '@/lib/utils';
@@ -29,14 +30,26 @@ export function QuickAdd({
   code,
   name,
   cards,
+  initialMode = 'full',
 }: {
   code: string;
   name: string;
   cards: CollectionCard[];
+  /** Full Set (cartes classiques) ou Master Set (classiques + reverses). */
+  initialMode?: SetMode;
 }) {
   const [saved, setSaved] = useState<Counts>(() => initial(cards));
   const [counts, setCounts] = useState<Counts>(() => initial(cards));
-  const [variant, setVariant] = useState<Variant>('normal');
+  const hasReverses = useMemo(() => cards.some(hasReverseSlot), [cards]);
+  const [mode, setModeState] = useState<SetMode>(hasReverses ? initialMode : 'full');
+  const setMode = (m: SetMode) => {
+    setModeState(m);
+    // Mode retenu dans l'adresse (lien partagé, retour arrière).
+    const url = new URL(window.location.href);
+    if (m === 'master') url.searchParams.set('set', 'master');
+    else url.searchParams.delete('set');
+    window.history.replaceState(null, '', url);
+  };
   const [filter, setFilter] = useState<CardFilters['owned']>('toutes');
   const [rarities, setRarities] = useState<CardFilters['rarities']>([]);
   const [message, setMessage] = useState<string | null>(null);
@@ -53,28 +66,44 @@ export function QuickAdd({
   }, [counts, saved]);
   const changes = Object.keys(changed.normal).length + Object.keys(changed.reverse).length;
   const total = (id: string) => (counts.normal[id] ?? 0) + (counts.reverse[id] ?? 0);
-  const ownedCount = cards.filter((c) => total(c.id) > 0).length;
   const groups = useMemo(() => rarityCounts(cards), [cards]);
-  // En mode reverse, seules les cartes qui existent en reverse sont proposées.
-  const shown = filterCards(
-    cards,
-    { rarities, reverse: variant === 'reverse', owned: filter },
-    (c) => total(c.id),
+  // Full Set : une case par carte ; Master Set : la reverse suit la carte classique.
+  const entries = filterCards(cards, { rarities, reverse: false, owned: 'toutes' }).flatMap(
+    (card) =>
+      mode === 'master' && hasReverseSlot(card)
+        ? [
+            { card, v: 'normal' as const },
+            { card, v: 'reverse' as const },
+          ]
+        : [{ card, v: 'normal' as const }],
   );
-  const reverseCount = useMemo(() => cards.filter(hasReverse).length, [cards]);
+  const shown = entries.filter(({ card, v }) => {
+    const n = counts[v][card.id] ?? 0;
+    return filter === 'toutes' || (filter === 'manquantes' ? n === 0 : n > 0);
+  });
+  const reversible = cards.filter(hasReverseSlot);
+  const fullOwned = cards.filter((c) => (counts.normal[c.id] ?? 0) > 0).length;
+  const progress =
+    mode === 'master'
+      ? {
+          owned: fullOwned + reversible.filter((c) => (counts.reverse[c.id] ?? 0) > 0).length,
+          total: cards.length + reversible.length,
+        }
+      : { owned: fullOwned, total: cards.length };
   const toggleRarity = (key: CardFilters['rarities'][number]) =>
     setRarities((r) => (r.includes(key) ? r.filter((k) => k !== key) : [...r, key]));
 
-  const set = (id: string, n: number) => {
+  const set = (id: string, v: Variant, n: number) => {
     setMessage(null);
-    setCounts((c) => ({ ...c, [variant]: { ...c[variant], [id]: Math.max(0, Math.min(999, n)) } }));
+    setCounts((c) => ({ ...c, [v]: { ...c[v], [id]: Math.max(0, Math.min(999, n)) } }));
   };
   const setAll = (n: (current: number) => number) => {
     setMessage(null);
-    setCounts((c) => ({
-      ...c,
-      [variant]: Object.fromEntries(shown.map((card) => [card.id, n(c[variant][card.id] ?? 0)])),
-    }));
+    setCounts((c) => {
+      const next = { normal: { ...c.normal }, reverse: { ...c.reverse } };
+      for (const { card, v } of shown) next[v][card.id] = n(c[v][card.id] ?? 0);
+      return next;
+    });
   };
   const save = () =>
     startTransition(async () => {
@@ -104,22 +133,28 @@ export function QuickAdd({
     <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1fr)_17rem] fit:min-h-0 [&>*]:min-w-0">
       <Card className={cn(fitCard, 'px-4')}>
         <div className="sticky top-2 z-10 flex flex-wrap items-center gap-2 rounded-xl border bg-card/95 p-3 shadow-sm backdrop-blur fit:static fit:shadow-none">
-          <div role="group" aria-label="Variante" className="flex rounded-lg border p-0.5">
-            {(['normal', 'reverse'] as const).map((v) => (
-              <button
-                key={v}
-                type="button"
-                aria-pressed={variant === v}
-                onClick={() => setVariant(v)}
-                className={cn(
-                  'h-8 rounded-md px-3 text-sm font-medium',
-                  variant === v ? 'bg-primary text-primary-foreground' : 'hover:bg-accent',
-                )}
-              >
-                {v === 'normal' ? 'Normale' : `Reverse (${reverseCount})`}
-              </button>
-            ))}
-          </div>
+          {hasReverses && (
+            <div role="group" aria-label="Classeur" className="flex rounded-lg border p-0.5">
+              {SET_MODES.map((m) => (
+                <button
+                  key={m.key}
+                  type="button"
+                  aria-pressed={mode === m.key}
+                  onClick={() => setMode(m.key)}
+                  className={cn(
+                    'h-8 rounded-md px-3 text-sm font-medium',
+                    mode === m.key
+                      ? m.key === 'master'
+                        ? 'bg-info text-black'
+                        : 'bg-primary text-primary-foreground'
+                      : 'hover:bg-accent',
+                  )}
+                >
+                  {m.label}
+                </button>
+              ))}
+            </div>
+          )}
           <div className="flex flex-wrap gap-1">
             {FILTERS.map((f) => (
               <button
@@ -137,7 +172,7 @@ export function QuickAdd({
             ))}
           </div>
           <span className="text-sm text-muted-foreground tabular-nums">
-            {ownedCount}/{cards.length} · {name}
+            {progress.owned}/{progress.total} · {percent(progress)} % · {name}
           </span>
           <div className="ml-auto flex flex-wrap items-center gap-2">
             <Button
@@ -200,18 +235,19 @@ export function QuickAdd({
         )}
         <div className={fitScroll}>
           <ul className="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-7 2xl:grid-cols-9">
-            {shown.map((c) => {
-              const n = counts[variant][c.id] ?? 0;
+            {shown.map(({ card: c, v }) => {
+              const n = counts[v][c.id] ?? 0;
               const other = total(c.id) - n;
+              const isReverse = v === 'reverse';
               return (
-                <li key={c.id} className="relative min-w-0">
+                <li key={`${c.id}:${v}`} className="relative min-w-0">
                   <button
                     type="button"
-                    onClick={() => set(c.id, n + 1)}
-                    aria-label={`${c.name} n° ${c.localId} : ${n} exemplaire${n > 1 ? 's' : ''}, ajouter un`}
+                    onClick={() => set(c.id, v, n + 1)}
+                    aria-label={`${c.name} n° ${c.localId}${isReverse ? ' reverse' : ''} : ${n} exemplaire${n > 1 ? 's' : ''}, ajouter un`}
                     className={cn(
-                      'block w-full rounded-lg outline-offset-2 transition',
-                      n > 0 && 'ring-2 ring-primary',
+                      'relative block w-full overflow-hidden rounded-lg outline-offset-2 transition',
+                      n > 0 && (isReverse ? 'ring-2 ring-info' : 'ring-2 ring-primary'),
                     )}
                   >
                     <SafeImg
@@ -219,19 +255,35 @@ export function QuickAdd({
                       alt=""
                       className={cn(
                         'aspect-[63/88] w-full rounded-lg bg-muted object-cover',
-                        total(c.id) === 0 && 'opacity-35 grayscale',
+                        n === 0 && 'opacity-35 grayscale',
                       )}
                     />
+                    {isReverse && (
+                      // Reflet « reverse » : la carte classique et sa reverse se distinguent d'un coup d'œil.
+                      <span className="pointer-events-none absolute inset-0 rounded-lg bg-gradient-to-br from-white/0 via-sky-300/25 to-fuchsia-300/20 mix-blend-screen" />
+                    )}
                   </button>
                   {n > 0 && (
-                    <span className="pointer-events-none absolute top-1 right-1 rounded-full bg-primary px-2 py-0.5 text-xs font-bold text-primary-foreground shadow">
+                    <span
+                      className={cn(
+                        'pointer-events-none absolute top-1 right-1 rounded-full px-2 py-0.5 text-xs font-bold shadow',
+                        isReverse ? 'bg-info text-black' : 'bg-primary text-primary-foreground',
+                      )}
+                    >
                       ×{n}
                     </span>
                   )}
-                  {other > 0 && (
+                  {isReverse ? (
                     <span className="pointer-events-none absolute top-1 left-1 rounded-full bg-info px-1.5 py-0.5 text-[10px] font-bold text-black shadow">
-                      {variant === 'normal' ? 'R' : 'N'}×{other}
+                      Reverse
                     </span>
+                  ) : (
+                    mode === 'full' &&
+                    other > 0 && (
+                      <span className="pointer-events-none absolute top-1 left-1 rounded-full bg-info px-1.5 py-0.5 text-[10px] font-bold text-black shadow">
+                        R×{other}
+                      </span>
+                    )
                   )}
                   <div className="mt-1 flex items-center justify-between gap-1">
                     <span
@@ -243,8 +295,8 @@ export function QuickAdd({
                     {n > 0 && (
                       <button
                         type="button"
-                        onClick={() => set(c.id, n - 1)}
-                        aria-label={`Retirer un exemplaire de ${c.name}`}
+                        onClick={() => set(c.id, v, n - 1)}
+                        aria-label={`Retirer un exemplaire de ${c.name}${isReverse ? ' reverse' : ''}`}
                         className="grid size-6 shrink-0 place-items-center rounded-md border hover:bg-accent"
                       >
                         <Minus className="size-3" />
