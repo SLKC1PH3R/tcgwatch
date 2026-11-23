@@ -1,3 +1,4 @@
+import { pokecardexScanUrl } from './pokecardex-cards';
 import { z } from 'zod';
 import { pokemonTcgLargeImage } from './pokemontcg';
 
@@ -257,6 +258,8 @@ export function tcgdexAsset(
   suffix: '.png' | '.webp' | '/high.webp' | '/low.webp',
 ) {
   if (!base) return undefined;
+  // Scan Pokécardex (cartes absentes de TCGdex et pokemontcg.io) : une seule taille.
+  if (base.startsWith('https://pokecardex-scans.')) return pokecardexScanUrl(base);
   // Image servie par le site lui-même (public/cards) : chemin tel quel, quelle que soit la taille.
   if (base.startsWith('/')) return base;
   // Image d'une autre source (pokemontcg.io, quand TCGdex n'en a pas) : URL complète.

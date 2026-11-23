@@ -106,13 +106,19 @@ export function parsePokecardexCardVersions(html: string): string[] | null {
   return [...variants];
 }
 
-/** Scan de la carte (CDN Pokécardex) sur sa fiche, sans paramètre de taille. */
+/**
+ * Scan de la carte (CDN Pokécardex) sur sa fiche, tel que publié : le paramètre de taille
+ * (`?class=hd`) est indispensable, sans lui le CDN répond 403.
+ */
 export function parsePokecardexCardImage(html: string): string | null {
-  const m = /<img\b[^>]*src="(https:\/\/pokecardex-scans\.b-cdn\.net\/[^"?]+)/i.exec(
+  const m = /<img\b[^>]*src="(https:\/\/pokecardex-scans\.b-cdn\.net\/[^"]+)"/i.exec(
     decodeEntities(html),
   );
   return m ? m[1]! : null;
 }
+
+/** Adresse affichable d'un scan Pokécardex (ajoute `?class=hd` aux adresses enregistrées sans). */
+export const pokecardexScanUrl = (url: string) => (url.includes('?') ? url : `${url}?class=hd`);
 
 /**
  * Série Pokécardex d'une extension : par son nom français, à défaut par son code (« mep » →

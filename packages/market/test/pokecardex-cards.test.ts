@@ -61,7 +61,7 @@ describe('Pokécardex : versions des cartes', () => {
       parsePokecardexCardImage(
         '<div class="seo-carte-body"><img src="https://pokecardex-scans.b-cdn.net/sets/DLR/FR/1.jpg?class=hd" alt="Scarhino"></div>',
       ),
-    ).toBe('https://pokecardex-scans.b-cdn.net/sets/DLR/FR/1.jpg');
+    ).toBe('https://pokecardex-scans.b-cdn.net/sets/DLR/FR/1.jpg?class=hd');
     expect(parsePokecardexCardImage('<img src="/logo.png">')).toBeNull();
     const series = [
       { code: 'MEP', name: 'Promos Méga-Évolution' },
