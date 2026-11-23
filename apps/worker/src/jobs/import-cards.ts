@@ -1,12 +1,14 @@
 import { prisma } from '@tcgwatch/db';
 import {
   inferMissingReverses,
+  lacksReverses,
   mergeSetCards,
   TcgdexClient,
   type MergedCard,
 } from '@tcgwatch/market';
 import type { WorkerContext } from '../context';
 import { fillCardImages } from './card-images';
+import { pokecardexIndex, pokecardexReverses } from './pokecardex-variants';
 
 /** Extensions récentes (ou à venir) dont la liste de cartes est relue chaque semaine. */
 const REFRESH_RECENT_DAYS = 180;
@@ -34,7 +36,7 @@ const MISSING_IMAGES_PER_RUN = 10;
  * (lues à l'ouverture des pages, cache de 24 h).
  */
 export async function importCards(
-  ctx: Pick<WorkerContext, 'logger'>,
+  ctx: Pick<WorkerContext, 'logger' | 'fetcher'>,
   client = new TcgdexClient(),
   limit = Infinity,
   /** Relit toutes les extensions, quelle que soit la date du dernier import. */
@@ -81,12 +83,19 @@ export async function importCards(
 
   const summary: CardImportSummary = { sets: 0, cards: 0, failed: 0 };
   const imported: { id: string; recent: boolean }[] = [];
+  const index = pokecardexIndex(ctx);
   for (const release of releases.slice(0, limit)) {
     try {
       // L'une après l'autre : TCGdex répond 503 quand les requêtes s'enchaînent trop vite.
       const fr = await client.setCards(release.tcgdexId!, 'fr');
       const en = await client.setCards(release.tcgdexId!, 'en').catch(() => []);
-      const cards = inferMissingReverses(release.tcgdexId!, mergeSetCards(fr, en));
+      let cards = mergeSetCards(fr, en);
+      // Reverses pas encore publiées par TCGdex : fiches Pokécardex, à défaut règle par rareté.
+      if (lacksReverses(release.tcgdexId!, cards)) {
+        cards =
+          (await pokecardexReverses(ctx, release.nameFr, cards, index)) ??
+          inferMissingReverses(release.tcgdexId!, cards);
+      }
       await upsertCards(release.id, cards);
       await prisma.release.update({
         where: { id: release.id },

@@ -9,3 +9,4 @@ export * from './cardmarket';
 export * from './opening';
 export * from './pokemontcg';
 export * from './ebay';
+export * from './pokecardex-cards';

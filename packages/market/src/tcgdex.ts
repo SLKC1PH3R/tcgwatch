@@ -373,12 +373,22 @@ const MODERN_SET = /^(bw|xy|sm|swsh|sv|me)\d/i;
  * par les vraies variantes dès que TCGdex les publie (relecture hebdomadaire).
  */
 export function inferMissingReverses(setId: string, cards: MergedCard[]): MergedCard[] {
-  if (!MODERN_SET.test(setId) || cards.some((c) => c.variants.includes('reverse'))) return cards;
-  return cards.map((c) => {
-    if (!c.rarity || !REVERSE_RARITIES.has(c.rarity.toLowerCase())) return c;
-    const base = c.variants.length ? c.variants : ['normal'];
-    return { ...c, variants: cardVariantsOrder([...base, 'reverse']) };
-  });
+  if (!lacksReverses(setId, cards)) return cards;
+  return cards.map((c) => (mayHaveReverse(c) ? withReverse(c) : c));
+}
+
+/** Extension moderne pour laquelle TCGdex n'indique aucune reverse (données incomplètes). */
+export const lacksReverses = (setId: string, cards: MergedCard[]) =>
+  MODERN_SET.test(setId) && cards.length > 0 && !cards.some((c) => c.variants.includes('reverse'));
+
+/** Rareté qui existe en reverse dans les extensions modernes. */
+export const mayHaveReverse = (c: MergedCard) =>
+  !!c.rarity && REVERSE_RARITIES.has(c.rarity.toLowerCase());
+
+/** Carte avec une variante reverse en plus. */
+export function withReverse(c: MergedCard): MergedCard {
+  const base = c.variants.length ? c.variants : ['normal'];
+  return { ...c, variants: cardVariantsOrder([...base, 'reverse']) };
 }
 
 const cardVariantsOrder = (list: string[]) => [
