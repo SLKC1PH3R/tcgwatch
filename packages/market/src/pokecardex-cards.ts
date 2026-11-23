@@ -76,7 +76,8 @@ export function parsePokecardexSeriesCards(html: string): PokecardexCardLink[] {
   const seen = new Set<string>();
   for (const m of decodeEntities(html).matchAll(re)) {
     const text = stripTags(m[2]!);
-    const num = /^([A-Za-z]*\d+[A-Za-z]*)\s*\/\s*\S+\s+(.+)$/.exec(text);
+    // « 001/103 Scarhino » ou, pour les promos, « 001 Méganium ».
+    const num = /^([A-Za-z]*\d+[A-Za-z]*)(?:\s*\/\s*\S+)?\s+(.+)$/.exec(text);
     if (!num) continue;
     const url = m[1]!.startsWith('http') ? m[1]! : POKECARDEX_BASE + m[1]!;
     if (seen.has(url)) continue;
@@ -103,6 +104,28 @@ export function parsePokecardexCardVersions(html: string): string[] | null {
     else if (v.includes('standard') || v.includes('normal')) variants.add('normal');
   }
   return [...variants];
+}
+
+/** Scan de la carte (CDN Pokécardex) sur sa fiche, sans paramètre de taille. */
+export function parsePokecardexCardImage(html: string): string | null {
+  const m = /<img\b[^>]*src="(https:\/\/pokecardex-scans\.b-cdn\.net\/[^"?]+)/i.exec(
+    decodeEntities(html),
+  );
+  return m ? m[1]! : null;
+}
+
+/**
+ * Série Pokécardex d'une extension : par son nom français, à défaut par son code (« mep » →
+ * « MEP » : les promos portent souvent le même code).
+ */
+export function pokecardexSeriesFor(
+  release: { nameFr: string; tcgdexId: string | null },
+  series: PokecardexSeries[],
+): PokecardexSeries | null {
+  const byName = findPokecardexSeries(release.nameFr, series);
+  if (byName) return byName;
+  const code = release.tcgdexId?.toUpperCase();
+  return series.find((s) => s.code.toUpperCase() === code) ?? null;
 }
 
 /** Numéro comparable (« 001 » = « 1 »). */

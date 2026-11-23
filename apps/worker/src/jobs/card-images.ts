@@ -8,6 +8,7 @@ import {
   TcgdexClient,
 } from '@tcgwatch/market';
 import type { WorkerContext } from '../context';
+import { pokecardexImages, pokecardexIndex } from './pokecardex-variants';
 
 const PROBE_CONCURRENCY = 6;
 
@@ -27,20 +28,25 @@ async function exists(url: string): Promise<boolean> {
 
 /**
  * Images manquantes des cartes d'extensions TCGdex, prises sur pokemontcg.io (images
- * anglaises). `probe` : vérifie aussi que les images TCGdex déclarées existent (extensions
+ * anglaises), à défaut sur les fiches Pokécardex (scans français : promos…). `probe` : vérifie aussi que les images TCGdex déclarées existent (extensions
  * récentes, où TCGdex annonce des images pas encore publiées).
  */
 export async function fillCardImages(
-  ctx: Pick<WorkerContext, 'logger'>,
+  ctx: Pick<WorkerContext, 'logger' | 'fetcher'>,
   releaseIds: string[],
   { probe = false, tcgdex = new TcgdexClient(TCGDEX_BASE_URL.replace(/\/fr$/, '/en')) } = {},
   pokemontcg = new PokemonTcgClient(),
 ): Promise<number> {
   let filled = 0;
+  const index = pokecardexIndex(ctx);
   for (const releaseId of releaseIds) {
     const release = await prisma.release.findUnique({
       where: { id: releaseId },
-      select: { tcgdexId: true, cards: { select: { id: true, localId: true, imageUrl: true } } },
+      select: {
+        tcgdexId: true,
+        nameFr: true,
+        cards: { select: { id: true, localId: true, imageUrl: true } },
+      },
     });
     if (!release?.tcgdexId) continue;
     const missing = new Set(release.cards.filter((c) => !c.imageUrl).map((c) => c.id));
@@ -56,14 +62,16 @@ export async function fillCardImages(
     }
     if (missing.size === 0) continue;
 
+    const images = new Map<string, string>();
+    for (const id of missing) if (LOCAL_CARD_IMAGES[id]) images.set(id, LOCAL_CARD_IMAGES[id]);
+    let theirSetId: string | undefined;
     try {
       const set = await tcgdex.getSet(release.tcgdexId);
       const theirSet = matchPokemonTcgSet(
         { id: set.id, name: set.name, total: set.cardCount?.total },
         await pokemontcg.listSets(),
       );
-      const images = new Map<string, string>();
-      for (const id of missing) if (LOCAL_CARD_IMAGES[id]) images.set(id, LOCAL_CARD_IMAGES[id]);
+      theirSetId = theirSet?.id;
       if (theirSet) {
         const english = (set.cards ?? []).filter((c) => missing.has(c.id));
         for (const [id, url] of matchPokemonTcgImages(
@@ -73,25 +81,27 @@ export async function fillCardImages(
           if (!images.has(id)) images.set(id, url);
         }
       }
-      for (const id of missing) {
-        await prisma.card.update({ where: { id }, data: { imageUrl: images.get(id) ?? null } });
-      }
-      filled += images.size;
-      ctx.logger.debug(
-        {
-          set: release.tcgdexId,
-          pokemontcg: theirSet?.id,
-          missing: missing.size,
-          filled: images.size,
-        },
-        'Images des cartes complétées',
-      );
     } catch (err) {
-      ctx.logger.warn(
+      ctx.logger.debug(
         { err, set: release.tcgdexId },
         'Images des cartes : pokemontcg.io illisible',
       );
     }
+    // Encore sans image : fiches Pokécardex.
+    const still = release.cards.filter((c) => missing.has(c.id) && !images.has(c.id));
+    if (still.length && ctx.fetcher) {
+      for (const [id, url] of await pokecardexImages(ctx, release, still, index)) {
+        images.set(id, url);
+      }
+    }
+    for (const id of missing) {
+      await prisma.card.update({ where: { id }, data: { imageUrl: images.get(id) ?? null } });
+    }
+    filled += images.size;
+    ctx.logger.debug(
+      { set: release.tcgdexId, pokemontcg: theirSetId, missing: missing.size, filled: images.size },
+      'Images des cartes complétées',
+    );
   }
   return filled;
 }

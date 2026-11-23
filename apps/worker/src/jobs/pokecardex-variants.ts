@@ -1,12 +1,13 @@
 import {
-  findPokecardexSeries,
   mayHaveReverse,
   type MergedCard,
   POKECARDEX_BASE,
+  parsePokecardexCardImage,
   parsePokecardexCardVersions,
   parsePokecardexSeriesCards,
   parsePokecardexSeriesIndex,
   pokecardexNumberKey,
+  pokecardexSeriesFor,
   type PokecardexSeries,
   withReverse,
 } from '@tcgwatch/market';
@@ -23,12 +24,13 @@ const MIN_COVERAGE = 0.8;
  */
 export async function pokecardexReverses(
   ctx: Pick<WorkerContext, 'fetcher' | 'logger'>,
-  releaseName: string,
+  release: { nameFr: string; tcgdexId: string | null },
   cards: MergedCard[],
   index: () => Promise<PokecardexSeries[]>,
 ): Promise<MergedCard[] | null> {
+  const releaseName = release.nameFr;
   try {
-    const series = findPokecardexSeries(releaseName, await index());
+    const series = pokecardexSeriesFor(release, await index());
     if (!series) {
       ctx.logger.info({ release: releaseName }, 'Pokécardex : série introuvable');
       return null;
@@ -75,4 +77,46 @@ export function pokecardexIndex(ctx: Pick<WorkerContext, 'fetcher'>) {
   let index: Promise<PokecardexSeries[]> | undefined;
   return () =>
     (index ??= ctx.fetcher.fetchHtml(`${POKECARDEX_BASE}/series`).then(parsePokecardexSeriesIndex));
+}
+
+/**
+ * Images des cartes d'après les fiches Pokécardex (scans français), pour les cartes que ni TCGdex
+ * ni pokemontcg.io n'illustrent (promos notamment). Renvoie identifiant de carte → URL.
+ */
+export async function pokecardexImages(
+  ctx: Pick<WorkerContext, 'fetcher' | 'logger'>,
+  release: { nameFr: string; tcgdexId: string | null },
+  cards: { id: string; localId: string }[],
+  index: () => Promise<PokecardexSeries[]>,
+): Promise<Map<string, string>> {
+  const images = new Map<string, string>();
+  if (cards.length === 0) return images;
+  try {
+    const series = pokecardexSeriesFor(release, await index());
+    if (!series) {
+      ctx.logger.info({ release: release.nameFr }, 'Pokécardex : série introuvable (images)');
+      return images;
+    }
+    const links = parsePokecardexSeriesCards(
+      await ctx.fetcher.fetchHtml(`${POKECARDEX_BASE}/series/${series.code}`),
+    );
+    const byNumber = new Map(links.map((l) => [pokecardexNumberKey(l.number), l]));
+    for (const c of cards) {
+      const link = byNumber.get(pokecardexNumberKey(c.localId));
+      if (!link) continue;
+      try {
+        const url = parsePokecardexCardImage(await ctx.fetcher.fetchHtml(link.url));
+        if (url) images.set(c.id, url);
+      } catch {
+        // Fiche illisible : carte laissée sans image.
+      }
+    }
+    ctx.logger.info(
+      { release: release.nameFr, series: series.code, missing: cards.length, found: images.size },
+      'Pokécardex : images des cartes',
+    );
+  } catch (err) {
+    ctx.logger.warn({ err, release: release.nameFr }, 'Pokécardex : images illisibles');
+  }
+  return images;
 }

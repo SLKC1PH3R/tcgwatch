@@ -2,10 +2,12 @@ import { describe, expect, it } from 'vitest';
 import {
   decodeEntities,
   findPokecardexSeries,
+  parsePokecardexCardImage,
   parsePokecardexCardVersions,
   parsePokecardexSeriesCards,
   parsePokecardexSeriesIndex,
   pokecardexNumberKey,
+  pokecardexSeriesFor,
 } from '../src/pokecardex-cards';
 
 // Extraits de la version HTML (référencement) des pages Pokécardex, liens encodés comme sur le site.
@@ -30,7 +32,7 @@ describe('Pokécardex : versions des cartes', () => {
   });
 
   it('cartes d’une série', () => {
-    const html = `<ul><li>${link('carte/26642', '001/103 Scarhino')}</li><li>${link('carte/26735', '094/103 Pyroconduit L&#xE9;gendaire')}</li><li>${link('series', 'Séries')}</li></ul>`;
+    const html = `<ul><li>${link('carte/26642', '001/103 Scarhino')}</li><li>${link('carte/26735', '094/103 Pyroconduit L&#xE9;gendaire')}</li><li>${link('carte/30001', '001 M&#xE9;ganium')}</li><li>${link('series', 'Séries')}</li></ul>`;
     expect(parsePokecardexSeriesCards(html)).toEqual([
       { url: 'https://www.pokecardex.com/carte/26642', number: '001', name: 'Scarhino' },
       {
@@ -38,6 +40,7 @@ describe('Pokécardex : versions des cartes', () => {
         number: '094',
         name: 'Pyroconduit Légendaire',
       },
+      { url: 'https://www.pokecardex.com/carte/30001', number: '001', name: 'Méganium' },
     ]);
     expect(pokecardexNumberKey('001')).toBe(pokecardexNumberKey('1'));
   });
@@ -51,5 +54,24 @@ describe('Pokécardex : versions des cartes', () => {
     ]);
     expect(parsePokecardexCardVersions(page('<li>Standard</li>'))).toEqual(['normal']);
     expect(parsePokecardexCardVersions('<p>Pas de versions</p>')).toBeNull();
+  });
+
+  it('scan de la carte et série d’une promo par son code', () => {
+    expect(
+      parsePokecardexCardImage(
+        '<div class="seo-carte-body"><img src="https://pokecardex-scans.b-cdn.net/sets/DLR/FR/1.jpg?class=hd" alt="Scarhino"></div>',
+      ),
+    ).toBe('https://pokecardex-scans.b-cdn.net/sets/DLR/FR/1.jpg');
+    expect(parsePokecardexCardImage('<img src="/logo.png">')).toBeNull();
+    const series = [
+      { code: 'MEP', name: 'Promos Méga-Évolution' },
+      { code: 'DLR', name: 'Règne Delta' },
+    ];
+    expect(
+      pokecardexSeriesFor({ nameFr: 'MEP Black Star Promos', tcgdexId: 'mep' }, series)?.code,
+    ).toBe('MEP');
+    expect(pokecardexSeriesFor({ nameFr: 'Règne Delta', tcgdexId: 'me06' }, series)?.code).toBe(
+      'DLR',
+    );
   });
 });

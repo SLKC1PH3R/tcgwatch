@@ -98,7 +98,7 @@ export async function importCards(
       // Reverses pas encore publiées par TCGdex : fiches Pokécardex, à défaut règle par rareté.
       if (lacksReverses(release.tcgdexId!, cards)) {
         cards =
-          (await pokecardexReverses(ctx, release.nameFr, cards, index)) ??
+          (await pokecardexReverses(ctx, release, cards, index)) ??
           inferMissingReverses(release.tcgdexId!, cards);
       }
       await upsertCards(release.id, cards);
