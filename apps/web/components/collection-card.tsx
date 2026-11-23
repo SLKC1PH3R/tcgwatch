@@ -71,11 +71,22 @@ export function CollectionCardTile({
           {card.name}
         </span>
         {showPrice && card.price !== null && (
-          <span className="shrink-0 text-muted-foreground tabular-nums">
+          <span
+            className="shrink-0 text-muted-foreground tabular-nums"
+            title="Cote Cardmarket, toutes langues"
+          >
             {formatPrice(card.price)}
           </span>
         )}
       </div>
+      {showPrice && card.frPrice !== null && (
+        <p
+          className="truncate text-[11px] text-info tabular-nums"
+          title="Prix en français : médiane des annonces eBay"
+        >
+          FR {formatPrice(card.frPrice)}
+        </p>
+      )}
       <p className="truncate text-[11px] text-muted-foreground">
         n° {card.localId}
         {card.release.total ? `/${card.release.total}` : ''} · {card.release.name}

@@ -14,6 +14,7 @@ import { runMarketListings } from './jobs/market-listings';
 import { runCardHashes } from './jobs/card-hashes';
 import { runReleaseReminders } from './jobs/release-reminders';
 import { runSecondhandPrices } from './jobs/secondhand';
+import { runCardFrPrices } from './jobs/card-fr-prices';
 import { syncRetailers } from './jobs/sync-retailers';
 
 /** Empêche deux exécutions simultanées d'une même tâche planifiée. */
@@ -112,6 +113,7 @@ async function main() {
     const ebayJob = exclusive(ctx, 'ebay', async () => {
       await runMarketListings(ctx);
       await runSecondhandPrices(ctx);
+      await runCardFrPrices(ctx);
     });
     tasks.push(cron.schedule(env.EBAY_CRON, ebayJob, { timezone, name: 'ebay' }));
   }

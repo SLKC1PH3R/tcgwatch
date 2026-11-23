@@ -53,6 +53,10 @@ export interface EbaySearch {
   /** Remise en main propre autour de ce code postal (rayon en km). */
   pickup?: { postalCode: string; radiusKm: number };
   limit?: number;
+  /** `new` (défaut) : annonces neuves ; `any` : tous états (cartes à l'unité, jamais « neuves »). */
+  condition?: 'new' | 'any';
+  /** Catégorie eBay (183454 : cartes à collectionner à l'unité). */
+  categoryId?: string;
 }
 
 export class EbayClient {
@@ -86,7 +90,7 @@ export class EbayClient {
   async search(s: EbaySearch): Promise<EbayListing[]> {
     const filters = [
       'itemLocationCountry:FR',
-      'conditionIds:{1000}',
+      ...(s.condition === 'any' ? [] : ['conditionIds:{1000}']),
       'buyingOptions:{FIXED_PRICE|AUCTION|BEST_OFFER}',
     ];
     if (s.maxPrice) filters.push(`price:[..${s.maxPrice.toFixed(2)}]`, 'priceCurrency:EUR');
@@ -104,6 +108,7 @@ export class EbayClient {
       filter: filters.join(','),
       sort: 'newlyListed',
       limit: String(s.limit ?? 50),
+      ...(s.categoryId ? { category_ids: s.categoryId } : {}),
     });
     const res = await this.fetchImpl(`${this.baseUrl}/buy/browse/v1/item_summary/search?${q}`, {
       headers: {

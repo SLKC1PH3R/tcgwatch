@@ -12,6 +12,7 @@
  *   pnpm --filter @tcgwatch/worker check-once sealed-prices  # scellés reliés à Cardmarket + cotes
  *   pnpm --filter @tcgwatch/worker check-once card-images [set]  # images manquantes (pokemontcg.io)
  *   pnpm --filter @tcgwatch/worker check-once ebay       # annonces eBay de « Mes produits »
+ *   pnpm --filter @tcgwatch/worker check-once fr-prices [n]  # prix français des cartes possédées (eBay)
  *   pnpm --filter @tcgwatch/worker check-once all-now    # force le relevé de TOUS les listings
  *   pnpm --filter @tcgwatch/worker check-once retailers  # synchronise l'annuaire des revendeurs
  *   pnpm --filter @tcgwatch/worker check-once telegram   # identifiant du chat Telegram du bot
@@ -22,6 +23,7 @@ import { createContext } from './context';
 import { checkDueListings } from './jobs/check-listings';
 import { discoverListings } from './jobs/discover-listings';
 import { importCards } from './jobs/import-cards';
+import { runCardFrPrices } from './jobs/card-fr-prices';
 import { fillReleaseLogos } from './jobs/release-logos';
 import { importPokecardex } from './jobs/import-pokecardex';
 import { importTcgdex } from './jobs/import-tcgdex';
@@ -126,6 +128,10 @@ try {
     case 'ebay':
       if (!ctx.env.EBAY_CLIENT_ID) ctx.logger.warn('EBAY_CLIENT_ID / EBAY_CLIENT_SECRET absents');
       await runMarketListings(ctx);
+      break;
+    case 'fr-prices':
+      if (!ctx.env.EBAY_CLIENT_ID) ctx.logger.warn('EBAY_CLIENT_ID / EBAY_CLIENT_SECRET absents');
+      await runCardFrPrices(ctx, process.argv[3] ? Number(process.argv[3]) : undefined);
       break;
     case 'retailers':
       await syncRetailers(ctx);

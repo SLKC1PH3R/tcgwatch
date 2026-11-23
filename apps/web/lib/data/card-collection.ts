@@ -12,6 +12,8 @@ export interface CollectionCard {
   rarity: string | null;
   image: string | null;
   price: number | null;
+  /** Prix en français (médiane des annonces eBay), relevé pour les cartes possédées. */
+  frPrice: number | null;
   variants: string[];
   /** Exemplaires possédés, toutes variantes. */
   owned: number;
@@ -35,6 +37,7 @@ const cardFields = {
   rarity: true,
   imageUrl: true,
   priceTrend: true,
+  frPrice: true,
   variants: true,
   release: { select: { tcgdexId: true, nameFr: true, cardCountOfficial: true } },
 } as const;
@@ -46,6 +49,7 @@ type CardRow = {
   rarity: string | null;
   imageUrl: string | null;
   priceTrend: unknown;
+  frPrice: unknown;
   variants: string[];
   owned: { variant: string; quantity: number }[];
   release: { tcgdexId: string | null; nameFr: string; cardCountOfficial: number | null };
@@ -61,6 +65,7 @@ export function toCollectionCard(c: CardRow): CollectionCard {
     rarity: c.rarity,
     image: tcgdexAsset(c.imageUrl ?? undefined, '/low.webp') ?? null,
     price: toNumber(c.priceTrend as never),
+    frPrice: toNumber(c.frPrice as never),
     variants: c.variants,
     owned: c.owned.reduce((n, o) => n + o.quantity, 0),
     byVariant,

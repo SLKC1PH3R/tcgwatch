@@ -3,7 +3,7 @@ import { Fragment } from 'react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { formatPercent, formatPrice } from '@tcgwatch/shared';
+import { cardListingQuery, formatPercent, formatPrice, toNumber } from '@tcgwatch/shared';
 import { CardChart } from '@/components/card-chart';
 import { FitPage } from '@/components/fit-page';
 import { FormError } from '@/components/form-message';
@@ -65,12 +65,28 @@ export default async function CardPage({ params, searchParams }: Props) {
   const siblings = (await searchCards(pokemon)).cards
     .filter((c) => c.id !== card.tcgdexId)
     .slice(0, 12);
-  const stats = [
+  const stats: { label: string; value: number | null; hint?: string; href?: string }[] = [
     { label: 'Tendance', value: card.current?.trend ?? null },
     { label: 'Prix bas', value: card.current?.low ?? null },
     { label: 'Moyenne 7 j', value: card.current?.avg7 ?? null },
     { label: 'Moyenne 30 j', value: card.current?.avg30 ?? null },
   ];
+  // Prix en français : annonces eBay (relevées chaque jour pour les cartes possédées).
+  const fr = card.local;
+  if (fr?.frPriceAt) {
+    const count = fr.frPriceCount ?? 0;
+    stats.push({
+      label: 'Prix FR (eBay)',
+      value: toNumber(fr.frPrice),
+      hint: count
+        ? `médiane de ${count} annonce${count > 1 ? 's' : ''} en français`
+        : 'aucune annonce en français',
+      href: `https://www.ebay.fr/sch/i.html?${new URLSearchParams({
+        _nkw: cardListingQuery(fr),
+        _sacat: '183454',
+      })}`,
+    });
+  }
 
   return (
     <FitPage>
@@ -143,7 +159,12 @@ export default async function CardPage({ params, searchParams }: Props) {
         </div>
 
         <div className={fitColumn}>
-          <div className="grid shrink-0 grid-cols-2 gap-3 sm:grid-cols-4">
+          <div
+            className={cn(
+              'grid shrink-0 grid-cols-2 gap-3',
+              stats.length > 4 ? 'sm:grid-cols-3 2xl:grid-cols-5' : 'sm:grid-cols-4',
+            )}
+          >
             {stats.map((s, i) => (
               <div key={s.label} className="min-w-0 rounded-xl border bg-card px-4 py-3">
                 <p className="text-xs text-muted-foreground">{s.label}</p>
@@ -151,10 +172,27 @@ export default async function CardPage({ params, searchParams }: Props) {
                   className={cn(
                     'font-display text-xl font-bold tabular-nums',
                     i === 0 && 'text-primary',
+                    i === 4 && 'text-info',
                   )}
                 >
                   {formatPrice(s.value)}
                 </p>
+                {s.hint && (
+                  <p className="truncate text-[11px] text-muted-foreground" title={s.hint}>
+                    {s.href ? (
+                      <a
+                        href={s.href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="hover:text-foreground hover:underline"
+                      >
+                        {s.hint}
+                      </a>
+                    ) : (
+                      s.hint
+                    )}
+                  </p>
+                )}
               </div>
             ))}
           </div>

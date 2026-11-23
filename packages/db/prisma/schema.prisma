@@ -524,6 +524,11 @@ model Card {
   priceAvg7           Decimal?       @db.Decimal(10, 2)
   priceAvg1           Decimal?       @db.Decimal(10, 2)
   priceAt             DateTime?
+  /// Annonces eBay en français (cartes possédées) : médiane, plus bas et nombre d'annonces.
+  frPrice             Decimal?       @db.Decimal(10, 2)
+  frPriceLow          Decimal?       @db.Decimal(10, 2)
+  frPriceCount        Int?
+  frPriceAt           DateTime?
   /// Produit Cardmarket de la carte (via TCGdex) : cote quotidienne tirée du guide des prix.
   cardmarketId        Int?
   /// Dernière recherche de l'id Cardmarket (évite de redemander une carte sans cote).
