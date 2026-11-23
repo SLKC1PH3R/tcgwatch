@@ -12,6 +12,7 @@ const setSchema = z.object({
   name: z.string(),
   total: z.number().nullish(),
   printedTotal: z.number().nullish(),
+  images: z.object({ logo: z.string().optional(), symbol: z.string().optional() }).optional(),
 });
 const cardSchema = z.object({
   id: z.string(),
@@ -47,7 +48,7 @@ export class PokemonTcgClient {
 
   /** Toutes les extensions (une seule requête par instance). */
   listSets(): Promise<PokemonTcgSet[]> {
-    this.sets ??= this.get('/sets?pageSize=250&select=id,name,total,printedTotal').then(
+    this.sets ??= this.get('/sets?pageSize=250&select=id,name,total,printedTotal,images').then(
       (b) => z.object({ data: z.array(setSchema) }).parse(b).data,
     );
     this.sets.catch(() => (this.sets = undefined));

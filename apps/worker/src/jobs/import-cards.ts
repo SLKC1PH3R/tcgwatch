@@ -6,6 +6,12 @@ import { fillCardImages } from './card-images';
 /** Extensions récentes (ou à venir) dont la liste de cartes est relue chaque semaine. */
 const REFRESH_RECENT_DAYS = 180;
 const REFRESH_EVERY_DAYS = 7;
+/**
+ * Extensions plus anciennes : relues tous les 30 jours, quelques-unes par passage (TCGdex corrige
+ * régulièrement ses données, variantes reverse notamment).
+ */
+const REFRESH_OLD_DAYS = 30;
+const OLD_PER_RUN = 20;
 
 export interface CardImportSummary {
   sets: number;
@@ -26,24 +32,47 @@ export async function importCards(
   ctx: Pick<WorkerContext, 'logger'>,
   client = new TcgdexClient(),
   limit = Infinity,
+  /** Relit toutes les extensions, quelle que soit la date du dernier import. */
+  all = false,
 ): Promise<CardImportSummary> {
   const now = Date.now();
   const recent = new Date(now - REFRESH_RECENT_DAYS * 86_400_000);
   const refreshed = new Date(now - REFRESH_EVERY_DAYS * 86_400_000);
+  const select = { id: true, tcgdexId: true, nameFr: true, releaseDate: true } as const;
   const releases = await prisma.release.findMany({
     where: {
       tcgdexId: { not: null },
-      OR: [
-        { cardsSyncedAt: null },
-        {
-          cardsSyncedAt: { lt: refreshed },
-          OR: [{ releaseDate: null }, { releaseDate: { gte: recent } }],
-        },
-      ],
+      ...(all
+        ? {}
+        : {
+            OR: [
+              { cardsSyncedAt: null },
+              {
+                cardsSyncedAt: { lt: refreshed },
+                OR: [{ releaseDate: null }, { releaseDate: { gte: recent } }],
+              },
+            ],
+          }),
     },
-    select: { id: true, tcgdexId: true, nameFr: true, releaseDate: true },
+    select,
     orderBy: { releaseDate: { sort: 'desc', nulls: 'first' } },
   });
+  if (!all) {
+    // Extensions anciennes relues par roulement : les moins récemment relues d'abord.
+    releases.push(
+      ...(await prisma.release.findMany({
+        where: {
+          tcgdexId: { not: null },
+          id: { notIn: releases.map((r) => r.id) },
+          releaseDate: { lt: recent },
+          cardsSyncedAt: { lt: new Date(now - REFRESH_OLD_DAYS * 86_400_000) },
+        },
+        select,
+        orderBy: { cardsSyncedAt: 'asc' },
+        take: OLD_PER_RUN,
+      })),
+    );
+  }
 
   const summary: CardImportSummary = { sets: 0, cards: 0, failed: 0 };
   const imported: { id: string; recent: boolean }[] = [];

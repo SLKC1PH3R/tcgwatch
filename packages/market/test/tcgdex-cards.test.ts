@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cardNumber, mergeSetCards, type TcgdexSetCard } from '../src/tcgdex';
+import { cardNumber, cardVariants, mergeSetCards, type TcgdexSetCard } from '../src/tcgdex';
 
 const card = (over: Partial<TcgdexSetCard>): TcgdexSetCard => ({
   id: 'dp1-1',
@@ -34,5 +34,22 @@ describe('cartes TCGdex', () => {
       number: 1,
     });
     expect(b).toMatchObject({ id: 'dp1-2', name: 'Tangrowth', nameMissing: true });
+  });
+
+  it('variantes : réunion des deux formats et des deux langues', () => {
+    expect(
+      cardVariants(
+        card({ variants: { normal: true, reverse: false, holo: false } }),
+        card({
+          variants: null,
+          variants_detailed: [
+            { type: 'normal' },
+            { type: 'reverse' },
+            { type: 'holo', stamp: ['1st-edition'] },
+          ],
+        }),
+      ),
+    ).toEqual(['normal', 'reverse', 'holo', 'firstEdition']);
+    expect(cardVariants(card({}), undefined)).toEqual([]);
   });
 });

@@ -200,7 +200,16 @@ export async function getBinders(userId: string) {
       id: true,
       name: true,
       description: true,
-      release: { select: { id: true, tcgdexId: true, nameFr: true, imageUrl: true } },
+      release: {
+        select: {
+          id: true,
+          tcgdexId: true,
+          nameFr: true,
+          imageUrl: true,
+          symbolUrl: true,
+          serieRef: { select: { logoUrl: true } },
+        },
+      },
       _count: { select: { cards: true } },
     },
   });

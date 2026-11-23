@@ -93,6 +93,16 @@ const setCardSchema = z.object({
   dexId: z.array(z.number()).nullable().optional(),
   set: z.object({ id: z.string() }),
   variants: z.record(z.string(), z.boolean().nullable()).nullable().optional(),
+  /** Variantes détaillées (nouveau format TCGdex : une entrée par version imprimée). */
+  variants_detailed: z
+    .array(
+      z.object({
+        type: z.string().nullable().optional(),
+        stamp: z.array(z.string().nullable()).nullable().optional(),
+      }),
+    )
+    .nullable()
+    .optional(),
 });
 export type TcgdexSetCard = z.infer<typeof setCardSchema>;
 const graphqlCards = z.object({
@@ -189,7 +199,7 @@ export class TcgdexClient {
    * langue demandée (GraphQL, pages de 100). Une carte absente dans cette langue n'y est pas.
    */
   async setCards(setId: string, lang: 'fr' | 'en' = 'fr'): Promise<TcgdexSetCard[]> {
-    const query = `query($id: ID, $page: Int!) { cards(filters: {id: $id}, pagination: {page: $page, count: ${GRAPHQL_PAGE}}) @locale(lang: "${lang}") { id localId name image rarity illustrator category types dexId set { id } variants { normal reverse holo firstEdition } } }`;
+    const query = `query($id: ID, $page: Int!) { cards(filters: {id: $id}, pagination: {page: $page, count: ${GRAPHQL_PAGE}}) @locale(lang: "${lang}") { id localId name image rarity illustrator category types dexId set { id } variants { normal reverse holo firstEdition } variants_detailed { type stamp } } }`;
     const out: TcgdexSetCard[] = [];
     for (let page = 1; page < 50; page++) {
       const res = await this.graphql(query, { id: `${setId}-`, page });
@@ -347,10 +357,31 @@ export function mergeSetCards(fr: TcgdexSetCard[], en: TcgdexSetCard[]) {
       category: f?.category ?? e?.category ?? null,
       types: f?.types ?? e?.types ?? [],
       dexIds: c.dexId ?? e?.dexId ?? [],
-      variants: Object.entries(c.variants ?? {})
-        .filter(([, v]) => v)
-        .map(([k]) => k),
+      variants: cardVariants(f, e),
     };
   });
+}
+
+const VARIANT_ORDER = ['normal', 'reverse', 'holo', 'firstEdition'] as const;
+
+/**
+ * Variantes d'une carte : réunion des versions française et anglaise, de l'ancien format
+ * (booléens) et du nouveau (`variants_detailed`), TCGdex ne renseignant pas toujours les deux
+ * (reverses absentes des extensions récentes sinon).
+ */
+export function cardVariants(...cards: (TcgdexSetCard | undefined)[]): string[] {
+  const found = new Set<string>();
+  for (const c of cards) {
+    if (!c) continue;
+    for (const [k, v] of Object.entries(c.variants ?? {})) if (v) found.add(k);
+    for (const d of c.variants_detailed ?? []) {
+      if (d.type && (VARIANT_ORDER as readonly string[]).includes(d.type)) found.add(d.type);
+      if (d.stamp?.includes('1st-edition')) found.add('firstEdition');
+    }
+  }
+  return [
+    ...VARIANT_ORDER.filter((v) => found.has(v)),
+    ...[...found].filter((v) => !(VARIANT_ORDER as readonly string[]).includes(v)).sort(),
+  ];
 }
 export type MergedCard = ReturnType<typeof mergeSetCards>[number];

@@ -5,6 +5,7 @@ import { startHealthServer } from './health';
 import { checkDueListings } from './jobs/check-listings';
 import { discoverListings, purgeAccessoryListings } from './jobs/discover-listings';
 import { importCards } from './jobs/import-cards';
+import { fillReleaseLogos } from './jobs/release-logos';
 import { importPokecardex } from './jobs/import-pokecardex';
 import { importTcgdex } from './jobs/import-tcgdex';
 import { linkProductExtensions } from './jobs/link-extensions';
@@ -61,6 +62,7 @@ async function main() {
   // rattachement des produits à leur extension.
   const tcgdexJob = exclusive(ctx, 'tcgdex', async () => {
     await importTcgdex(ctx);
+    await fillReleaseLogos(ctx);
     await importCards(ctx);
     await linkProductExtensions(ctx);
   });

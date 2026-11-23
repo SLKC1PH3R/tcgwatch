@@ -108,7 +108,22 @@ export default async function BindersPage({ searchParams }: Props) {
                             <SafeImg
                               src={b.release.imageUrl}
                               alt=""
-                              className="h-9 w-20 object-contain"
+                              className="h-9 w-20 shrink-0 object-contain"
+                            />
+                          ) : b.release?.symbolUrl ? (
+                            // Logo pas encore publié : symbole de l'extension.
+                            <span className="grid h-9 w-20 shrink-0 place-items-center">
+                              <SafeImg
+                                src={b.release.symbolUrl}
+                                alt=""
+                                className="size-8 object-contain"
+                              />
+                            </span>
+                          ) : b.release?.serieRef?.logoUrl ? (
+                            <SafeImg
+                              src={b.release.serieRef.logoUrl}
+                              alt=""
+                              className="h-9 w-20 shrink-0 object-contain"
                             />
                           ) : (
                             <BookOpen className="size-8 text-primary" />
