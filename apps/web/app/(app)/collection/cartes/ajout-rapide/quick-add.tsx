@@ -5,6 +5,7 @@ import { useMemo, useState, useTransition } from 'react';
 import { SafeImg } from '@/components/safe-img';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { RarityIcon } from '@/components/rarity-icon';
 import { type CardFilters, filterCards, hasReverse, rarityCounts } from '@/lib/card-filters';
 import type { CollectionCard } from '@/lib/data/card-collection';
 import { fitCard, fitScroll } from '@/lib/fit';
@@ -175,10 +176,11 @@ export function QuickAdd({
                   aria-pressed={rarities.includes(g.key)}
                   onClick={() => toggleRarity(g.key)}
                   className={cn(
-                    'h-7 rounded-full border px-2.5 text-xs',
+                    'inline-flex h-7 items-center gap-1.5 rounded-full border px-2.5 text-xs',
                     rarities.includes(g.key) && 'border-primary bg-primary/15 text-primary',
                   )}
                 >
+                  <RarityIcon rarity={g.key} />
                   {g.label} <span className="text-muted-foreground tabular-nums">{g.count}</span>
                 </button>
               ))}

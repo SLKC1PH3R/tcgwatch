@@ -2,11 +2,12 @@ import { ChevronLeft, ChevronRight, Minus, Plus, Trash2, X } from 'lucide-react'
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { formatPrice } from '@tcgwatch/shared';
+import { formatPrice, type RarityKey } from '@tcgwatch/shared';
 import { CardPicker } from '@/components/card-picker';
 import { CollectionCardTile } from '@/components/collection-card';
 import { FitPage } from '@/components/fit-page';
 import { PageHeader } from '@/components/page-header';
+import { RarityIcon } from '@/components/rarity-icon';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -71,18 +72,25 @@ export default async function BinderPage({ params, searchParams }: Props) {
     return qs ? `${base}?${qs}` : base;
   };
   const pageHref = (n: number) => filtersHref(filters, n);
-  const chip = (label: string, next: CardFilters, active: boolean, count?: number) => (
+  const chip = (
+    label: string,
+    next: CardFilters,
+    active: boolean,
+    count?: number,
+    rarity?: RarityKey,
+  ) => (
     <Link
       key={label}
       href={filtersHref(next)}
       aria-current={active ? 'true' : undefined}
       className={cn(
-        'rounded-full border px-2.5 py-0.5 text-xs font-medium transition-colors hover:bg-accent',
+        'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium transition-colors hover:bg-accent',
         active && 'border-primary bg-primary text-primary-foreground hover:bg-primary/90',
       )}
     >
+      {rarity && <RarityIcon rarity={rarity} />}
       {label}
-      {count !== undefined && <span className="ml-1 tabular-nums opacity-70">{count}</span>}
+      {count !== undefined && <span className="tabular-nums opacity-70">{count}</span>}
     </Link>
   );
   const filtering = filtered.length !== binder.cards.length;
@@ -260,6 +268,7 @@ export default async function BinderPage({ params, searchParams }: Props) {
                         },
                         on,
                         g.count,
+                        g.key,
                       );
                     })}
                   </div>
