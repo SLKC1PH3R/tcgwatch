@@ -55,7 +55,11 @@ export default async function MyCardsPage() {
       />
 
       <div className="grid shrink-0 gap-3 sm:grid-cols-3">
-        <Tile label="Valeur estimée" value={formatPrice(value)} hint="cote tendance Cardmarket" />
+        <Tile
+          label="Valeur estimée"
+          value={formatPrice(value)}
+          hint="cote tendance Cardmarket, toutes langues"
+        />
         <Tile label="Cartes différentes" value={distinct.toLocaleString('fr-FR')} />
         <Tile label="Exemplaires" value={copies.toLocaleString('fr-FR')} />
       </div>

@@ -162,9 +162,10 @@ export default async function CardPage({ params, searchParams }: Props) {
             <CardHeader className="flex-col">
               <CardTitle>Cotes Cardmarket</CardTitle>
               <CardDescription>
-                Agrégées par TCGdex
+                Guide des prix Cardmarket, toutes langues et états confondus (Cardmarket ne publie
+                pas de cote par langue : une carte rare en français s’y vend souvent plus cher)
                 {card.tracked
-                  ? ', relevées chaque jour.'
+                  ? ' — relevé chaque jour.'
                   : ' — suivez la carte pour garder son historique.'}
                 {change !== null &&
                   ` ${period.days ? `Sur ${period.label}` : 'Depuis le premier relevé'} : ${formatPercent(change)}.`}
