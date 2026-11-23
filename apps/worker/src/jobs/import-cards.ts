@@ -130,22 +130,26 @@ export async function importCards(
       imported.filter((r) => !r.recent).map((r) => r.id),
     )) +
     // Extensions non réimportées aujourd'hui mais encore incomplètes (rapprochement amélioré
-    // depuis) : quelques-unes à chaque passage, les plus récentes d'abord.
-    (await fillCardImages(
-      ctx,
-      (
-        await prisma.release.findMany({
-          where: {
-            id: { notIn: imported.map((r) => r.id) },
-            tcgdexId: { not: null },
-            cards: { some: { imageUrl: null } },
-          },
-          orderBy: { releaseDate: { sort: 'desc', nulls: 'last' } },
-          take: MISSING_IMAGES_PER_RUN,
-          select: { id: true },
-        })
-      ).map((r) => r.id),
-    ));
+    // depuis) : quelques-unes à chaque passage, les plus récentes d'abord, Pokécardex limité
+    // à quelques dizaines de fiches. Rien de plus quand des extensions précises sont demandées.
+    (Array.isArray(all)
+      ? 0
+      : await fillCardImages(
+          ctx,
+          (
+            await prisma.release.findMany({
+              where: {
+                id: { notIn: imported.map((r) => r.id) },
+                tcgdexId: { not: null },
+                cards: { some: { imageUrl: null } },
+              },
+              orderBy: { releaseDate: { sort: 'desc', nulls: 'last' } },
+              take: MISSING_IMAGES_PER_RUN,
+              select: { id: true },
+            })
+          ).map((r) => r.id),
+          { pokecardexBudget: 40 },
+        ));
   ctx.logger.info({ ...summary, images, pending: releases.length }, 'Import des cartes terminé');
   return summary;
 }

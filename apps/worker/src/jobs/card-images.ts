@@ -34,10 +34,16 @@ async function exists(url: string): Promise<boolean> {
 export async function fillCardImages(
   ctx: Pick<WorkerContext, 'logger' | 'fetcher'>,
   releaseIds: string[],
-  { probe = false, tcgdex = new TcgdexClient(TCGDEX_BASE_URL.replace(/\/fr$/, '/en')) } = {},
+  {
+    probe = false,
+    tcgdex = new TcgdexClient(TCGDEX_BASE_URL.replace(/\/fr$/, '/en')),
+    /** Fiches Pokécardex lues au plus (lecture lente : quelques secondes par fiche). */
+    pokecardexBudget = Infinity,
+  } = {},
   pokemontcg = new PokemonTcgClient(),
 ): Promise<number> {
   let filled = 0;
+  let budget = pokecardexBudget;
   const index = pokecardexIndex(ctx);
   for (const releaseId of releaseIds) {
     const release = await prisma.release.findUnique({
@@ -88,7 +94,10 @@ export async function fillCardImages(
       );
     }
     // Encore sans image : fiches Pokécardex.
-    const still = release.cards.filter((c) => missing.has(c.id) && !images.has(c.id));
+    const still = release.cards
+      .filter((c) => missing.has(c.id) && !images.has(c.id))
+      .slice(0, Math.max(0, budget));
+    budget -= still.length;
     if (still.length && ctx.fetcher) {
       for (const [id, url] of await pokecardexImages(ctx, release, still, index)) {
         images.set(id, url);
