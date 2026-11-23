@@ -3,7 +3,7 @@
  *
  *   pnpm --filter @tcgwatch/worker check-once listings   # relève les listings à échéance
  *   pnpm --filter @tcgwatch/worker check-once tcgdex     # import TCGdex (séries, extensions)
- *   pnpm --filter @tcgwatch/worker check-once cards [n|all]  # import des cartes (n extensions, ou toutes relues)
+ *   pnpm --filter @tcgwatch/worker check-once cards [n|all|code…]  # import des cartes (n extensions, toutes, ou ces codes)
  *   pnpm --filter @tcgwatch/worker check-once link       # rattache les produits aux extensions
  *   pnpm --filter @tcgwatch/worker check-once pokecardex # import du calendrier Pokécardex
  *   pnpm --filter @tcgwatch/worker check-once discover [slug]  # découverte des fiches revendeurs
@@ -54,8 +54,11 @@ try {
       await fillReleaseLogos(ctx);
       break;
     case 'cards':
-      // `cards all` : relit toutes les extensions ; `cards 5` : 5 extensions au plus.
+      // `cards all` : relit toutes les extensions ; `cards 5` : 5 extensions au plus ;
+      // `cards me06 sv08` : relit ces extensions (codes TCGdex).
       if (process.argv[3] === 'all') await importCards(ctx, undefined, Infinity, true);
+      else if (process.argv[3] && !/^\d+$/.test(process.argv[3]))
+        await importCards(ctx, undefined, Infinity, process.argv.slice(3));
       else await importCards(ctx, undefined, process.argv[3] ? Number(process.argv[3]) : Infinity);
       break;
     case 'link':

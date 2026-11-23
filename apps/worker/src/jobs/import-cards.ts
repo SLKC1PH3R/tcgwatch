@@ -39,8 +39,11 @@ export async function importCards(
   ctx: Pick<WorkerContext, 'logger' | 'fetcher'>,
   client = new TcgdexClient(),
   limit = Infinity,
-  /** Relit toutes les extensions, quelle que soit la date du dernier import. */
-  all = false,
+  /**
+   * Relit toutes les extensions (`true`) ou seulement celles-ci (codes TCGdex), quelle que soit la
+   * date du dernier import.
+   */
+  all: boolean | string[] = false,
 ): Promise<CardImportSummary> {
   const now = Date.now();
   const recent = new Date(now - REFRESH_RECENT_DAYS * 86_400_000);
@@ -49,22 +52,24 @@ export async function importCards(
   const releases = await prisma.release.findMany({
     where: {
       tcgdexId: { not: null },
-      ...(all
-        ? {}
-        : {
-            OR: [
-              { cardsSyncedAt: null },
-              {
-                cardsSyncedAt: { lt: refreshed },
-                OR: [{ releaseDate: null }, { releaseDate: { gte: recent } }],
-              },
-            ],
-          }),
+      ...(Array.isArray(all)
+        ? { tcgdexId: { in: all } }
+        : all
+          ? {}
+          : {
+              OR: [
+                { cardsSyncedAt: null },
+                {
+                  cardsSyncedAt: { lt: refreshed },
+                  OR: [{ releaseDate: null }, { releaseDate: { gte: recent } }],
+                },
+              ],
+            }),
     },
     select,
     orderBy: { releaseDate: { sort: 'desc', nulls: 'first' } },
   });
-  if (!all) {
+  if (all === false) {
     // Extensions anciennes relues par roulement : les moins récemment relues d'abord.
     releases.push(
       ...(await prisma.release.findMany({
