@@ -42,7 +42,13 @@ export async function pokecardexReverses(
     const candidates = cards.filter(mayHaveReverse);
     const reverse = new Set<string>();
     let read = 0;
-    for (const c of candidates) {
+    for (const [i, c] of candidates.entries()) {
+      if (i > 0 && i % 20 === 0) {
+        ctx.logger.info(
+          { release: releaseName, done: i, total: candidates.length },
+          'Pokécardex : versions en cours',
+        );
+      }
       const link = byNumber.get(pokecardexNumberKey(c.localId));
       if (!link) continue;
       try {
@@ -101,7 +107,14 @@ export async function pokecardexImages(
       await ctx.fetcher.fetchHtml(`${POKECARDEX_BASE}/series/${series.code}`),
     );
     const byNumber = new Map(links.map((l) => [pokecardexNumberKey(l.number), l]));
-    for (const c of cards) {
+    for (const [i, c] of cards.entries()) {
+      // Lecture lente (pause de 2 à 6 s entre deux fiches) : avancement affiché au fil de l'eau.
+      if (i > 0 && i % 20 === 0) {
+        ctx.logger.info(
+          { release: release.nameFr, done: i, total: cards.length, found: images.size },
+          'Pokécardex : images en cours',
+        );
+      }
       const link = byNumber.get(pokecardexNumberKey(c.localId));
       if (!link) continue;
       try {
