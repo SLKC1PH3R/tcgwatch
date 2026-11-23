@@ -86,6 +86,8 @@ export interface ReleaseProgress {
   total: number;
   copies: number;
   value: number;
+  /** Valeur au prix français (annonces eBay), cartes déjà relevées seulement. */
+  frValue: number;
   progress: SetProgress;
 }
 
@@ -142,6 +144,7 @@ export async function getCardCollection(userId: string) {
     total: Number(r.total),
     copies: Number(r.copies),
     value: toNumber(r.value as never) ?? 0,
+    frValue: toNumber(r.frValue as never) ?? 0,
     progress: {
       full: { owned: Number(r.classic), total: Number(r.total) },
       master:

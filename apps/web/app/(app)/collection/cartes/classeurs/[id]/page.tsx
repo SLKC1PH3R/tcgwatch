@@ -1,5 +1,6 @@
 import { ChevronLeft, ChevronRight, Minus, Plus, Trash2, X } from 'lucide-react';
 import type { Metadata } from 'next';
+import { cookies } from 'next/headers';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { formatPrice, type RarityKey } from '@tcgwatch/shared';
@@ -7,6 +8,8 @@ import { CardPicker } from '@/components/card-picker';
 import { CollectionCardTile } from '@/components/collection-card';
 import { FitPage } from '@/components/fit-page';
 import { PageHeader } from '@/components/page-header';
+import { PriceSourceToggle } from '@/components/price-source-toggle';
+import { PRICE_COOKIE, parsePriceSource } from '@/lib/price-source';
 import { RarityIcon } from '@/components/rarity-icon';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -83,7 +86,13 @@ export default async function BinderPage({ params, searchParams }: Props) {
   const shown = filtered.slice((spread - 1) * PER_SPREAD, spread * PER_SPREAD);
   const pages = [shown.slice(0, PER_PAGE), shown.slice(PER_PAGE)];
   const owned = binder.cards.filter((c) => c.owned > 0);
-  const value = owned.reduce((s, c) => s + (c.price ?? 0) * c.owned, 0);
+  const priceSource = parsePriceSource((await cookies()).get(PRICE_COOKIE)?.value);
+  // Valeur des cartes possédées au prix choisi (eBay FR : cartes déjà relevées seulement).
+  const value = owned.reduce(
+    (s, c) => s + ((priceSource === 'ebay' ? c.frPrice : c.price) ?? 0) * c.owned,
+    0,
+  );
+  const valueLabel = `valeur ${priceSource === 'ebay' ? 'eBay FR' : 'Cardmarket'} ${formatPrice(value)}`;
   const current = mode === 'master' ? progress.master! : progress.full;
   const slotCount = mode === 'master' ? progress.master!.total : binder.cards.length;
   const base = `/collection/cartes/classeurs/${binder.id}`;
@@ -124,8 +133,8 @@ export default async function BinderPage({ params, searchParams }: Props) {
         title={binder.name}
         description={
           isSet
-            ? `${mode === 'master' ? 'Master Set (cartes classiques + reverses)' : 'Full Set'} de l’extension ${binder.release!.nameFr} : ${current.owned}/${current.total} (${percent(current)} %), valeur ${formatPrice(value)}. Les emplacements manquants sont en gris.`
-            : `${binder.cards.length} carte${binder.cards.length > 1 ? 's' : ''}, dont ${owned.length} possédée${owned.length > 1 ? 's' : ''} · valeur ${formatPrice(value)}.${binder.description ? ` ${binder.description}` : ''}`
+            ? `${mode === 'master' ? 'Master Set (cartes classiques + reverses)' : 'Full Set'} de l’extension ${binder.release!.nameFr} : ${current.owned}/${current.total} (${percent(current)} %), ${valueLabel}. Les emplacements manquants sont en gris.`
+            : `${binder.cards.length} carte${binder.cards.length > 1 ? 's' : ''}, dont ${owned.length} possédée${owned.length > 1 ? 's' : ''} · ${valueLabel}.${binder.description ? ` ${binder.description}` : ''}`
         }
         actions={
           isSet ? (
@@ -151,6 +160,7 @@ export default async function BinderPage({ params, searchParams }: Props) {
                   ))}
                 </nav>
               )}
+              <PriceSourceToggle current={priceSource} />
               <Button asChild variant="outline">
                 <Link
                   href={`/collection/cartes/ajout-rapide?extension=${encodeURIComponent(binder.release!.tcgdexId!)}${mode === 'master' ? '&set=master' : ''}`}
@@ -159,7 +169,9 @@ export default async function BinderPage({ params, searchParams }: Props) {
                 </Link>
               </Button>
             </>
-          ) : undefined
+          ) : (
+            <PriceSourceToggle current={priceSource} />
+          )
         }
       />
 

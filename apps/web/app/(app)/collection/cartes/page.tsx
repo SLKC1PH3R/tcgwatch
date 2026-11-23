@@ -1,5 +1,6 @@
 import { BookOpen, Plus, ScanLine, Sparkles } from 'lucide-react';
 import type { Metadata } from 'next';
+import { cookies } from 'next/headers';
 import Link from 'next/link';
 import { after } from 'next/server';
 import { formatPrice } from '@tcgwatch/shared';
@@ -7,7 +8,9 @@ import { CollectionCardTile } from '@/components/collection-card';
 import { FitPage } from '@/components/fit-page';
 import { PageHeader } from '@/components/page-header';
 import { SafeImg } from '@/components/safe-img';
+import { PriceSourceToggle } from '@/components/price-source-toggle';
 import { SetProgressBars } from '@/components/set-progress-bars';
+import { PRICE_COOKIE, parsePriceSource } from '@/lib/price-source';
 import { percent } from '@/lib/card-sets';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -22,7 +25,11 @@ export const metadata: Metadata = { title: 'Mes cartes' };
 /** Vue d'ensemble des cartes : valeur, avancement par extension, derniers ajouts. */
 export default async function MyCardsPage() {
   const user = await requireUser();
-  const { releases, latest, distinct, copies, value, fr } = await getCardCollection(user.id);
+  const [{ releases, latest, distinct, copies, value, fr }, jar] = await Promise.all([
+    getCardCollection(user.id),
+    cookies(),
+  ]);
+  const priceSource = parsePriceSource(jar.get(PRICE_COOKIE)?.value);
   after(() => refreshOwnedCardPrices().then(() => undefined));
 
   return (
@@ -89,11 +96,12 @@ export default async function MyCardsPage() {
       ) : (
         <div className={cn(fitGrid, 'lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]')}>
           <Card className={fitCard}>
-            <CardHeader>
+            <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2 space-y-0">
               <CardTitle>
                 Avancement par extension{' '}
                 <span className="font-sans text-sm text-muted-foreground">· {releases.length}</span>
               </CardTitle>
+              <PriceSourceToggle current={priceSource} className="shrink-0" />
             </CardHeader>
             <CardContent className={fitScroll}>
               <ul className="divide-y">
@@ -116,8 +124,13 @@ export default async function MyCardsPage() {
                         </p>
                         <SetProgressBars progress={r.progress} />
                       </div>
-                      <span className="w-20 shrink-0 text-right text-sm font-semibold tabular-nums">
-                        {formatPrice(r.value)}
+                      <span
+                        className={cn(
+                          'w-20 shrink-0 text-right text-sm font-semibold tabular-nums',
+                          priceSource === 'ebay' && 'text-info',
+                        )}
+                      >
+                        {formatPrice(priceSource === 'ebay' ? r.frValue : r.value)}
                       </span>
                     </Link>
                   </li>
