@@ -1,3 +1,4 @@
+import { rarityKey } from './rarity';
 import { fold } from './search';
 
 /**
@@ -8,6 +9,14 @@ export interface ListedCard {
   name: string;
   /** Numéro dans l'extension (« 109 », « 001 », « TG05 »). */
   localId: string;
+  rarity?: string | null;
+  /** Extension : sert à écarter les autres impressions de la même carte. */
+  release?: {
+    nameFr: string;
+    tcgdexId: string | null;
+    /** Nombre de cartes imprimé (« /103 »). */
+    cardCountOfficial?: number | null;
+  } | null;
 }
 
 const words = (s: string) =>
@@ -24,11 +33,51 @@ const numberKey = (localId: string) =>
     .replace(/\d+/g, (n) => String(Number(n)));
 
 /**
- * Recherche eBay : nom, numéro et une mention de langue française (syntaxe « (a,b) » = l'un ou
- * l'autre).
+ * Rééditions (Collection Classique) : la carte porte le numéro de l'originale (« 4/102 »), pas
+ * son numéro dans l'extension.
+ */
+const reprintNumbering = (card: ListedCard) => rarityKey(card.rarity) === 'collection-classique';
+
+const STOP = new Set(['de', 'des', 'du', 'la', 'le', 'les', 'et', 'l', 'd', 'en', 'pokemon']);
+
+/**
+ * Mentions qui désignent l'extension dans un titre d'annonce (une seule suffit) : son nom, et
+ * les façons usuelles de nommer les éditions anniversaire et les promos.
+ */
+export function releaseMarkers(release: NonNullable<ListedCard['release']>): string[] {
+  const name = words(release.nameFr)
+    .filter((w) => !STOP.has(w))
+    .join(' ');
+  const markers = name ? [name] : [];
+  const n = fold(release.nameFr);
+  if (/anniversaire|30e|30 ans|celebration/.test(n)) {
+    markers.push('30 ans', '30e', '30eme', '30th', 'anniversaire', 'celebration');
+  }
+  if (/promo/.test(n) || /^[a-z]+p$/i.test(release.tcgdexId ?? '')) {
+    markers.push('promo');
+    if (release.tcgdexId) markers.push(fold(release.tcgdexId));
+  }
+  return markers;
+}
+
+/** Mots de l'extension ajoutés à la recherche eBay (« Règne Delta », « 30 », « promo »). */
+function releaseQuery(release: NonNullable<ListedCard['release']>): string {
+  const n = fold(release.nameFr);
+  if (/anniversaire|30e|30 ans|celebration/.test(n)) return '30';
+  if (/promo/.test(n) || /^[a-z]+p$/i.test(release.tcgdexId ?? '')) return 'promo';
+  return release.nameFr;
+}
+
+/**
+ * Recherche eBay : nom, numéro (sauf rééditions), extension et une mention de langue française
+ * (syntaxe « (a,b) » = l'un ou l'autre).
  */
 export function cardListingQuery(card: ListedCard): string {
-  return `${card.name} ${numberKey(card.localId)} (fr,vf,francais,français,francaise)`;
+  const parts = [card.name];
+  if (!reprintNumbering(card)) parts.push(numberKey(card.localId));
+  if (card.release) parts.push(releaseQuery(card.release));
+  parts.push('(fr,vf,francais,français,francaise)');
+  return parts.join(' ');
 }
 
 const FRENCH = /\b(fr|vf|fra|francais|francaise)\b/;
@@ -37,9 +86,9 @@ const OTHER_LANGUAGE =
   /\b(eng|english|anglais|anglaise|jp|jap|japonais|japonaise|japanese|kr|coreen|korean|chinois|chinese|allemand|german|italien|italian|espagnol|spanish)\b/;
 /** Cartes gradées, lots, faux et produits dérivés : prix sans rapport avec la carte seule. */
 const OFF_TOPIC =
-  /\b(psa|pca|cgc|bgs|beckett|collect aura|gradee?s?|graded|slab|lot|lots|bundle|collection|classeur|proxy|custom|fake|replica|orica|fan ?art|metal|gold|plaque|sticker|jumbo|oversize|code)\b/;
+  /\b(psa|pca|cgc|bgs|beckett|collect aura|gradee?s?|graded|slab|lot|lots|bundle|classeur|proxy|custom|fake|replica|orica|fan ?art|metal|gold|plaque|sticker|jumbo|oversize|code)\b/;
 
-/** L'annonce porte-t-elle bien sur cette carte, en français, seule et non gradée ? */
+/** L'annonce porte-t-elle bien sur cette carte, de cette extension, en français, seule ? */
 export function relevantCardListing(title: string, card: ListedCard): boolean {
   const t = words(title).join(' ');
   if (!FRENCH.test(t) || OFF_TOPIC.test(t)) return false;
@@ -49,8 +98,20 @@ export function relevantCardListing(title: string, card: ListedCard): boolean {
   if (/\breverse\b/.test(t)) return false;
   const name = words(card.name).filter((w) => w.length > 1 && w !== 'ex');
   if (!name.every((w) => t.includes(w))) return false;
-  // Numéro de la carte, avec ou sans zéros de tête, seul ou suivi du total (« 109/165 »).
+
   const key = numberKey(card.localId);
+  // Zéros de tête retirés, fractions détachées (« 001/103 » → « 1 103 »).
   const compact = t.replace(/\b0+(\d)/g, '$1');
-  return new RegExp(`(^|\\s)${key}(\\s|$)`).test(compact);
+  const has = (w: string) => new RegExp(`(^|\\s)${w}(\\s|$)`).test(compact);
+  const total = card.release?.cardCountOfficial;
+  // Numéro complet avec le total de l'extension : la carte est identifiée à coup sûr.
+  const fullNumber = !!total && new RegExp(`(^|\\s)${key}\\s${total}(\\s|$)`).test(compact);
+  if (!reprintNumbering(card) && !fullNumber && !has(key)) return false;
+  // Même carte d'une autre extension (Dracaufeu du set de base au lieu de la réédition des
+  // 30 ans…) : l'extension doit être nommée, sauf numéro complet.
+  if (card.release && !fullNumber) {
+    const markers = releaseMarkers(card.release);
+    if (markers.length && !markers.some((m) => t.includes(m))) return false;
+  }
+  return true;
 }

@@ -26,7 +26,14 @@ export async function runCardFrPrices(ctx: WorkerContext, limit = PER_RUN): Prom
       owned: { some: { quantity: { gt: 0 } } },
       OR: [{ frPriceAt: null }, { frPriceAt: { lt: today } }],
     },
-    select: { id: true, name: true, localId: true, priceTrend: true },
+    select: {
+      id: true,
+      name: true,
+      localId: true,
+      rarity: true,
+      priceTrend: true,
+      release: { select: { nameFr: true, tcgdexId: true, cardCountOfficial: true } },
+    },
     orderBy: { frPriceAt: { sort: 'asc', nulls: 'first' } },
     take: limit,
   });
@@ -38,7 +45,7 @@ export async function runCardFrPrices(ctx: WorkerContext, limit = PER_RUN): Prom
         query: cardListingQuery(c),
         condition: 'any',
         categoryId: EBAY_SINGLES,
-        limit: 100,
+        limit: 200,
       });
       const trend = toNumber(c.priceTrend);
       const prices = listings
