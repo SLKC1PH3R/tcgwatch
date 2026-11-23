@@ -22,7 +22,7 @@ export const metadata: Metadata = { title: 'Mes cartes' };
 /** Vue d'ensemble des cartes : valeur, avancement par extension, derniers ajouts. */
 export default async function MyCardsPage() {
   const user = await requireUser();
-  const { releases, latest, distinct, copies, value } = await getCardCollection(user.id);
+  const { releases, latest, distinct, copies, value, fr } = await getCardCollection(user.id);
   after(() => refreshOwnedCardPrices().then(() => undefined));
 
   return (
@@ -54,11 +54,20 @@ export default async function MyCardsPage() {
         }
       />
 
-      <div className="grid shrink-0 gap-3 sm:grid-cols-3">
+      <div className="grid shrink-0 gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <Tile
           label="Valeur estimée"
           value={formatPrice(value)}
           hint="cote tendance Cardmarket, toutes langues"
+        />
+        <Tile
+          label="Valeur FR (eBay)"
+          value={fr.copies ? formatPrice(fr.value) : '—'}
+          hint={
+            fr.copies
+              ? `médiane des annonces en français · ${fr.copies}/${copies} exemplaires cotés`
+              : 'prix français en cours de relevé (annonces eBay)'
+          }
         />
         <Tile label="Cartes différentes" value={distinct.toLocaleString('fr-FR')} />
         <Tile label="Exemplaires" value={copies.toLocaleString('fr-FR')} />

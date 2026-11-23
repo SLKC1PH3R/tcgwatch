@@ -106,6 +106,8 @@ export async function getCardCollection(userId: string) {
         reverse: bigint;
         copies: bigint;
         value: unknown;
+        frValue: unknown;
+        frCopies: bigint;
       }[]
     >`
       SELECT r.id AS "releaseId", r."tcgdexId" AS code, r."nameFr" AS name,
@@ -116,7 +118,9 @@ export async function getCardCollection(userId: string) {
         count(DISTINCT o."cardId") FILTER (WHERE o.variant <> 'reverse' AND o.quantity > 0) AS classic,
         count(DISTINCT o."cardId") FILTER (WHERE o.variant = 'reverse' AND o.quantity > 0 AND 'reverse' = ANY(c.variants)) AS reverse,
         sum(o.quantity) AS copies,
-        sum(o.quantity * coalesce(c."priceTrend", 0)) AS value
+        sum(o.quantity * coalesce(c."priceTrend", 0)) AS value,
+        coalesce(sum(o.quantity * c."frPrice") FILTER (WHERE c."frPrice" IS NOT NULL), 0) AS "frValue",
+        coalesce(sum(o.quantity) FILTER (WHERE c."frPrice" IS NOT NULL), 0) AS "frCopies"
       FROM "OwnedCard" o JOIN "Card" c ON c.id = o."cardId" JOIN "Release" r ON r.id = c."releaseId"
       LEFT JOIN "Serie" s ON s.id = r."serieId"
       WHERE o."userId" = ${userId}
@@ -159,6 +163,11 @@ export async function getCardCollection(userId: string) {
     distinct: releases.reduce((n, r) => n + r.owned, 0),
     copies: releases.reduce((n, r) => n + r.copies, 0),
     value: releases.reduce((n, r) => n + r.value, 0),
+    // Prix en français (annonces eBay) : seulement les cartes déjà relevées.
+    fr: {
+      value: rows.reduce((n, r) => n + (toNumber(r.frValue as never) ?? 0), 0),
+      copies: rows.reduce((n, r) => n + Number(r.frCopies), 0),
+    },
   };
 }
 
