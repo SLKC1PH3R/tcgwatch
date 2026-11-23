@@ -3,11 +3,12 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { FitPage } from '@/components/fit-page';
 import { FormError } from '@/components/form-message';
+import { ExtensionPicker } from '@/components/extension-picker';
 import { PageHeader } from '@/components/page-header';
 import { SafeImg } from '@/components/safe-img';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input, NativeSelect } from '@/components/ui/input';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { getBinders, getCardReleases } from '@/lib/data/card-collection';
 import { fitCard, fitColumn, fitGrid, fitScroll } from '@/lib/fit';
@@ -43,20 +44,24 @@ export default async function BindersPage({ searchParams }: Props) {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <form action={createBinderAction} className="flex flex-wrap items-end gap-3">
-                <div className="min-w-0 flex-1 space-y-1.5">
-                  <Label htmlFor="b-release">Extension</Label>
-                  <NativeSelect id="b-release" name="release" required defaultValue="">
-                    <option value="" disabled>
-                      Choisir…
-                    </option>
-                    {releases.map((r) => (
-                      <option key={r.id} value={r.tcgdexId!}>
-                        {r.nameFr}
-                        {r.serieRef ? ` · ${r.serieRef.name}` : ''}
-                      </option>
-                    ))}
-                  </NativeSelect>
+              <form action={createBinderAction} className="space-y-3">
+                <div className="space-y-1.5">
+                  <Label>Extension</Label>
+                  <ExtensionPicker
+                    name="release"
+                    taken={binders.flatMap((b) =>
+                      b.release?.tcgdexId ? [b.release.tcgdexId] : [],
+                    )}
+                    extensions={releases.map((r) => ({
+                      code: r.tcgdexId!,
+                      name: r.nameFr,
+                      serie: r.serieRef?.name ?? null,
+                      year: r.releaseDate?.getUTCFullYear() ?? null,
+                      logo: r.imageUrl,
+                      symbol: r.symbolUrl,
+                      serieLogo: r.serieRef?.logoUrl ?? null,
+                    }))}
+                  />
                 </div>
                 <Button type="submit">Créer</Button>
               </form>

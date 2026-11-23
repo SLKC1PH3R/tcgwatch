@@ -147,7 +147,9 @@ export async function getCardReleases() {
       tcgdexId: true,
       nameFr: true,
       releaseDate: true,
-      serieRef: { select: { name: true } },
+      imageUrl: true,
+      symbolUrl: true,
+      serieRef: { select: { name: true, logoUrl: true } },
     },
     orderBy: [{ releaseDate: { sort: 'desc', nulls: 'last' } }, { nameFr: 'asc' }],
   });
