@@ -32,6 +32,13 @@ export function CollectionCardTile({
       <SafeImg
         src={card.image}
         alt={card.name}
+        fallback={
+          <CardPlaceholder
+            name={card.name}
+            localId={card.localId}
+            className={cn(missing && 'opacity-50')}
+          />
+        }
         className={cn(
           'aspect-[63/88] w-full rounded-lg bg-muted object-cover transition',
           missing && 'opacity-30 grayscale',
@@ -92,6 +99,29 @@ export function CollectionCardTile({
         {card.release.total ? `/${card.release.total}` : ''} · {card.release.name}
       </p>
       {children}
+    </div>
+  );
+}
+
+/** Carte sans image (promos récentes…) : dos neutre avec son numéro et son nom, toujours cliquable. */
+export function CardPlaceholder({
+  name,
+  localId,
+  className,
+}: {
+  name: string;
+  localId?: string;
+  className?: string;
+}) {
+  return (
+    <div
+      className={cn(
+        'flex aspect-[63/88] w-full flex-col items-center justify-center gap-1 rounded-lg border border-dashed bg-muted p-2 text-center',
+        className,
+      )}
+    >
+      {localId && <span className="text-xs font-bold text-muted-foreground">{localId}</span>}
+      <span className="line-clamp-3 text-[11px] leading-tight font-semibold">{name}</span>
     </div>
   );
 }

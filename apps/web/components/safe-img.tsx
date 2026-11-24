@@ -7,13 +7,16 @@ export function SafeImg({
   src,
   alt,
   className,
+  fallback = null,
 }: {
   src: string | null | undefined;
   alt: string;
   className?: string;
+  /** Affiché à la place d'une image absente ou introuvable (sinon rien). */
+  fallback?: React.ReactNode;
 }) {
   const [failed, setFailed] = useState(false);
-  if (failed || !src) return null;
+  if (failed || !src) return fallback;
   return (
     // eslint-disable-next-line @next/next/no-img-element
     <img

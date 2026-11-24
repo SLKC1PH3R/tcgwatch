@@ -2,6 +2,7 @@
 
 import { Check, Minus } from 'lucide-react';
 import { useMemo, useState, useTransition } from 'react';
+import { CardPlaceholder } from '@/components/collection-card';
 import { SafeImg } from '@/components/safe-img';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -253,6 +254,13 @@ export function QuickAdd({
                     <SafeImg
                       src={c.image}
                       alt=""
+                      fallback={
+                        <CardPlaceholder
+                          name={c.name}
+                          localId={c.localId}
+                          className={cn(n === 0 && 'opacity-50')}
+                        />
+                      }
                       className={cn(
                         'aspect-[63/88] w-full rounded-lg bg-muted object-cover',
                         n === 0 && 'opacity-35 grayscale',
