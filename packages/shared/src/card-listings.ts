@@ -76,9 +76,16 @@ function releaseQuery(release: NonNullable<ListedCard['release']>): string {
  * (syntaxe « (a,b) » = l'un ou l'autre).
  */
 export function cardListingQuery(card: ListedCard): string {
-  const parts = [card.name];
-  // Numéro tel qu'imprimé (« 053 ») : c'est ainsi que les vendeurs l'écrivent (« 053/103 »).
-  if (!reprintNumbering(card)) parts.push(card.localId);
+  // « Méga-Sarmuraï‑ex » (trait d'union insécable) → « Méga-Sarmuraï ex », comme dans les titres.
+  const name = card.name
+    .replace(/[\u2010\u2011\u2012\u2013]/g, '-')
+    .replace(/-(ex|gx|v|vmax|vstar)$/i, ' $1');
+  const parts = [name];
+  // Numéro complet tel qu'imprimé (« 011/103 ») : c'est ainsi que les vendeurs l'écrivent.
+  if (!reprintNumbering(card)) {
+    const total = card.release?.cardCountOfficial;
+    parts.push(total ? `${card.localId}/${String(total).padStart(3, '0')}` : card.localId);
+  }
   if (card.release) parts.push(releaseQuery(card.release));
   parts.push('(fr,vf,francais,français,francaise)');
   return parts.join(' ');

@@ -21,13 +21,23 @@ const dracaufeu30 = {
 describe('annonces eBay d’une carte en français', () => {
   it('recherche', () => {
     expect(cardListingQuery(scarhino)).toBe(
-      'Scarhino 001 Règne Delta (fr,vf,francais,français,francaise)',
+      'Scarhino 001/103 Règne Delta (fr,vf,francais,français,francaise)',
     );
     expect(cardListingQuery(pikachu)).toBe(
-      'Pikachu-ex 109 promo (fr,vf,francais,français,francaise)',
+      'Pikachu ex 109 promo (fr,vf,francais,français,francaise)',
     );
     // Réédition : numéro de l'originale, pas celui de l'extension.
     expect(cardListingQuery(dracaufeu30)).toBe('Dracaufeu 30 (fr,vf,francais,français,francaise)');
+  });
+
+  it('nom et numéro complet comme dans les titres', () => {
+    expect(
+      cardListingQuery({
+        name: 'Méga-Sarmuraï\u2011ex',
+        localId: '011',
+        release: scarhino.release,
+      }),
+    ).toBe('Méga-Sarmuraï ex 011/103 Règne Delta (fr,vf,francais,français,francaise)');
   });
 
   it('réédition reconnue par son extension, rareté inconnue', () => {
