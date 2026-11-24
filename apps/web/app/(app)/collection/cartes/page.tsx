@@ -48,6 +48,9 @@ export default async function MyCardsPage() {
               <Link href="/collection/cartes/vitrines">Vitrines</Link>
             </Button>
             <Button asChild variant="outline">
+              <Link href="/collection/cartes/manquantes">Ce qu’il me manque</Link>
+            </Button>
+            <Button asChild variant="outline">
               <Link href="/collection/cartes/scanner">
                 <ScanLine /> Scanner
               </Link>
@@ -123,6 +126,13 @@ export default async function MyCardsPage() {
                           )}
                         </p>
                         <SetProgressBars progress={r.progress} />
+                        {r.progress.full.owned < r.progress.full.total && (
+                          <p className="text-[11px] text-muted-foreground tabular-nums">
+                            Il manque {r.progress.full.total - r.progress.full.owned} cartes · ≈{' '}
+                            {formatPrice(priceSource === 'ebay' ? r.missing.fr : r.missing.cm)}{' '}
+                            {priceSource === 'ebay' ? 'en FR' : 'Cardmarket'}
+                          </p>
+                        )}
                       </div>
                       <span
                         className={cn(

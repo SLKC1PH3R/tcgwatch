@@ -163,6 +163,13 @@ export default async function BinderPage({ params, searchParams }: Props) {
               <PriceSourceToggle current={priceSource} />
               <Button asChild variant="outline">
                 <Link
+                  href={`/collection/cartes/manquantes?extension=${encodeURIComponent(binder.release!.tcgdexId!)}${mode === 'master' ? '&set=master' : ''}`}
+                >
+                  Ce qu’il me manque
+                </Link>
+              </Button>
+              <Button asChild variant="outline">
+                <Link
                   href={`/collection/cartes/ajout-rapide?extension=${encodeURIComponent(binder.release!.tcgdexId!)}${mode === 'master' ? '&set=master' : ''}`}
                 >
                   Ajout rapide

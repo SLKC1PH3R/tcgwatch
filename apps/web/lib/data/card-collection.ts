@@ -88,6 +88,7 @@ export interface ReleaseProgress {
   value: number;
   /** Valeur au prix français (annonces eBay), cartes déjà relevées seulement. */
   frValue: number;
+  missing: { cm: number; fr: number };
   progress: SetProgress;
 }
 
@@ -110,6 +111,8 @@ export async function getCardCollection(userId: string) {
         value: unknown;
         frValue: unknown;
         frCopies: bigint;
+        missingCm: unknown;
+        missingFr: unknown;
       }[]
     >`
       SELECT r.id AS "releaseId", r."tcgdexId" AS code, r."nameFr" AS name,
@@ -122,7 +125,12 @@ export async function getCardCollection(userId: string) {
         sum(o.quantity) AS copies,
         sum(o.quantity * coalesce(c."priceTrend", 0)) AS value,
         coalesce(sum(o.quantity * c."frPrice") FILTER (WHERE c."frPrice" IS NOT NULL), 0) AS "frValue",
-        coalesce(sum(o.quantity) FILTER (WHERE c."frPrice" IS NOT NULL), 0) AS "frCopies"
+        coalesce(sum(o.quantity) FILTER (WHERE c."frPrice" IS NOT NULL), 0) AS "frCopies",
+        -- Coût pour compléter le Full Set : cartes sans exemplaire classique.
+        (SELECT coalesce(sum(m."priceTrend"), 0) FROM "Card" m WHERE m."releaseId" = r.id
+          AND NOT EXISTS (SELECT 1 FROM "OwnedCard" k WHERE k."cardId" = m.id AND k."userId" = ${userId} AND k.variant <> 'reverse' AND k.quantity > 0)) AS "missingCm",
+        (SELECT coalesce(sum(m."frPrice"), 0) FROM "Card" m WHERE m."releaseId" = r.id
+          AND NOT EXISTS (SELECT 1 FROM "OwnedCard" k WHERE k."cardId" = m.id AND k."userId" = ${userId} AND k.variant <> 'reverse' AND k.quantity > 0)) AS "missingFr"
       FROM "OwnedCard" o JOIN "Card" c ON c.id = o."cardId" JOIN "Release" r ON r.id = c."releaseId"
       LEFT JOIN "Serie" s ON s.id = r."serieId"
       WHERE o."userId" = ${userId}
@@ -145,6 +153,11 @@ export async function getCardCollection(userId: string) {
     copies: Number(r.copies),
     value: toNumber(r.value as never) ?? 0,
     frValue: toNumber(r.frValue as never) ?? 0,
+    /** Coût pour compléter le Full Set (cartes sans prix comptées pour 0). */
+    missing: {
+      cm: toNumber(r.missingCm as never) ?? 0,
+      fr: toNumber(r.missingFr as never) ?? 0,
+    },
     progress: {
       full: { owned: Number(r.classic), total: Number(r.total) },
       master:
