@@ -68,6 +68,48 @@ export async function adjustOwnedCardAction(cardId: string, delta: 1 | -1, varia
   revalidatePath(`/cartes/${cardId}`);
 }
 
+const pileSchema = z
+  .array(
+    z.object({
+      cardId: z.string().min(1).max(80),
+      variant: z.enum(VARIANTS),
+      quantity: z.number().int().min(1).max(99),
+    }),
+  )
+  .min(1)
+  .max(500);
+
+/** Scanner en rafale : ajoute d'un coup les cartes de la pile (exemplaires en plus). */
+export async function addOwnedCardsAction(
+  items: { cardId: string; variant: string; quantity: number }[],
+): Promise<{ saved: number; error?: string }> {
+  const user = await requireUser();
+  const parsed = pileSchema.safeParse(items);
+  if (!parsed.success) return { saved: 0, error: firstIssue(parsed.error) };
+  const known = new Set(
+    (
+      await prisma.card.findMany({
+        where: { id: { in: parsed.data.map((i) => i.cardId) } },
+        select: { id: true },
+      })
+    ).map((c) => c.id),
+  );
+  const rows = parsed.data.filter((i) => known.has(i.cardId));
+  await prisma.$transaction(
+    rows.map((i) =>
+      prisma.ownedCard.upsert({
+        where: {
+          userId_cardId_variant: { userId: user.id, cardId: i.cardId, variant: i.variant },
+        },
+        update: { quantity: { increment: i.quantity } },
+        create: { userId: user.id, cardId: i.cardId, variant: i.variant, quantity: i.quantity },
+      }),
+    ),
+  );
+  revalidatePath(BASE, 'layout');
+  return { saved: rows.reduce((n, i) => n + i.quantity, 0) };
+}
+
 // ─── Classeurs ───────────────────────────────────────────
 
 const binderSchema = z.object({

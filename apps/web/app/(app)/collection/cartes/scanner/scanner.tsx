@@ -1,6 +1,6 @@
 'use client';
 
-import { Camera, CameraOff, Check, ImageUp, Plus, ScanLine } from 'lucide-react';
+import { Camera, CameraOff, Check, ImageUp, Layers, Minus, Plus, ScanLine, X } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState, useTransition } from 'react';
 import {
   cardCrops,
@@ -11,7 +11,7 @@ import {
 } from '@tcgwatch/shared';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { adjustOwnedCardAction } from '../actions';
+import { addOwnedCardsAction, adjustOwnedCardAction } from '../actions';
 
 interface Match {
   id: string;
@@ -54,6 +54,15 @@ function signatures(source: CanvasImageSource, width: number, height: number): S
   return cardCrops(w, h).map((crop) => scanSignature(data, w, h, crop));
 }
 
+/** Carte en attente dans la pile du mode rafale. */
+interface PileItem {
+  match: Match;
+  variant: string;
+  quantity: number;
+}
+
+const defaultVariant = (m: Match) => (m.variants.includes('normal') ? 'normal' : m.variants[0]!);
+
 /** Libellé de ressemblance d'un résultat. */
 function likeness(score: number, sure: boolean) {
   if (sure) return 'Carte reconnue';
@@ -73,6 +82,22 @@ export function CardScanner({ releases }: { releases: { code: string; name: stri
   const [confident, setConfident] = useState(false);
   const [added, setAdded] = useState<string | null>(null);
   const [pending, start] = useTransition();
+  // Mode rafale : les cartes reconnues avec certitude s'empilent, enregistrées en une fois.
+  const [burst, setBurst] = useState(false);
+  const [pile, setPile] = useState<PileItem[]>([]);
+  // Dernière carte empilée : pas de doublon tant qu'elle reste devant la caméra.
+  const last = useRef<{ id: string; gone: boolean } | null>(null);
+
+  const push = useCallback((m: Match, variant = defaultVariant(m)) => {
+    setPile((p) => {
+      const i = p.findIndex((x) => x.match.id === m.id && x.variant === variant);
+      if (i === -1) return [{ match: m, variant, quantity: 1 }, ...p];
+      const next = [...p];
+      next[i] = { ...next[i]!, quantity: next[i]!.quantity + 1 };
+      return next;
+    });
+    setAdded(`${m.name} ajoutée à la pile`);
+  }, []);
 
   const lookup = useCallback(
     async (candidates: ScanSignature[]) => {
@@ -88,12 +113,24 @@ export function CardScanner({ releases }: { releases: { code: string; name: stri
         const result = (await res.json()) as { matches: Match[]; confident: boolean };
         setMatches(result.matches);
         setConfident(result.confident);
-        if (result.confident) setAuto(false);
+        const top = result.matches[0];
+        if (burst) {
+          // Carte retirée ou changée : la suivante pourra être la même (deuxième exemplaire).
+          if (last.current && (!result.confident || top?.id !== last.current.id)) {
+            last.current.gone = true;
+          }
+          if (result.confident && top && (last.current?.id !== top.id || last.current.gone)) {
+            push(top);
+            last.current = { id: top.id, gone: false };
+          }
+        } else if (result.confident) {
+          setAuto(false);
+        }
       } finally {
         busy.current = false;
       }
     },
-    [release],
+    [release, burst, push],
   );
 
   const scan = useCallback(() => {
@@ -145,7 +182,42 @@ export function CardScanner({ releases }: { releases: { code: string; name: stri
     bitmap.close();
   };
 
-  const add = (m: Match, variant: string) =>
+  const fromFiles = async (files: FileList) => {
+    for (const f of Array.from(files)) {
+      // Chaque photo est une carte distincte, même si c'est la même carte.
+      if (last.current) last.current.gone = true;
+      await fromFile(f);
+    }
+  };
+
+  const savePile = () =>
+    start(async () => {
+      const res = await addOwnedCardsAction(
+        pile.map((p) => ({ cardId: p.match.id, variant: p.variant, quantity: p.quantity })),
+      );
+      if (res.error) {
+        setAdded(res.error);
+        return;
+      }
+      setAdded(
+        `${res.saved} carte${res.saved > 1 ? 's' : ''} ajoutée${res.saved > 1 ? 's' : ''} à ta collection`,
+      );
+      setPile([]);
+      last.current = null;
+    });
+
+  const updatePile = (index: number, patch: Partial<PileItem> | null) =>
+    setPile((p) =>
+      patch === null
+        ? p.filter((_, i) => i !== index)
+        : p.map((x, i) => (i === index ? { ...x, ...patch } : x)),
+    );
+
+  const add = (m: Match, variant: string) => {
+    if (burst) {
+      push(m, variant);
+      return;
+    }
     start(async () => {
       await adjustOwnedCardAction(m.id, 1, variant);
       setAdded(`${m.name} (${VARIANT_LABELS[variant] ?? variant}) ajoutée`);
@@ -153,6 +225,7 @@ export function CardScanner({ releases }: { releases: { code: string; name: stri
       setConfident(false);
       setAuto(true);
     });
+  };
 
   return (
     <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] [&>*]:min-w-0">
@@ -195,19 +268,32 @@ export function CardScanner({ releases }: { releases: { code: string; name: stri
             </Button>
           )}
           <label className="inline-flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm font-medium hover:bg-accent">
-            <ImageUp className="size-4" /> Photo
+            <ImageUp className="size-4" /> {burst ? 'Photos' : 'Photo'}
             <input
               type="file"
               accept="image/*"
-              capture="environment"
+              multiple={burst}
               className="sr-only"
               onChange={(e) => {
-                const f = e.target.files?.[0];
-                if (f) void fromFile(f);
+                const files = e.target.files;
+                if (files?.length) void fromFiles(files);
                 e.target.value = '';
               }}
             />
           </label>
+          <Button
+            type="button"
+            variant={burst ? 'default' : 'outline'}
+            aria-pressed={burst}
+            onClick={() => {
+              setBurst((b) => !b);
+              setAuto(true);
+              last.current = null;
+            }}
+            title="Les cartes reconnues s'empilent sans validation, enregistrées en une fois"
+          >
+            <Layers /> Rafale
+          </Button>
           <select
             value={release}
             onChange={(e) => setRelease(e.target.value)}
@@ -224,11 +310,118 @@ export function CardScanner({ releases }: { releases: { code: string; name: stri
         </div>
         <p className="text-xs text-muted-foreground">
           Astuce : choisir l’extension rend la reconnaissance encore plus sûre. Pour une photo,
-          cadre la carte au centre, ou importe une image recadrée sur la carte.
+          cadre la carte au centre, ou importe une image recadrée sur la carte. En rafale, passe les
+          cartes une à une devant la caméra (ou importe plusieurs photos) : chaque carte reconnue
+          avec certitude s’empile, vérifie la pile puis enregistre tout.
         </p>
       </div>
 
       <div className="space-y-3">
+        {(burst || pile.length > 0) && (
+          <section aria-label="Pile du mode rafale" className="space-y-2 rounded-2xl border p-3">
+            <div className="flex items-center justify-between gap-2">
+              <h2 className="font-display text-base font-semibold">
+                Pile{' '}
+                <span className="font-sans text-sm text-muted-foreground">
+                  · {pile.reduce((n, p) => n + p.quantity, 0)}
+                </span>
+              </h2>
+              <div className="flex gap-1.5">
+                {pile.length > 0 && (
+                  <Button type="button" size="sm" variant="ghost" onClick={() => setPile([])}>
+                    Vider
+                  </Button>
+                )}
+                <Button
+                  type="button"
+                  size="sm"
+                  disabled={pending || pile.length === 0}
+                  onClick={savePile}
+                >
+                  <Check /> Tout enregistrer
+                </Button>
+              </div>
+            </div>
+            {pile.length === 0 ? (
+              <p className="text-xs text-muted-foreground">
+                Les cartes reconnues avec certitude arrivent ici. Retire la carte du cadre avant de
+                passer la suivante ; pour un deuxième exemplaire, retire-la puis remontre-la.
+              </p>
+            ) : (
+              <ul className="max-h-80 space-y-1.5 overflow-y-auto">
+                {pile.map((p, i) => (
+                  <li
+                    key={`${p.match.id}:${p.variant}`}
+                    className="flex items-center gap-2 rounded-lg border px-2 py-1.5"
+                  >
+                    {p.match.image ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={p.match.image} alt="" className="h-12 w-auto shrink-0 rounded" />
+                    ) : (
+                      <div className="h-12 w-[2.15rem] shrink-0 rounded bg-muted" />
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-semibold">
+                        {p.match.name}{' '}
+                        <span className="font-normal text-muted-foreground">
+                          · {p.match.localId}
+                        </span>
+                      </p>
+                      <div className="mt-0.5 flex flex-wrap gap-1">
+                        {p.match.variants.map((v) => (
+                          <button
+                            key={v}
+                            type="button"
+                            aria-pressed={p.variant === v}
+                            onClick={() => updatePile(i, { variant: v })}
+                            className={cn(
+                              'rounded-full border px-2 text-[11px]',
+                              p.variant === v &&
+                                (v === 'reverse'
+                                  ? 'border-info bg-info text-black'
+                                  : 'border-primary bg-primary text-primary-foreground'),
+                            )}
+                          >
+                            {VARIANT_LABELS[v] ?? v}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-1">
+                      <button
+                        type="button"
+                        aria-label={`Un exemplaire de moins : ${p.match.name}`}
+                        onClick={() =>
+                          updatePile(i, p.quantity > 1 ? { quantity: p.quantity - 1 } : null)
+                        }
+                        className="grid size-6 place-items-center rounded-md border hover:bg-accent"
+                      >
+                        <Minus className="size-3" />
+                      </button>
+                      <span className="w-6 text-center text-sm tabular-nums">×{p.quantity}</span>
+                      <button
+                        type="button"
+                        aria-label={`Un exemplaire de plus : ${p.match.name}`}
+                        onClick={() => updatePile(i, { quantity: p.quantity + 1 })}
+                        className="grid size-6 place-items-center rounded-md border hover:bg-accent"
+                      >
+                        <Plus className="size-3" />
+                      </button>
+                      <button
+                        type="button"
+                        aria-label={`Retirer ${p.match.name} de la pile`}
+                        onClick={() => updatePile(i, null)}
+                        className="grid size-6 place-items-center rounded-md text-muted-foreground hover:bg-accent"
+                      >
+                        <X className="size-3" />
+                      </button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+        )}
         {added && (
           <p className="flex items-center gap-2 rounded-xl bg-success/15 px-3 py-2 text-sm text-success">
             <Check className="size-4" /> {added}
