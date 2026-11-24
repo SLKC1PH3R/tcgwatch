@@ -72,12 +72,13 @@ function releaseQuery(release: NonNullable<ListedCard['release']>): string {
 }
 
 /**
- * Recherche eBay : nom, numéro (sauf rééditions), extension et une mention de langue française
+ * Recherche eBay : nom, numéro imprimé (sauf rééditions), extension et une mention de langue française
  * (syntaxe « (a,b) » = l'un ou l'autre).
  */
 export function cardListingQuery(card: ListedCard): string {
   const parts = [card.name];
-  if (!reprintNumbering(card)) parts.push(numberKey(card.localId));
+  // Numéro tel qu'imprimé (« 053 ») : c'est ainsi que les vendeurs l'écrivent (« 053/103 »).
+  if (!reprintNumbering(card)) parts.push(card.localId);
   if (card.release) parts.push(releaseQuery(card.release));
   parts.push('(fr,vf,francais,français,francaise)');
   return parts.join(' ');

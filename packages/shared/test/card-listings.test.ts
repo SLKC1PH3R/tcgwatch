@@ -21,7 +21,7 @@ const dracaufeu30 = {
 describe('annonces eBay d’une carte en français', () => {
   it('recherche', () => {
     expect(cardListingQuery(scarhino)).toBe(
-      'Scarhino 1 Règne Delta (fr,vf,francais,français,francaise)',
+      'Scarhino 001 Règne Delta (fr,vf,francais,français,francaise)',
     );
     expect(cardListingQuery(pikachu)).toBe(
       'Pikachu-ex 109 promo (fr,vf,francais,français,francaise)',
