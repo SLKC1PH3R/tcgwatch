@@ -16,7 +16,12 @@ const PAUSE_MS = 1500;
  * Ce sont des prix demandés, pas des ventes : eBay réserve l'historique des ventes à ses
  * partenaires.
  */
-export async function runCardFrPrices(ctx: WorkerContext, limit = PER_RUN): Promise<void> {
+export async function runCardFrPrices(
+  ctx: WorkerContext,
+  limit = PER_RUN,
+  /** Une ligne par carte (commande `fr-prices`) : recherche, annonces gardées, prix. */
+  verbose = false,
+): Promise<void> {
   const { env } = ctx;
   if (!env.EBAY_CLIENT_ID || !env.EBAY_CLIENT_SECRET) return;
   const client = new EbayClient(env.EBAY_CLIENT_ID, env.EBAY_CLIENT_SECRET);
@@ -39,20 +44,22 @@ export async function runCardFrPrices(ctx: WorkerContext, limit = PER_RUN): Prom
   });
 
   let priced = 0;
-  for (const c of cards) {
+  if (verbose) ctx.logger.info({ cards: cards.length }, 'Prix français : cartes à relever');
+  for (const [i, c] of cards.entries()) {
     try {
+      const query = cardListingQuery(c);
       const listings = await client.search({
-        query: cardListingQuery(c),
+        query,
         condition: 'any',
         categoryId: EBAY_SINGLES,
         limit: 200,
       });
       const trend = toNumber(c.priceTrend);
-      const prices = listings
+      const kept = listings
         .filter((l) => !l.auction && relevantCardListing(l.title, c))
-        .map((l) => l.price)
         // Très en dessous de la cote toutes langues : faux, proxy ou carte abîmée.
-        .filter((p) => trend === null || p >= trend * 0.3);
+        .filter((l) => trend === null || l.price >= trend * 0.3);
+      const prices = kept.map((l) => l.price);
       // Peu d'annonces (carte rare en français) : prix gardé quand même, avec leur nombre.
       const sorted = [...prices].sort((a, b) => a - b);
       const stats =
@@ -74,6 +81,21 @@ export async function runCardFrPrices(ctx: WorkerContext, limit = PER_RUN): Prom
         },
       });
       if (stats) priced++;
+      if (verbose) {
+        ctx.logger.info(
+          {
+            n: `${i + 1}/${cards.length}`,
+            carte: `${c.name} ${c.localId} · ${c.release.nameFr}`,
+            recherche: query,
+            annonces: listings.length,
+            gardees: prices.length,
+            prix: stats?.median ?? null,
+            cote: trend,
+            exemples: kept.slice(0, 5).map((l) => `${l.price} € · ${l.title}`),
+          },
+          stats ? `${c.name} : ${stats.median} €` : `${c.name} : aucune annonce en français`,
+        );
+      }
     } catch (err) {
       ctx.logger.warn({ err, card: c.id }, 'Prix français eBay impossible');
     }

@@ -131,7 +131,7 @@ try {
       break;
     case 'fr-prices':
       if (!ctx.env.EBAY_CLIENT_ID) ctx.logger.warn('EBAY_CLIENT_ID / EBAY_CLIENT_SECRET absents');
-      await runCardFrPrices(ctx, process.argv[3] ? Number(process.argv[3]) : undefined);
+      await runCardFrPrices(ctx, process.argv[3] ? Number(process.argv[3]) : undefined, true);
       break;
     case 'retailers':
       await syncRetailers(ctx);
