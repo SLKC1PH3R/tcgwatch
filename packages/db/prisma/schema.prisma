@@ -97,16 +97,16 @@ enum Role {
 }
 
 model User {
-  id              String           @id @default(cuid())
-  email           String           @unique
+  id              String             @id @default(cuid())
+  email           String             @unique
   name            String?
   /// Null pour un compte créé avec Google.
   passwordHash    String?
-  role            Role             @default(USER)
+  role            Role               @default(USER)
   /// E-mail confirmé (lien reçu par e-mail, ou compte Google).
   emailVerifiedAt DateTime?
   /// Identifiant Google (« sub ») du compte lié.
-  googleId        String?          @unique
+  googleId        String?            @unique
   sessions        Session[]
   tokens          AuthToken[]
   follows         ProductFollow[]
@@ -118,8 +118,9 @@ model User {
   alerts          AlertEvent[]
   pushDevices     PushSubscription[]
   reports         ErrorReport[]
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
+  openings        ProductOpening[]
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
 }
 
 enum ReportKind {
@@ -271,45 +272,46 @@ model Release {
 // ─── Module 2 — Produits, revendeurs, relevés ────────────
 
 model Product {
-  id                String           @id @default(cuid())
-  name              String
-  slug              String           @unique
-  externalId        String?          @unique /// ex. "pokecardex:3382" (catalogue importé)
-  type              ProductType
-  ean               String?          @unique
-  imageUrl          String?
-  images            String[]         @default([]) /// galerie (fiches revendeurs), imageUrl en tête
-  description       String?
-  brand             String?
-  msrp              Decimal?         @db.Decimal(10, 2) /// prix public conseillé
+  id                 String            @id @default(cuid())
+  name               String
+  slug               String            @unique
+  externalId         String?           @unique /// ex. "pokecardex:3382" (catalogue importé)
+  type               ProductType
+  ean                String?           @unique
+  imageUrl           String?
+  images             String[]          @default([]) /// galerie (fiches revendeurs), imageUrl en tête
+  description        String?
+  brand              String?
+  msrp               Decimal?          @db.Decimal(10, 2) /// prix public conseillé
   /// Plus haut bon prix des utilisateurs qui suivent le produit (tenu à jour par le site) :
   /// déclenche les alertes de prix, filtrées ensuite par le bon prix de chacun.
-  targetPrice       Decimal?         @db.Decimal(10, 2)
-  follows           ProductFollow[]
-  releaseDate       DateTime?        @db.Date /// date propre au produit (ex. "Sortie prévue le" revendeur)
-  releaseDateSource ReleaseSource?
-  notes             String?
-  releaseId         String?
-  release           Release?         @relation("ProductRelease", fields: [releaseId], references: [id], onDelete: SetNull)
+  targetPrice        Decimal?          @db.Decimal(10, 2)
+  follows            ProductFollow[]
+  releaseDate        DateTime?         @db.Date /// date propre au produit (ex. "Sortie prévue le" revendeur)
+  releaseDateSource  ReleaseSource?
+  notes              String?
+  releaseId          String?
+  release            Release?          @relation("ProductRelease", fields: [releaseId], references: [id], onDelete: SetNull)
+  openings           ProductOpening[]
   /// Identifiant du produit Cardmarket (via CardNexus) : guide des prix officiel quotidien.
-  cardmarketId      Int?
+  cardmarketId       Int?
   /// Nom du produit sur Cardmarket (anglais), pour la recherche sur le site.
-  cardmarketName    String?
+  cardmarketName     String?
   /// Catégorie Cardmarket (« Pokémon Display »…) : adresse de la fiche produit sur le site.
   cardmarketCategory String?
   /// Mots-clés des recherches d'annonces (eBay, Leboncoin, Vinted) ; sinon le nom du produit.
-  marketQuery       String?
-  secondhandDaily   SecondhandDaily[]
-  marketListings    MarketListing[]
+  marketQuery        String?
+  secondhandDaily    SecondhandDaily[]
+  marketListings     MarketListing[]
   /// Extension TCGdex du produit (calculée à l'import d'après le nom et la date).
-  extensionId       String?
-  extension         Release?         @relation("ProductExtension", fields: [extensionId], references: [id], onDelete: SetNull)
-  listings          Listing[]
-  marketPrices      MarketPrice[]
-  collection        CollectionItem[]
-  alerts            AlertEvent[]
-  createdAt         DateTime         @default(now())
-  updatedAt         DateTime         @updatedAt
+  extensionId        String?
+  extension          Release?          @relation("ProductExtension", fields: [extensionId], references: [id], onDelete: SetNull)
+  listings           Listing[]
+  marketPrices       MarketPrice[]
+  collection         CollectionItem[]
+  alerts             AlertEvent[]
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
 
   @@index([releaseId])
   @@index([extensionId])
@@ -495,14 +497,14 @@ model MarketPrice {
 /// d'environ 24 h lu à l'ouverture d'une page ; l'historique quotidien est réservé aux
 /// cartes suivies (ChaseCard, même id TCGdex).
 model Card {
-  id                  String         @id /// id TCGdex (ex. "me06-130")
+  id                  String           @id /// id TCGdex (ex. "me06-130")
   releaseId           String
-  release             Release        @relation(fields: [releaseId], references: [id], onDelete: Cascade)
+  release             Release          @relation(fields: [releaseId], references: [id], onDelete: Cascade)
   localId             String /// numéro dans l'extension (ex. "130", "TG05")
   number              Int? /// partie numérique du numéro, pour le tri
   name                String
   /// Pas de nom français dans TCGdex : `name` est le nom anglais.
-  nameMissing         Boolean        @default(false)
+  nameMissing         Boolean          @default(false)
   /// Image TCGdex sans suffixe (/low.webp, /high.webp) ; anglaise si la française manque.
   imageUrl            String?
   /// Empreinte perceptuelle (pHash) de l'illustration, pour le scanner de cartes.
@@ -514,30 +516,31 @@ model Card {
   rarity              String?
   illustrator         String?
   category            String? /// Pokémon, Dresseur, Énergie
-  types               String[]       @default([])
-  dexIds              Int[]          @default([])
+  types               String[]         @default([])
+  dexIds              Int[]            @default([])
   /// Variantes existantes : normal, reverse, holo, firstEdition.
-  variants            String[]       @default([])
-  priceTrend          Decimal?       @db.Decimal(10, 2)
-  priceLow            Decimal?       @db.Decimal(10, 2)
-  priceAvg30          Decimal?       @db.Decimal(10, 2)
-  priceAvg7           Decimal?       @db.Decimal(10, 2)
-  priceAvg1           Decimal?       @db.Decimal(10, 2)
+  variants            String[]         @default([])
+  priceTrend          Decimal?         @db.Decimal(10, 2)
+  priceLow            Decimal?         @db.Decimal(10, 2)
+  priceAvg30          Decimal?         @db.Decimal(10, 2)
+  priceAvg7           Decimal?         @db.Decimal(10, 2)
+  priceAvg1           Decimal?         @db.Decimal(10, 2)
   priceAt             DateTime?
   /// Annonces eBay en français (cartes possédées) : médiane, plus bas et nombre d'annonces.
-  frPrice             Decimal?       @db.Decimal(10, 2)
-  frPriceLow          Decimal?       @db.Decimal(10, 2)
+  frPrice             Decimal?         @db.Decimal(10, 2)
+  frPriceLow          Decimal?         @db.Decimal(10, 2)
   frPriceCount        Int?
   frPriceAt           DateTime?
   /// Produit Cardmarket de la carte (via TCGdex) : cote quotidienne tirée du guide des prix.
   cardmarketId        Int?
   /// Dernière recherche de l'id Cardmarket (évite de redemander une carte sans cote).
   cardmarketCheckedAt DateTime?
-  updatedAt           DateTime       @updatedAt
+  updatedAt           DateTime         @updatedAt
   owned               OwnedCard[]
   binderEntries       BinderCard[]
   showcaseEntries     ShowcaseCard[]
   dailyPrices         CardPriceDaily[]
+  openings            OpeningCard[]
 
   @@index([releaseId, number])
   @@index([name])
@@ -578,13 +581,13 @@ model ChaseCard {
 /// Cote Cardmarket quotidienne de chaque carte cotée (guide des prix) : historique de toutes
 /// les cartes, pas seulement des cartes suivies.
 model CardPriceDaily {
-  cardId String
-  card   Card     @relation(fields: [cardId], references: [id], onDelete: Cascade)
-  date   DateTime @db.Date
-  trend  Decimal? @db.Decimal(10, 2)
-  low    Decimal? @db.Decimal(10, 2)
-  avg7   Decimal? @db.Decimal(10, 2)
-  avg30  Decimal? @db.Decimal(10, 2)
+  cardId  String
+  card    Card     @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  date    DateTime @db.Date
+  trend   Decimal? @db.Decimal(10, 2)
+  low     Decimal? @db.Decimal(10, 2)
+  avg7    Decimal? @db.Decimal(10, 2)
+  avg30   Decimal? @db.Decimal(10, 2)
   /// Prix français du jour (médiane des annonces eBay), cartes relevées seulement.
   frPrice Decimal? @db.Decimal(10, 2)
 
@@ -762,4 +765,37 @@ model ShowcaseCard {
 
   @@unique([showcaseId, cardId])
   @@index([showcaseId, position])
+}
+
+/// Produit ouvert (display, ETB, booster…) : son prix et les cartes qui en sont sorties, pour
+/// mesurer ce qu'il a rapporté. Agrégé (anonymement) par produit pour les moyennes.
+model ProductOpening {
+  id        String        @id @default(cuid())
+  userId    String
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product       @relation(fields: [productId], references: [id], onDelete: Restrict)
+  /// Prix payé pour le produit (unité).
+  price     Decimal       @db.Decimal(10, 2)
+  openedAt  DateTime      @db.Date
+  notes     String?
+  cards     OpeningCard[]
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  @@index([userId])
+  @@index([productId])
+}
+
+model OpeningCard {
+  id        String         @id @default(cuid())
+  openingId String
+  opening   ProductOpening @relation(fields: [openingId], references: [id], onDelete: Cascade)
+  cardId    String
+  card      Card           @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  variant   String         @default("normal")
+  quantity  Int            @default(1)
+
+  @@unique([openingId, cardId, variant])
+  @@index([cardId])
 }

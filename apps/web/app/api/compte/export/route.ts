@@ -35,6 +35,12 @@ export async function GET() {
       },
       binders: { include: { cards: { select: { cardId: true, position: true } } } },
       showcases: { include: { cards: { select: { cardId: true, position: true } } } },
+      openings: {
+        include: {
+          product: { select: { id: true, name: true } },
+          cards: { select: { cardId: true, variant: true, quantity: true } },
+        },
+      },
       alerts: {
         orderBy: { createdAt: 'desc' },
         select: { type: true, title: true, message: true, url: true, createdAt: true },
