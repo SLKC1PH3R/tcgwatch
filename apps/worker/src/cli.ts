@@ -12,7 +12,7 @@
  *   pnpm --filter @tcgwatch/worker check-once sealed-prices  # scellés reliés à Cardmarket + cotes
  *   pnpm --filter @tcgwatch/worker check-once card-images [set]  # images manquantes (pokemontcg.io)
  *   pnpm --filter @tcgwatch/worker check-once ebay       # annonces eBay de « Mes produits »
- *   pnpm --filter @tcgwatch/worker check-once fr-prices [n]  # prix français des cartes possédées (eBay)
+ *   pnpm --filter @tcgwatch/worker check-once fr-prices [n] [tout]  # prix français des cartes possédées (eBay)
  *   pnpm --filter @tcgwatch/worker check-once all-now    # force le relevé de TOUS les listings
  *   pnpm --filter @tcgwatch/worker check-once retailers  # synchronise l'annuaire des revendeurs
  *   pnpm --filter @tcgwatch/worker check-once telegram   # identifiant du chat Telegram du bot
@@ -131,7 +131,16 @@ try {
       break;
     case 'fr-prices':
       if (!ctx.env.EBAY_CLIENT_ID) ctx.logger.warn('EBAY_CLIENT_ID / EBAY_CLIENT_SECRET absents');
-      await runCardFrPrices(ctx, process.argv[3] ? Number(process.argv[3]) : undefined, true);
+      {
+        // `fr-prices 500` : 500 cartes au plus ; `fr-prices 500 tout` : même celles du jour.
+        const n = Number(process.argv[3]);
+        await runCardFrPrices(
+          ctx,
+          Number.isFinite(n) && n > 0 ? n : undefined,
+          true,
+          process.argv.slice(3).some((a) => a === 'tout' || a === 'all'),
+        );
+      }
       break;
     case 'retailers':
       await syncRetailers(ctx);

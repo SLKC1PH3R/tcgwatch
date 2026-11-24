@@ -21,6 +21,8 @@ export async function runCardFrPrices(
   limit = PER_RUN,
   /** Une ligne par carte (commande `fr-prices`) : recherche, annonces gardées, prix. */
   verbose = false,
+  /** Relève aussi les cartes déjà relevées aujourd'hui. */
+  force = false,
 ): Promise<void> {
   const { env } = ctx;
   if (!env.EBAY_CLIENT_ID || !env.EBAY_CLIENT_SECRET) return;
@@ -29,7 +31,7 @@ export async function runCardFrPrices(
   const cards = await prisma.card.findMany({
     where: {
       owned: { some: { quantity: { gt: 0 } } },
-      OR: [{ frPriceAt: null }, { frPriceAt: { lt: today } }],
+      ...(force ? {} : { OR: [{ frPriceAt: null }, { frPriceAt: { lt: today } }] }),
     },
     select: {
       id: true,
