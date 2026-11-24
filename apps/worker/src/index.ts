@@ -1,5 +1,6 @@
 import { compactSnapshots, prisma, purgeStale } from '@tcgwatch/db';
 import cron, { type ScheduledTask } from 'node-cron';
+import { EbayClient } from '@tcgwatch/market';
 import { createContext, type WorkerContext } from './context';
 import { startHealthServer } from './health';
 import { checkDueListings } from './jobs/check-listings';
@@ -16,6 +17,7 @@ import { runReleaseReminders } from './jobs/release-reminders';
 import { runSecondhandPrices } from './jobs/secondhand';
 import { runCardFrPrices } from './jobs/card-fr-prices';
 import { syncRetailers } from './jobs/sync-retailers';
+import { recordApiCalls, startJobRun } from './usage';
 
 /** Empêche deux exécutions simultanées d'une même tâche planifiée. */
 function exclusive(ctx: WorkerContext, name: string, fn: () => Promise<unknown>) {
@@ -26,13 +28,19 @@ function exclusive(ctx: WorkerContext, name: string, fn: () => Promise<unknown>)
       return;
     }
     running = true;
+    const finish = await startJobRun(name);
+    const ebayBefore = EbayClient.calls;
+    let failure: string | undefined;
     try {
       await fn();
     } catch (err) {
-      ctx.status.lastError = `${name}: ${err instanceof Error ? err.message : String(err)}`;
+      failure = err instanceof Error ? err.message : String(err);
+      ctx.status.lastError = `${name}: ${failure}`;
       ctx.logger.error({ err, job: name }, 'Échec de la tâche planifiée');
     } finally {
       running = false;
+      await finish(failure);
+      await recordApiCalls('ebay', EbayClient.calls - ebayBefore);
     }
   };
 }
@@ -76,6 +84,10 @@ async function main() {
   const historyJob = exclusive(ctx, 'history', async () => {
     const removed = await compactSnapshots(new Date(), env.SNAPSHOT_RETENTION_DAYS);
     const purged = await purgeStale(new Date(), env.ALERT_RETENTION_DAYS);
+    // Passages des tâches : un mois suffit au tableau de bord des sources.
+    await prisma.jobRun.deleteMany({
+      where: { startedAt: { lt: new Date(Date.now() - 30 * 86_400_000) } },
+    });
     logger.info(
       { removed, ...purged },
       'Relevés anciens regroupés dans le résumé quotidien, alertes et sessions périmées supprimées',

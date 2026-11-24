@@ -24,6 +24,7 @@ import { checkDueListings } from './jobs/check-listings';
 import { discoverListings } from './jobs/discover-listings';
 import { importCards } from './jobs/import-cards';
 import { runCardFrPrices } from './jobs/card-fr-prices';
+import { recordApiCalls } from './usage';
 import { fillReleaseLogos } from './jobs/release-logos';
 import { importPokecardex } from './jobs/import-pokecardex';
 import { importTcgdex } from './jobs/import-tcgdex';
@@ -34,7 +35,7 @@ import { linkSealedProducts } from './jobs/sealed-links';
 import { runCardHashes } from './jobs/card-hashes';
 import { fillCardImages } from './jobs/card-images';
 import { runMarketListings } from './jobs/market-listings';
-import { CardmarketGuideProvider } from '@tcgwatch/market';
+import { CardmarketGuideProvider, EbayClient } from '@tcgwatch/market';
 import { syncRetailers } from './jobs/sync-retailers';
 
 const command = process.argv[2] ?? 'listings';
@@ -182,6 +183,8 @@ try {
       process.exitCode = 1;
   }
 } finally {
+  // Recherches eBay faites à la main : comptées dans le quota du jour.
+  await recordApiCalls('ebay', EbayClient.calls);
   await ctx.browser?.close();
   await prisma.$disconnect();
 }

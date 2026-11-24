@@ -109,9 +109,14 @@ export default async function ScrapeStatusPage({ searchParams }: Props) {
         title="État des relevés"
         description="Boutiques dont les fiches ne se relèvent plus : un site qui change sa structure ou bloque les requêtes apparaît ici en premier."
         actions={
-          <Button asChild variant="outline">
-            <Link href="/revendeurs">Revendeurs</Link>
-          </Button>
+          <>
+            <Button asChild variant="outline">
+              <Link href="/sources">Sources de données</Link>
+            </Button>
+            <Button asChild variant="outline">
+              <Link href="/revendeurs">Revendeurs</Link>
+            </Button>
+          </>
         }
       />
 

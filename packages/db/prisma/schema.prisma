@@ -799,3 +799,24 @@ model OpeningCard {
   @@unique([openingId, cardId, variant])
   @@index([cardId])
 }
+
+/// Passages des tâches du worker (tableau de bord des sources) : gardés 30 jours.
+model JobRun {
+  id         String    @id @default(cuid())
+  job        String
+  startedAt  DateTime  @default(now())
+  finishedAt DateTime?
+  ok         Boolean?
+  error      String?
+
+  @@index([job, startedAt])
+}
+
+/// Appels aux API à quota (eBay : 5 000 recherches par jour), comptés par jour.
+model ApiUsage {
+  source String
+  day    DateTime @db.Date
+  calls  Int      @default(0)
+
+  @@id([source, day])
+}

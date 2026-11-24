@@ -61,6 +61,8 @@ export interface EbaySearch {
 
 export class EbayClient {
   private token?: { value: string; expires: number };
+  /** Recherches faites par tous les clients du processus (quota eBay : 5 000 par jour). */
+  static calls = 0;
 
   constructor(
     private readonly clientId: string,
@@ -88,6 +90,7 @@ export class EbayClient {
 
   /** Annonces neuves situées en France, les plus récentes d'abord. */
   async search(s: EbaySearch): Promise<EbayListing[]> {
+    EbayClient.calls++;
     const filters = [
       'itemLocationCountry:FR',
       ...(s.condition === 'any' ? [] : ['conditionIds:{1000}']),
