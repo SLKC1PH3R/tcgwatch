@@ -101,7 +101,21 @@ describe('annonces eBay d’une carte en français', () => {
       'Pikachu 58/102 30 ans FR',
       'Pikachu 58/102 Classique 30 ans FR',
     ]);
-    // Sans numéro dominant : rien n'est écarté.
-    expect(keepDominantNumber(listings.slice(2))).toHaveLength(2);
+    // Numérotation de l'extension principale (« 027/128 », « 23/30 ») écartée.
+    expect(keepDominantNumber(listings.slice(2)).map((l) => l.title)).toEqual([
+      'Pikachu 30 ans FR',
+    ]);
+    // Relevé réel : la réédition « 58/102 » face aux Pikachu de la sous-série « x/30 ».
+    expect(
+      keepDominantNumber([
+        { title: 'Carte Pikachu Set de base 58/102 ME5.5 30 ans Classic collection FR' },
+        { title: 'Pikachu 30 Ans 23/30-045/128–Holo Spéciale-Carte Pokémon VF' },
+        { title: 'Pikachu 30 Ans 20/30-042/128–Holo Spéciale-Carte Pokémon VF' },
+        { title: 'Pikachu 58/102 réédition 30 ans FR' },
+      ]).map((l) => l.title),
+    ).toEqual([
+      'Carte Pikachu Set de base 58/102 ME5.5 30 ans Classic collection FR',
+      'Pikachu 58/102 réédition 30 ans FR',
+    ]);
   });
 });

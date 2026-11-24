@@ -97,7 +97,7 @@ const OTHER_LANGUAGE =
   /\b(eng|english|anglais|anglaise|jp|jap|japonais|japonaise|japanese|kr|coreen|korean|chinois|chinese|allemand|german|italien|italian|espagnol|spanish)\b/;
 /** Cartes gradées, lots, faux et produits dérivés : prix sans rapport avec la carte seule. */
 const OFF_TOPIC =
-  /\b(psa|pca|cgc|bgs|ccc|ags|beckett|collect aura|gradee?s?|graded|slab|gem mint|lot|lots|bundle|classeur|proxy|custom|fake|replica|orica|fan ?art|metal|gold|plaque|sticker|jumbo|oversize|code)\b/;
+  /\b(psa|pca|cgc|bgs|ccc|ags|beckett|collect aura|collectaura|gradee?s?|graded|slab|gem mint|lot|lots|bundle|classeur|proxy|custom|fake|replica|orica|fan ?art|metal|gold|plaque|sticker|jumbo|oversize|code)\b/;
 /** Mentions qui changent de carte : « Pikachu ex » n'est pas « Pikachu ». */
 const SUFFIXES = ['ex', 'gx', 'v', 'vmax', 'vstar', 'break', 'lv', 'prime', 'legende'];
 
@@ -140,21 +140,36 @@ export function relevantCardListing(title: string, card: ListedCard): boolean {
 }
 
 /**
- * Rééditions cherchées sans numéro : parmi les annonces gardées, le numéro le plus cité
- * (« 106/105 » pour Celebi brillant) désigne la carte ; les annonces portant un autre numéro
- * (autres Pikachu des 30 ans…) sont écartées. Sans numéro dominant, rien n'est écarté.
+ * Numérotations de l'extension principale des 30 ans (« 049/128 », sous-série « 27/30 ») et
+ * de Célébrations (« 25/25 ») : une annonce qui les porte vend une carte de ces extensions,
+ * pas la réédition de la Collection Classique.
+ */
+const MAIN_SET_TOTALS = new Set([128, 30, 25]);
+
+const fractions = (title: string) =>
+  [...title.matchAll(/(\d{1,3})\s*\/\s*(\d{2,3})/g)].map((m) => ({
+    key: `${Number(m[1])}/${Number(m[2])}`,
+    total: Number(m[2]),
+  }));
+
+/**
+ * Rééditions cherchées sans numéro : les annonces numérotées comme l'extension principale
+ * sont écartées, puis parmi les autres le numéro le plus cité (« 106/105 » pour Celebi
+ * brillant, « 58/102 » pour Pikachu) désigne la carte. Sans numéro dominant, rien de plus
+ * n'est écarté.
  */
 export function keepDominantNumber<T extends { title: string }>(listings: T[]): T[] {
-  const fraction = (title: string) => {
-    const m = /(\d{1,3})\s*\/\s*(\d{2,3})/.exec(title);
-    return m ? `${Number(m[1])}/${Number(m[2])}` : null;
-  };
+  const own = listings.filter(
+    (l) =>
+      !/\b30c\b/i.test(l.title) && !fractions(l.title).some((f) => MAIN_SET_TOTALS.has(f.total)),
+  );
   const counts = new Map<string, number>();
-  for (const l of listings) {
-    const f = fraction(l.title);
-    if (f) counts.set(f, (counts.get(f) ?? 0) + 1);
+  for (const l of own) {
+    for (const f of new Set(fractions(l.title).map((x) => x.key))) {
+      counts.set(f, (counts.get(f) ?? 0) + 1);
+    }
   }
   const [best, n] = [...counts].sort((a, b) => b[1] - a[1])[0] ?? [null, 0];
-  if (!best || n < 2) return listings;
-  return listings.filter((l) => fraction(l.title) === best);
+  if (!best || n < 2) return own;
+  return own.filter((l) => fractions(l.title).some((f) => f.key === best));
 }
