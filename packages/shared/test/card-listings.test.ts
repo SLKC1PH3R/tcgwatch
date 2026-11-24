@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cardListingQuery, relevantCardListing, releaseMarkers } from '../src';
+import { cardListingQuery, keepDominantNumber, relevantCardListing, releaseMarkers } from '../src';
 
 const pikachu = {
   name: 'Pikachu-ex',
@@ -82,5 +82,26 @@ describe('annonces eBay d’une carte en français', () => {
       false,
     );
     expect(relevantCardListing('Dracaufeu 4/102 Wizards FR 1999', dracaufeu30)).toBe(false);
+  });
+
+  it('Pikachu des 30 ans (réédition) : ni Pikachu ex, ni lots, ni gradées, ni promos', () => {
+    const pikachu30 = { ...dracaufeu30, name: 'Pikachu', localId: '014' };
+    const ok = (t: string) => relevantCardListing(t, pikachu30);
+    expect(ok('Carte Pokémon PIKACHU EX 149/128 FR Full Art 30 Ans Pokemon')).toBe(false);
+    expect(ok('Pikachu ex MEP 109 + Noctali ex MEP 110 – Promos 30 ans FR scellé')).toBe(false);
+    expect(ok('Pikachu Celebi 30e anniversaire FR Holo CCC 10')).toBe(false);
+    expect(ok('Pikachu 58/102 30 ans FR')).toBe(true);
+    const listings = [
+      { title: 'Pikachu 58/102 30 ans FR' },
+      { title: 'Pikachu 58/102 Classique 30 ans FR' },
+      { title: 'Pikachu 027/128 30 ans FR' },
+      { title: 'Pikachu 30 ans FR' },
+    ];
+    expect(keepDominantNumber(listings).map((l) => l.title)).toEqual([
+      'Pikachu 58/102 30 ans FR',
+      'Pikachu 58/102 Classique 30 ans FR',
+    ]);
+    // Sans numéro dominant : rien n'est écarté.
+    expect(keepDominantNumber(listings.slice(2))).toHaveLength(2);
   });
 });

@@ -36,7 +36,7 @@ const numberKey = (localId: string) =>
  * Rééditions (Collection Classique) : la carte porte le numéro de l'originale (« 4/102 »), pas
  * son numéro dans l'extension.
  */
-const reprintNumbering = (card: ListedCard) =>
+export const reprintNumbering = (card: ListedCard) =>
   rarityKey(card.rarity) === 'collection-classique' ||
   /classique|classic/.test(fold(card.release?.nameFr ?? '')) ||
   /^(30th-c|cel25c)$/.test(card.release?.tcgdexId ?? '');
@@ -97,12 +97,24 @@ const OTHER_LANGUAGE =
   /\b(eng|english|anglais|anglaise|jp|jap|japonais|japonaise|japanese|kr|coreen|korean|chinois|chinese|allemand|german|italien|italian|espagnol|spanish)\b/;
 /** Cartes gradées, lots, faux et produits dérivés : prix sans rapport avec la carte seule. */
 const OFF_TOPIC =
-  /\b(psa|pca|cgc|bgs|beckett|collect aura|gradee?s?|graded|slab|lot|lots|bundle|classeur|proxy|custom|fake|replica|orica|fan ?art|metal|gold|plaque|sticker|jumbo|oversize|code)\b/;
+  /\b(psa|pca|cgc|bgs|ccc|ags|beckett|collect aura|gradee?s?|graded|slab|gem mint|lot|lots|bundle|classeur|proxy|custom|fake|replica|orica|fan ?art|metal|gold|plaque|sticker|jumbo|oversize|code)\b/;
+/** Mentions qui changent de carte : « Pikachu ex » n'est pas « Pikachu ». */
+const SUFFIXES = ['ex', 'gx', 'v', 'vmax', 'vstar', 'break', 'lv', 'prime', 'legende'];
 
 /** L'annonce porte-t-elle bien sur cette carte, de cette extension, en français, seule ? */
 export function relevantCardListing(title: string, card: ListedCard): boolean {
+  // Plusieurs cartes dans la même annonce (« Pikachu ex + Noctali ex »).
+  if (/\s\+\s|\+/.test(title)) return false;
   const t = words(title).join(' ');
   if (!FRENCH.test(t) || OFF_TOPIC.test(t)) return false;
+  const cardWords = new Set(words(card.name));
+  // « Pikachu ex », « Pikachu V »… pour une carte « Pikachu » : autre carte.
+  if (SUFFIXES.some((x) => !cardWords.has(x) && new RegExp(`(^|\\s)${x}(\\s|$)`).test(t))) {
+    return false;
+  }
+  // Promo citée pour une carte d'extension : autre impression.
+  const promoSet = card.release ? releaseMarkers(card.release).includes('promo') : false;
+  if (!promoSet && /\b(promo|mep|svp|black star)\b/.test(t)) return false;
   // « FR » et une autre langue (« FR/EN au choix ») : langue incertaine.
   if (OTHER_LANGUAGE.test(t)) return false;
   // Version reverse : vendue à part, souvent à un autre prix.
@@ -125,4 +137,24 @@ export function relevantCardListing(title: string, card: ListedCard): boolean {
     if (markers.length && !markers.some((m) => t.includes(m))) return false;
   }
   return true;
+}
+
+/**
+ * Rééditions cherchées sans numéro : parmi les annonces gardées, le numéro le plus cité
+ * (« 106/105 » pour Celebi brillant) désigne la carte ; les annonces portant un autre numéro
+ * (autres Pikachu des 30 ans…) sont écartées. Sans numéro dominant, rien n'est écarté.
+ */
+export function keepDominantNumber<T extends { title: string }>(listings: T[]): T[] {
+  const fraction = (title: string) => {
+    const m = /(\d{1,3})\s*\/\s*(\d{2,3})/.exec(title);
+    return m ? `${Number(m[1])}/${Number(m[2])}` : null;
+  };
+  const counts = new Map<string, number>();
+  for (const l of listings) {
+    const f = fraction(l.title);
+    if (f) counts.set(f, (counts.get(f) ?? 0) + 1);
+  }
+  const [best, n] = [...counts].sort((a, b) => b[1] - a[1])[0] ?? [null, 0];
+  if (!best || n < 2) return listings;
+  return listings.filter((l) => fraction(l.title) === best);
 }

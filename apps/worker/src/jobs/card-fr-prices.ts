@@ -1,6 +1,13 @@
 import { prisma } from '@tcgwatch/db';
 import { EbayClient } from '@tcgwatch/market';
-import { cardListingQuery, relevantCardListing, todayUtc, toNumber } from '@tcgwatch/shared';
+import {
+  cardListingQuery,
+  keepDominantNumber,
+  relevantCardListing,
+  reprintNumbering,
+  todayUtc,
+  toNumber,
+} from '@tcgwatch/shared';
 import type { WorkerContext } from '../context';
 import { secondhandStats } from './secondhand';
 
@@ -57,10 +64,12 @@ export async function runCardFrPrices(
         limit: 200,
       });
       const trend = toNumber(c.priceTrend);
-      const kept = listings
+      const relevant = listings
         .filter((l) => !l.auction && relevantCardListing(l.title, c))
         // Très en dessous de la cote toutes langues : faux, proxy ou carte abîmée.
         .filter((l) => trend === null || l.price >= trend * 0.3);
+      // Réédition cherchée sans numéro : le numéro le plus cité désigne la carte.
+      const kept = reprintNumbering(c) ? keepDominantNumber(relevant) : relevant;
       const prices = kept.map((l) => l.price);
       // Peu d'annonces (carte rare en français) : prix gardé quand même, avec leur nombre.
       const sorted = [...prices].sort((a, b) => a - b);
