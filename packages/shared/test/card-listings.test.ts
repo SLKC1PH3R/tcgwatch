@@ -30,6 +30,12 @@ describe('annonces eBay d’une carte en français', () => {
     expect(cardListingQuery(dracaufeu30)).toBe('Dracaufeu 30 (fr,vf,francais,français,francaise)');
   });
 
+  it('réédition reconnue par son extension, rareté inconnue', () => {
+    expect(cardListingQuery({ ...dracaufeu30, rarity: 'Holo Rare' })).toBe(
+      'Dracaufeu 30 (fr,vf,francais,français,francaise)',
+    );
+  });
+
   it('mentions d’extension', () => {
     expect(releaseMarkers(scarhino.release)).toEqual(['regne delta']);
     expect(releaseMarkers(dracaufeu30.release)).toContain('30 ans');

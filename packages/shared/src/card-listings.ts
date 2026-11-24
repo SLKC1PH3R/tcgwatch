@@ -36,7 +36,10 @@ const numberKey = (localId: string) =>
  * Rééditions (Collection Classique) : la carte porte le numéro de l'originale (« 4/102 »), pas
  * son numéro dans l'extension.
  */
-const reprintNumbering = (card: ListedCard) => rarityKey(card.rarity) === 'collection-classique';
+const reprintNumbering = (card: ListedCard) =>
+  rarityKey(card.rarity) === 'collection-classique' ||
+  /classique|classic/.test(fold(card.release?.nameFr ?? '')) ||
+  /^(30th-c|cel25c)$/.test(card.release?.tcgdexId ?? '');
 
 const STOP = new Set(['de', 'des', 'du', 'la', 'le', 'les', 'et', 'l', 'd', 'en', 'pokemon']);
 
