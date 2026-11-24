@@ -10,6 +10,8 @@ export interface CardPoint {
   low: number | null;
   avg7: number | null;
   avg30: number | null;
+  /** Prix français du jour (annonces eBay). */
+  fr: number | null;
 }
 
 /**
@@ -52,6 +54,7 @@ export async function getCardPage(tcgdexId: string) {
         low: toNumber(p.low),
         avg7: toNumber(p.avg7),
         avg30: toNumber(p.avg30),
+        fr: toNumber(p.frPrice),
       }))
     : (tracked?.prices ?? []).map((p) => ({
         day: p.date.toISOString().slice(0, 10),
@@ -60,6 +63,7 @@ export async function getCardPage(tcgdexId: string) {
         low: toNumber(p.low),
         avg7: toNumber(p.avg7),
         avg30: toNumber(p.avg30),
+        fr: null,
       }));
   const last = history.at(-1);
   const current: CardmarketQuote | null = live

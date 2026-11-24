@@ -16,6 +16,7 @@ const SERIES = [
   { key: 'low', label: 'Prix bas', color: 'var(--chart-2)', width: 2 },
   { key: 'avg7', label: 'Moyenne 7 j', color: 'var(--chart-3)', width: 1.5 },
   { key: 'avg30', label: 'Moyenne 30 j', color: 'var(--chart-4)', width: 1.5 },
+  { key: 'fr', label: 'Prix FR (eBay)', color: 'var(--info)', width: 2.5, dash: '6 4' },
 ] as const;
 
 const eur = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' });
@@ -32,9 +33,13 @@ type Point = {
   low: number | null;
   avg7: number | null;
   avg30: number | null;
+  fr?: number | null;
 };
 
-/** Cotes Cardmarket d'une carte : une courbe par indicateur, gardés séparément chaque jour. */
+/**
+ * Cotes Cardmarket d'une carte (toutes langues) : une courbe par indicateur, gardés séparément
+ * chaque jour, et le prix français relevé sur eBay (pointillés) pour suivre l'écart.
+ */
 export function CardChart({ data }: { data: Point[] }) {
   if (data.length < 2) {
     return (
@@ -43,7 +48,9 @@ export function CardChart({ data }: { data: Point[] }) {
       </p>
     );
   }
-  const present = SERIES.filter((s) => data.some((d) => typeof d[s.key] === 'number'));
+  const present = SERIES.filter((s) =>
+    data.some((d) => typeof (d as Record<string, unknown>)[s.key] === 'number'),
+  );
   return (
     <div className="h-72 w-full fit:h-full fit:min-h-40">
       <ResponsiveContainer width="100%" height="100%">
@@ -86,6 +93,7 @@ export function CardChart({ data }: { data: Point[] }) {
               name={s.label}
               stroke={s.color}
               strokeWidth={s.width}
+              strokeDasharray={'dash' in s ? s.dash : undefined}
               dot={false}
               connectNulls
             />

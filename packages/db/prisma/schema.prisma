@@ -585,6 +585,8 @@ model CardPriceDaily {
   low    Decimal? @db.Decimal(10, 2)
   avg7   Decimal? @db.Decimal(10, 2)
   avg30  Decimal? @db.Decimal(10, 2)
+  /// Prix français du jour (médiane des annonces eBay), cartes relevées seulement.
+  frPrice Decimal? @db.Decimal(10, 2)
 
   @@id([cardId, date])
 }
