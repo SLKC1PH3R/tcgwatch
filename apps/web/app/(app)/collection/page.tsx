@@ -106,6 +106,9 @@ export default async function CollectionPage({ searchParams }: Props) {
             <Button asChild variant="outline">
               <a href="/api/collection/export">Exporter CSV</a>
             </Button>
+            <Button asChild variant="outline">
+              <Link href="/collection/bilan">Bilan des reventes</Link>
+            </Button>
             <AddPurchaseDialog products={products} today={today} />
           </>
         }

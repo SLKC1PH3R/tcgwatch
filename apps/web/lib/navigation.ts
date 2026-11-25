@@ -9,6 +9,7 @@ import {
   FileUp,
   FlaskConical,
   GraduationCap,
+  HandCoins,
   Layers,
   LayoutDashboard,
   LayoutGrid,
@@ -85,7 +86,8 @@ export const NAV: NavEntry[] = [
       p.startsWith('/retours-en-stock') ||
       p.startsWith('/alertes') ||
       p === '/collection' ||
-      p.startsWith('/collection/ouvertures'),
+      p.startsWith('/collection/ouvertures') ||
+      p.startsWith('/collection/bilan'),
     groups: [
       {
         label: 'Suivre et acheter',
@@ -136,6 +138,13 @@ export const NAV: NavEntry[] = [
             icon: Vault,
             hint: 'Valeur, plus-value, achats et reventes',
             active: exact('/collection'),
+          },
+          {
+            href: '/collection/bilan',
+            label: 'Bilan des reventes',
+            icon: HandCoins,
+            hint: 'Plus-values réalisées de l’année, en CSV ou PDF',
+            active: (p) => p.startsWith('/collection/bilan'),
           },
           {
             href: '/collection/ouvertures',

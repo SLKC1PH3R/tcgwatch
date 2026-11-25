@@ -4,7 +4,8 @@ import { getCollection } from '@/lib/data/collection';
 /** Échappement CSV (séparateur « ; » pour Excel FR) + neutralisation des formules (=, +, -, @). */
 function cell(value: unknown): string {
   let s = value === null || value === undefined ? '' : String(value);
-  if (/^[=+\-@\t\r]/.test(s)) s = `'${s}`;
+  // Les montants négatifs (-12,50) restent des nombres pour Excel.
+  if (/^[=+\-@\t\r]/.test(s) && !/^-\d+(,\d+)?$/.test(s)) s = `'${s}`;
   return /[";\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 
