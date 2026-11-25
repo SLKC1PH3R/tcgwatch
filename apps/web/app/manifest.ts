@@ -8,9 +8,11 @@ export default function manifest(): MetadataRoute.Manifest {
     description:
       'Stocks et prix des produits Pokémon JCC chez les boutiques françaises, alertes de restock, collection et cote des cartes.',
     lang: 'fr',
+    id: '/',
     start_url: '/',
     scope: '/',
     display: 'standalone',
+    categories: ['shopping', 'lifestyle', 'entertainment'],
     background_color: '#0c0d16',
     theme_color: '#0c0d16',
     icons: [
@@ -19,10 +21,11 @@ export default function manifest(): MetadataRoute.Manifest {
       { src: '/icon-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
     ],
     shortcuts: [
+      { name: 'Retours en stock', url: '/retours-en-stock' },
       { name: 'Alertes', url: '/alertes' },
-      { name: 'Ma collection', url: '/collection' },
       { name: 'Scanner une carte', url: '/collection/cartes/scanner' },
-      { name: 'Ajout rapide de cartes', url: '/collection/cartes/ajout-rapide' },
+      { name: 'Mes cartes', url: '/collection/cartes' },
+      { name: 'Mon profil', url: '/profil' },
     ],
   };
 }

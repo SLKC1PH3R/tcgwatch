@@ -7,6 +7,9 @@ export function SiteFooter() {
       <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-6 text-sm text-muted-foreground md:flex-row md:items-center md:justify-between md:px-8">
         <p>TCGWatch n’est pas affilié à The Pokémon Company, Nintendo ou aux boutiques citées.</p>
         <nav className="flex flex-wrap gap-x-4 gap-y-1">
+          <Link href="/installer" className="hover:text-foreground">
+            Installer l’appli
+          </Link>
           <Link href="/methode" className="hover:text-foreground">
             Méthode
           </Link>

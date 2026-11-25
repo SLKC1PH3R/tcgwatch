@@ -151,19 +151,19 @@ function MenuPanel({
         )}
       >
         {groups.length > 2 ? (
-          // Plus de deux groupes : les listes détaillées empilées à gauche, la grille compacte
-          // à droite (sinon le groupe suivant attend la fin de la grille, d'où un grand vide).
+          // Plus de deux groupes : les listes détaillées empilées à gauche, la grille compacte et
+          // les groupes « side » à droite (sinon le groupe suivant attend la fin de la grille).
           <>
             <div className="flex flex-col gap-1">
               {groups
-                .filter((g) => !g.compact)
+                .filter((g) => !g.compact && !g.side)
                 .map((g, i) => (
                   <MenuGroup key={i} group={g} path={path} params={params} />
                 ))}
             </div>
             <div className="flex flex-col gap-1">
               {groups
-                .filter((g) => g.compact)
+                .filter((g) => g.compact || g.side)
                 .map((g, i) => (
                   <MenuGroup key={i} group={g} path={path} params={params} />
                 ))}

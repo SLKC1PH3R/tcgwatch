@@ -53,6 +53,8 @@ export interface NavGroup {
   label?: string;
   /** Liens affichés en pastilles compactes (ex. types de produit). */
   compact?: boolean;
+  /** Dans un menu à plus de deux groupes : groupe placé dans la colonne de droite. */
+  side?: boolean;
   items: NavLink[];
 }
 
@@ -176,17 +178,6 @@ export const NAV: NavEntry[] = [
       (p.startsWith('/collection') && !CARD_ADD_PAGES.some((h) => p.startsWith(h))),
     groups: [
       {
-        items: [
-          {
-            href: '/profil',
-            label: 'Mon profil',
-            icon: UserRound,
-            hint: 'Ta page de collectionneur, à personnaliser et partager',
-            active: (p) => p.startsWith('/profil'),
-          },
-        ],
-      },
-      {
         label: 'Ma collection de cartes',
         items: [
           {
@@ -227,7 +218,21 @@ export const NAV: NavEntry[] = [
         ],
       },
       {
+        label: 'Mon profil',
+        side: true,
+        items: [
+          {
+            href: '/profil',
+            label: 'Mon profil',
+            icon: UserRound,
+            hint: 'Ta page de collectionneur, à personnaliser et partager',
+            active: (p) => p.startsWith('/profil'),
+          },
+        ],
+      },
+      {
         label: 'Ma collection scellée',
+        side: true,
         items: [
           {
             href: '/collection',

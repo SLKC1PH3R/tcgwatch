@@ -6,6 +6,8 @@ import { prisma } from '@tcgwatch/db';
 import { Button } from '@/components/ui/button';
 import { requireUser } from '@/lib/auth';
 import { BrandLogo } from '@/components/brand-logo';
+import { BottomTabs } from '@/components/bottom-tabs';
+import { InstallAppButton } from '@/components/install-app';
 import { MainNav } from '@/components/main-nav';
 import { MobileNav } from '@/components/mobile-nav';
 import { ThemeToggle } from '@/components/theme-toggle';
@@ -44,6 +46,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             <Suspense>
               <SearchBox className="w-32 sm:w-56 xl:w-48 2xl:w-56" />
             </Suspense>
+            <InstallAppButton variant="ghost" className="hidden xl:inline-flex" label="Installer" />
             <ThemeToggle initial={theme} />
             {reports > 0 && (
               <Link
@@ -87,28 +90,33 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             <Suspense>
               <MobileNav
                 footer={
-                  <form
-                    action={logoutAction}
-                    className="flex items-center justify-between gap-3 border-t border-border/60 px-4 py-3"
-                  >
-                    <Link
-                      href="/compte"
-                      className="min-w-0 truncate text-sm text-muted-foreground hover:text-foreground"
+                  <>
+                    <div className="border-t border-border/60 px-4 pt-3 empty:hidden">
+                      <InstallAppButton variant="secondary" className="w-full" />
+                    </div>
+                    <form
+                      action={logoutAction}
+                      className="flex items-center justify-between gap-3 border-t border-border/60 px-4 py-3"
                     >
-                      {user.name ?? user.email} · Mon compte
-                    </Link>
-                    <Button type="submit" variant="outline" size="sm">
-                      <LogOut />
-                      Se déconnecter
-                    </Button>
-                  </form>
+                      <Link
+                        href="/compte"
+                        className="min-w-0 truncate text-sm text-muted-foreground hover:text-foreground"
+                      >
+                        {user.name ?? user.email} · Mon compte
+                      </Link>
+                      <Button type="submit" variant="outline" size="sm">
+                        <LogOut />
+                        Se déconnecter
+                      </Button>
+                    </form>
+                  </>
                 }
               />
             </Suspense>
           </div>
         </div>
       </header>
-      <main className="mx-auto w-full max-w-7xl px-4 py-6 md:px-8 md:py-10 fit:has-[[data-fit-screen]]:flex fit:has-[[data-fit-screen]]:min-h-0 fit:has-[[data-fit-screen]]:max-w-[1680px] fit:has-[[data-fit-screen]]:flex-1 fit:has-[[data-fit-screen]]:flex-col fit:has-[[data-fit-screen]]:py-5">
+      <main className="mx-auto w-full max-w-7xl px-4 pt-6 pb-24 md:px-8 md:pt-10 lg:pb-10 fit:has-[[data-fit-screen]]:flex fit:has-[[data-fit-screen]]:min-h-0 fit:has-[[data-fit-screen]]:max-w-[1680px] fit:has-[[data-fit-screen]]:flex-1 fit:has-[[data-fit-screen]]:flex-col fit:has-[[data-fit-screen]]:pt-5 fit:has-[[data-fit-screen]]:pb-5">
         {!user.emailVerified && (
           <div className="mb-3 shrink-0">
             <VerifyBanner email={user.email} />
@@ -119,6 +127,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         </Suspense>
         {children}
       </main>
+      <BottomTabs />
     </div>
   );
 }

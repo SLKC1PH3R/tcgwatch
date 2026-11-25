@@ -18,6 +18,7 @@ const PUBLIC_PATHS = [
   '/cards',
   '/vitrine',
   '/collectionneur',
+  '/installer',
   // Appli installable : service worker, manifeste, icônes, page hors-ligne.
   '/sw.js',
   '/manifest.webmanifest',
