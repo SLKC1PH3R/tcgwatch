@@ -136,18 +136,34 @@ export function MobileNav({ footer }: { footer?: React.ReactNode }) {
                                         className={cn(
                                           g.compact
                                             ? 'flex min-h-10 items-center rounded-full border px-3.5 text-sm font-medium hover:bg-accent'
-                                            : 'flex min-h-11 flex-col justify-center rounded-lg py-1.5 pl-8 text-sm font-medium hover:bg-accent',
+                                            : 'flex min-h-11 items-center gap-3 rounded-lg py-1.5 pl-1 text-sm font-medium hover:bg-accent',
                                           on &&
                                             (g.compact
                                               ? 'border-primary bg-primary text-primary-foreground hover:bg-primary/90'
                                               : 'text-primary'),
                                         )}
                                       >
-                                        {link.label}
-                                        {!g.compact && link.hint && (
-                                          <span className="text-xs font-normal text-muted-foreground">
-                                            {link.hint}
-                                          </span>
+                                        {g.compact ? (
+                                          link.label
+                                        ) : (
+                                          <>
+                                            {link.icon ? (
+                                              <link.icon
+                                                aria-hidden
+                                                className="size-4 shrink-0 text-muted-foreground"
+                                              />
+                                            ) : (
+                                              <span className="size-4 shrink-0" />
+                                            )}
+                                            <span className="flex flex-col">
+                                              {link.label}
+                                              {link.hint && (
+                                                <span className="text-xs font-normal text-muted-foreground">
+                                                  {link.hint}
+                                                </span>
+                                              )}
+                                            </span>
+                                          </>
                                         )}
                                       </Link>
                                     </li>

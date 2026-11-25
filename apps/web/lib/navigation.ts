@@ -1,12 +1,30 @@
 import {
+  Activity,
+  BadgePercent,
+  Bell,
   BookOpen,
   Calculator,
   CalendarDays,
   ChartLine,
+  FlaskConical,
+  GraduationCap,
+  Layers,
   LayoutDashboard,
+  LayoutGrid,
+  Library,
+  ListChecks,
   Package,
+  PackageCheck,
+  PackageOpen,
+  PackageSearch,
+  ScanLine,
+  Sparkles,
+  Star,
   Store,
   Vault,
+  Wallet,
+  Wrench,
+  Zap,
   type LucideIcon,
 } from 'lucide-react';
 import { PRICE_CATEGORIES } from '@tcgwatch/shared';
@@ -19,6 +37,8 @@ import { PRICE_CATEGORIES } from '@tcgwatch/shared';
 export interface NavLink {
   href: string;
   label: string;
+  /** Pictogramme du lien dans les sous-menus. */
+  icon?: LucideIcon;
   /** Une ligne d'explication sous le libellé, dans les sous-menus. */
   hint?: string;
   /** Actif quand ce test passe (sinon : chemin identique). */
@@ -56,43 +76,156 @@ export const NAV: NavEntry[] = [
     match: (p) => p.startsWith('/calendrier'),
   },
   {
-    label: 'Produits',
+    label: 'Scellé',
     icon: Package,
     match: (p) =>
-      p.startsWith('/produits') || p.startsWith('/retours-en-stock') || p.startsWith('/alertes'),
+      (p.startsWith('/produits') && !p.startsWith('/produits/prix')) ||
+      p.startsWith('/retours-en-stock') ||
+      p.startsWith('/alertes') ||
+      p === '/collection' ||
+      p.startsWith('/collection/ouvertures'),
     groups: [
       {
-        label: 'Suivi',
+        label: 'Suivre et acheter',
         items: [
           {
             href: '/produits',
             label: 'Produits suivis',
+            icon: PackageSearch,
             hint: 'Stock et meilleur prix chez chaque revendeur',
             active: (p) => p === '/produits' || isProductSheet(p),
           },
           {
             href: '/produits/mes-produits',
             label: 'Mes produits',
+            icon: Star,
             hint: 'Ton bon prix, les annonces et les alertes',
             active: exact('/produits/mes-produits'),
           },
           {
             href: '/retours-en-stock',
             label: 'Retours en stock',
+            icon: PackageCheck,
             hint: 'Les dernières remises en vente',
             active: (p) => p.startsWith('/retours-en-stock'),
           },
           {
+            href: '/produits/bons-plans',
+            label: 'Bons plans',
+            icon: BadgePercent,
+            hint: 'Offres sous la cote ou sous le prix public',
+            active: exact('/produits/bons-plans'),
+          },
+          {
             href: '/alertes',
             label: 'Alertes',
+            icon: Bell,
             hint: 'Tout ce qui t’a été envoyé, et les réglages',
             active: (p) => p.startsWith('/alertes'),
           },
+        ],
+      },
+      {
+        label: 'Ma collection scellée',
+        items: [
           {
-            href: '/produits/bons-plans',
-            label: 'Bons plans',
-            hint: 'Offres sous la cote ou sous le prix public',
-            active: exact('/produits/bons-plans'),
+            href: '/collection',
+            label: 'Mon scellé',
+            icon: Vault,
+            hint: 'Valeur, plus-value, achats et reventes',
+            active: exact('/collection'),
+          },
+          {
+            href: '/collection/ouvertures',
+            label: 'Ouvertures',
+            icon: PackageOpen,
+            hint: 'Ce qu’un display ou un ETB ouvert a rapporté',
+            active: (p) => p.startsWith('/collection/ouvertures'),
+          },
+        ],
+      },
+    ],
+  },
+  {
+    label: 'Cartes',
+    icon: Layers,
+    match: (p) => p.startsWith('/collection/cartes'),
+    groups: [
+      {
+        label: 'Ma collection de cartes',
+        items: [
+          {
+            href: '/collection/cartes',
+            label: 'Mes cartes',
+            icon: LayoutGrid,
+            hint: 'Valeur et avancement par extension',
+            active: exact('/collection/cartes'),
+          },
+          {
+            href: '/collection/cartes/classeurs',
+            label: 'Classeurs',
+            icon: Library,
+            hint: 'Full Set, Master Set ou personnels',
+            active: (p) => p.startsWith('/collection/cartes/classeurs'),
+          },
+          {
+            href: '/collection/cartes/manquantes',
+            label: 'Ce qu’il me manque',
+            icon: ListChecks,
+            hint: 'Cartes manquantes et coût pour compléter un set',
+            active: exact('/collection/cartes/manquantes'),
+          },
+          {
+            href: '/collection/cartes/vitrines',
+            label: 'Vitrines',
+            icon: Sparkles,
+            hint: 'Tes plus belles cartes, à partager par un lien',
+            active: (p) => p.startsWith('/collection/cartes/vitrines'),
+          },
+        ],
+      },
+      {
+        label: 'Ajouter des cartes',
+        items: [
+          {
+            href: '/collection/cartes/ajout-rapide',
+            label: 'Ajout rapide',
+            icon: Zap,
+            hint: 'Toutes les cartes d’une extension, en quelques touchers',
+            active: exact('/collection/cartes/ajout-rapide'),
+          },
+          {
+            href: '/collection/cartes/scanner',
+            label: 'Scanner',
+            icon: ScanLine,
+            hint: 'Par la caméra ou des photos, une carte ou en rafale',
+            active: exact('/collection/cartes/scanner'),
+          },
+        ],
+      },
+    ],
+  },
+  {
+    label: 'Marché',
+    icon: ChartLine,
+    match: (p) => p.startsWith('/marche') || p.startsWith('/produits/prix'),
+    groups: [
+      {
+        label: 'Tendances',
+        items: [
+          {
+            href: '/marche',
+            label: 'Prix du marché',
+            icon: ChartLine,
+            hint: 'Cote des produits et des cartes phares',
+            active: (p) => p.startsWith('/marche') && !p.startsWith('/marche/indice'),
+          },
+          {
+            href: '/marche/indice',
+            label: 'Indice du marché',
+            icon: Activity,
+            hint: 'Tendance globale, plus fortes hausses et baisses',
+            active: (p) => p.startsWith('/marche/indice'),
           },
         ],
       },
@@ -120,13 +253,15 @@ export const NAV: NavEntry[] = [
   {
     label: 'Encyclopédie',
     icon: BookOpen,
-    match: (p) => ['/series', '/extensions', '/cartes'].some((h) => p.startsWith(h)),
+    match: (p) =>
+      ['/series', '/extensions', '/cartes', '/guides', '/methode'].some((h) => p.startsWith(h)),
     groups: [
       {
         items: [
           {
             href: '/series',
             label: 'Par produit',
+            icon: Package,
             hint: 'Séries, extensions et leurs produits scellés',
             active: (p, q) =>
               p === '/series' || (p.startsWith('/extensions') && q.get('onglet') !== 'cartes'),
@@ -134,6 +269,7 @@ export const NAV: NavEntry[] = [
           {
             href: '/series/cartes',
             label: 'Par cartes',
+            icon: Layers,
             hint: 'Valeur des cartes de chaque extension',
             active: (p, q) =>
               p === '/series/cartes' ||
@@ -143,12 +279,14 @@ export const NAV: NavEntry[] = [
           {
             href: '/guides',
             label: 'Guides',
+            icon: GraduationCap,
             hint: 'Repérer les faux, scellé ou cartes, FR ou JP',
             active: (p) => p.startsWith('/guides'),
           },
           {
             href: '/methode',
             label: 'Méthode',
+            icon: FlaskConical,
             hint: 'D’où viennent les prix et comment ils sont calculés',
             active: (p) => p.startsWith('/methode'),
           },
@@ -157,125 +295,36 @@ export const NAV: NavEntry[] = [
     ],
   },
   {
-    label: 'Marché',
-    icon: ChartLine,
-    match: (p) => p.startsWith('/marche'),
+    label: 'Outils',
+    icon: Wrench,
+    match: (p) => p.startsWith('/revendeurs') || p.startsWith('/calculateurs'),
     groups: [
       {
+        label: 'Boutiques',
         items: [
           {
-            href: '/marche',
-            label: 'Prix du marché',
-            hint: 'Cote des produits et des cartes phares',
-            active: (p) => p.startsWith('/marche') && !p.startsWith('/marche/indice'),
-          },
-          {
-            href: '/marche/indice',
-            label: 'Indice du marché',
-            hint: 'Tendance globale, plus fortes hausses et baisses',
-            active: (p) => p.startsWith('/marche/indice'),
-          },
-        ],
-      },
-    ],
-  },
-  {
-    label: 'Collection',
-    icon: Vault,
-    match: (p) => p.startsWith('/collection'),
-    groups: [
-      {
-        label: 'Produits scellés',
-        items: [
-          {
-            href: '/collection',
-            label: 'Tout mon scellé',
-            hint: 'Valeur, plus-value et achats',
-            active: (p, q) => p === '/collection' && !q.get('categorie'),
+            href: '/revendeurs',
+            label: 'Revendeurs',
+            icon: Store,
+            hint: 'Boutiques suivies, frais de port et fiabilité',
+            active: (p) => p.startsWith('/revendeurs'),
           },
         ],
       },
       {
-        label: 'Scellé par type',
-        compact: true,
-        items: PRICE_CATEGORIES.map((c) => ({
-          href: `/collection?categorie=${c.key}`,
-          label: c.label,
-          active: (p: string, q: URLSearchParams) =>
-            p === '/collection' && q.get('categorie') === c.key,
-        })),
-      },
-      {
-        label: 'Cartes',
-        items: [
-          {
-            href: '/collection/cartes',
-            label: 'Mes cartes',
-            hint: 'Valeur et avancement par extension',
-            active: exact('/collection/cartes'),
-          },
-          {
-            href: '/collection/cartes/ajout-rapide',
-            label: 'Ajout rapide',
-            hint: 'Toutes les cartes d’une extension, en quelques touchers',
-            active: exact('/collection/cartes/ajout-rapide'),
-          },
-          {
-            href: '/collection/cartes/classeurs',
-            label: 'Classeurs',
-            hint: 'Par extension ou personnels, 9 cartes par page',
-            active: (p) => p.startsWith('/collection/cartes/classeurs'),
-          },
-          {
-            href: '/collection/cartes/vitrines',
-            label: 'Vitrines',
-            hint: 'Tes plus belles cartes, à partager par un lien',
-            active: (p) => p.startsWith('/collection/cartes/vitrines'),
-          },
-          {
-            href: '/collection/cartes/manquantes',
-            label: 'Ce qu’il me manque',
-            hint: 'Cartes manquantes et coût pour compléter un set',
-            active: exact('/collection/cartes/manquantes'),
-          },
-          {
-            href: '/collection/cartes/scanner',
-            label: 'Scanner',
-            hint: 'Reconnaissance par la caméra, une carte ou en rafale',
-            active: exact('/collection/cartes/scanner'),
-          },
-          {
-            href: '/collection/ouvertures',
-            label: 'Ouvertures',
-            hint: 'Ce qu’un display ou un ETB ouvert a rapporté',
-            active: (p) => p.startsWith('/collection/ouvertures'),
-          },
-        ],
-      },
-    ],
-  },
-  {
-    label: 'Revendeurs',
-    icon: Store,
-    href: '/revendeurs',
-    match: (p) => p.startsWith('/revendeurs'),
-  },
-  {
-    label: 'Calculateurs',
-    icon: Calculator,
-    match: (p) => p.startsWith('/calculateurs'),
-    groups: [
-      {
+        label: 'Calculateurs',
         items: [
           {
             href: '/calculateurs/rentabilite',
-            label: 'Rentabilité d’une ouverture',
-            hint: 'Ouvrir un produit ou le garder scellé ?',
+            label: 'Ouvrir ou garder ?',
+            icon: Calculator,
+            hint: 'Rentabilité d’une ouverture face au scellé',
             active: (p) => p.startsWith('/calculateurs/rentabilite'),
           },
           {
             href: '/calculateurs/budget',
             label: 'Quoi acheter avec mon budget ?',
+            icon: Wallet,
             hint: 'Les meilleurs achats pour une somme donnée',
             active: (p) => p.startsWith('/calculateurs/budget'),
           },

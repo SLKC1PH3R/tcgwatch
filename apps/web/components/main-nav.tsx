@@ -71,6 +71,7 @@ export function MainNav() {
               aria-current={active ? 'page' : undefined}
               className={cn(pill, active && pillActive)}
             >
+              <entry.icon aria-hidden className="size-4" />
               {entry.label}
             </Link>
           );
@@ -100,6 +101,7 @@ export function MainNav() {
               }}
               className={cn(pill, 'cursor-pointer', active && pillActive)}
             >
+              <entry.icon aria-hidden className="size-4" />
               {entry.label}
               <ChevronDown
                 aria-hidden
@@ -201,26 +203,43 @@ function MenuGroup({
                 title={group.compact ? link.hint : undefined}
                 aria-current={active ? 'page' : undefined}
                 className={cn(
-                  'block rounded-xl transition-colors hover:bg-accent focus-visible:bg-accent focus-visible:outline-none',
-                  group.compact ? 'px-3 py-1.5 text-sm font-medium' : 'px-3 py-1.5',
+                  'rounded-xl transition-colors hover:bg-accent focus-visible:bg-accent focus-visible:outline-none',
+                  group.compact
+                    ? 'block px-3 py-1.5 text-sm font-medium'
+                    : 'flex items-start gap-3 px-2.5 py-2',
                   active && 'bg-accent',
                 )}
               >
-                <span
-                  className={cn(
-                    'flex items-center gap-2',
-                    !group.compact && 'text-sm font-semibold',
-                    active && 'text-primary',
-                  )}
-                >
-                  {active && <span aria-hidden className="size-1.5 rounded-full bg-primary" />}
-                  {link.label}
-                </span>
-                {!group.compact && link.hint && (
-                  <span className="mt-0.5 block text-xs leading-snug text-muted-foreground">
-                    {link.hint}
+                {!group.compact && link.icon && (
+                  <span
+                    aria-hidden
+                    className={cn(
+                      'grid size-8 shrink-0 place-items-center rounded-lg border bg-card text-muted-foreground',
+                      active && 'border-primary/40 text-primary',
+                    )}
+                  >
+                    <link.icon className="size-4" />
                   </span>
                 )}
+                <span className="min-w-0">
+                  <span
+                    className={cn(
+                      'flex items-center gap-2',
+                      !group.compact && 'text-sm font-semibold',
+                      active && 'text-primary',
+                    )}
+                  >
+                    {active && group.compact && (
+                      <span aria-hidden className="size-1.5 rounded-full bg-primary" />
+                    )}
+                    {link.label}
+                  </span>
+                  {!group.compact && link.hint && (
+                    <span className="mt-0.5 block text-xs leading-snug text-muted-foreground">
+                      {link.hint}
+                    </span>
+                  )}
+                </span>
               </Link>
             </li>
           );
