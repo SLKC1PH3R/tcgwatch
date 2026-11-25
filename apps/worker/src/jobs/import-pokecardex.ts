@@ -67,6 +67,7 @@ export async function importPokecardex(
     created: 0,
     updated: 0,
     skipped: 0,
+    failed: 0,
     productsCreated: 0,
     productsUpdated: 0,
     examplesRemoved: 0,

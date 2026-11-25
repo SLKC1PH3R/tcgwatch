@@ -123,15 +123,32 @@ export class TcgdexClient {
   constructor(
     private readonly baseUrl = TCGDEX_BASE_URL,
     private readonly fetchImpl: typeof fetch = fetch,
+    /** Attentes avant chaque nouvel essai quand TCGdex est indisponible (429, 5xx, réseau). */
+    private readonly retryDelays: number[] = [2_000, 5_000, 15_000],
   ) {}
 
   private async get<T>(path: string, schema: z.ZodType<T>): Promise<T> {
-    const res = await this.fetchImpl(`${this.baseUrl}${path}`, {
-      headers: { accept: 'application/json', 'user-agent': 'TCGWatch (self-hosted)' },
-      signal: AbortSignal.timeout(20_000),
-    });
-    if (!res.ok) throw new Error(`TCGdex ${path} : HTTP ${res.status}`);
-    return schema.parse(await res.json());
+    for (let attempt = 0; ; attempt++) {
+      let res: Response | null = null;
+      let error: unknown;
+      try {
+        res = await this.fetchImpl(`${this.baseUrl}${path}`, {
+          headers: { accept: 'application/json', 'user-agent': 'TCGWatch (self-hosted)' },
+          signal: AbortSignal.timeout(20_000),
+        });
+      } catch (e) {
+        error = e; // réseau ou délai dépassé : nouvel essai
+      }
+      if (res?.ok) return schema.parse(await res.json());
+      if (res) {
+        error = new Error(`TCGdex ${path} : HTTP ${res.status}`);
+        // Erreur définitive (404…) : inutile de réessayer.
+        if (res.status !== 429 && res.status < 500) throw error;
+      }
+      const delay = this.retryDelays[attempt];
+      if (delay === undefined) throw error;
+      await new Promise((r) => setTimeout(r, delay));
+    }
   }
 
   /** Toutes les séries, de la plus ancienne à la plus récente. */

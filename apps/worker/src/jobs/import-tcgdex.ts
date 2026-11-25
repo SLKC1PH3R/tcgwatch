@@ -12,6 +12,8 @@ export interface ImportSummary {
   created: number;
   updated: number;
   skipped: number;
+  /** Extensions illisibles (TCGdex indisponible) : reprises au prochain import. */
+  failed: number;
 }
 
 /** Séries à importer : TCGDEX_SERIES (liste d'ids) ou toutes (`*` ou vide). */
@@ -34,7 +36,7 @@ export async function importTcgdex(
   ctx: WorkerContext,
   client = new TcgdexClient(),
 ): Promise<ImportSummary> {
-  const summary: ImportSummary = { created: 0, updated: 0, skipped: 0 };
+  const summary: ImportSummary = { created: 0, updated: 0, skipped: 0, failed: 0 };
   const wanted = wantedSeries(ctx.env.TCGDEX_SERIES);
   const weekly = new Date().getUTCDay() === 1;
   const recent = new Date(Date.now() - RECENT_DAYS * 86_400_000);
@@ -50,7 +52,14 @@ export async function importTcgdex(
   );
   for (const [order, brief] of all.entries()) {
     if (IGNORED_SERIES.has(brief.id) || (wanted && !wanted(brief.id))) continue;
-    const serie = await client.getSerie(brief.id);
+    let serie;
+    try {
+      serie = await client.getSerie(brief.id);
+    } catch (err) {
+      summary.failed++;
+      ctx.logger.warn({ err, serie: brief.id }, 'Série TCGdex illisible, ignorée');
+      continue;
+    }
     await prisma.serie.upsert({
       where: { id: serie.id },
       update: { name: serie.name, logoUrl: tcgdexAsset(brief.logo, '.png') ?? null, order },
@@ -75,7 +84,14 @@ export async function importTcgdex(
         summary.skipped++;
         continue;
       }
-      const set = await client.getSet(setBrief.id);
+      let set;
+      try {
+        set = await client.getSet(setBrief.id);
+      } catch (err) {
+        summary.failed++;
+        ctx.logger.warn({ err, set: setBrief.id }, 'Extension TCGdex illisible, ignorée');
+        continue;
+      }
       await new Promise((r) => setTimeout(r, 200));
 
       const releaseDate = set.releaseDate ? parseFrenchDate(set.releaseDate) : null;
