@@ -89,7 +89,8 @@ function ShowcaseList({ items }: { items: PublicProfile['showcases'] }) {
 }
 
 export default async function CollectorPage({ params }: Props) {
-  const p = await load((await params).slug);
+  const { slug } = await params;
+  const p = await load(slug);
   if (!p) notFound();
   const spare = p.doubles.reduce((n, d) => n + d.spare, 0);
 
@@ -128,24 +129,29 @@ export default async function CollectorPage({ params }: Props) {
         <Section title="Classeurs" count={p.binders.length}>
           <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {p.binders.map((b) => (
-              <li key={b.name} className="flex gap-3 rounded-xl border bg-card p-4">
-                <SafeImg src={b.logo} alt="" className="h-12 w-20 shrink-0 object-contain" />
-                <div className="min-w-0 flex-1 space-y-2">
-                  <div className="flex items-start justify-between gap-2">
-                    <p className="truncate font-semibold">{b.name}</p>
-                    {b.complete && (
-                      <Badge variant="success">
-                        <Check className="size-3" /> Complété
-                      </Badge>
+              <li key={b.id}>
+                <Link
+                  href={`/collectionneur/${slug}/classeurs/${b.id}`}
+                  className="flex h-full gap-3 rounded-xl border bg-card p-4 transition-colors hover:bg-accent"
+                >
+                  <SafeImg src={b.logo} alt="" className="h-12 w-20 shrink-0 object-contain" />
+                  <div className="min-w-0 flex-1 space-y-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="truncate font-semibold">{b.name}</p>
+                      {b.complete && (
+                        <Badge variant="success">
+                          <Check className="size-3" /> Complété
+                        </Badge>
+                      )}
+                    </div>
+                    <SetProgressBars progress={b.progress} />
+                    {!b.progress.master && (
+                      <p className="text-[11px] text-muted-foreground tabular-nums">
+                        {b.progress.full.owned}/{b.progress.full.total}
+                      </p>
                     )}
                   </div>
-                  <SetProgressBars progress={b.progress} />
-                  {!b.progress.master && (
-                    <p className="text-[11px] text-muted-foreground tabular-nums">
-                      {b.progress.full.owned}/{b.progress.full.total}
-                    </p>
-                  )}
-                </div>
+                </Link>
               </li>
             ))}
           </ul>

@@ -1,6 +1,7 @@
 import 'server-only';
 import { prisma } from '@tcgwatch/db';
-import { cardSelectFor, getBinders, toCollectionCard } from './card-collection';
+import { setProgress } from '@/lib/card-sets';
+import { cardSelectFor, getBinder, getBinders, toCollectionCard } from './card-collection';
 
 /** Réglages de la page publique de collectionneur. */
 export async function getProfileSettings(userId: string) {
@@ -86,6 +87,7 @@ export async function getPublicProfile(slug: string) {
     },
     binders: shown
       .map((b) => ({
+        id: b.id,
         name: b.name,
         logo: b.release?.imageUrl ?? null,
         progress: b.progress,
@@ -111,3 +113,31 @@ export async function getPublicProfile(slug: string) {
 }
 
 export type PublicProfile = NonNullable<Awaited<ReturnType<typeof getPublicProfile>>>;
+
+/** Classeur d'une page publique : seulement si la page et l'affichage des classeurs sont actifs. */
+export async function getPublicBinder(slug: string, id: string) {
+  const user = await prisma.user.findFirst({
+    where: { profileSlug: slug, profilePublic: true, profileBinders: true },
+    select: { id: true, profileName: true, profilePrices: true },
+  });
+  if (!user) return null;
+  const binder = await getBinder(user.id, id);
+  if (!binder || binder.cards.length === 0) return null;
+  return {
+    owner: user.profileName?.trim() || 'Collectionneur',
+    showPrices: user.profilePrices,
+    name: binder.name,
+    description: binder.description,
+    isSet: Boolean(binder.release),
+    cards: binder.cards,
+    progress: binder.release
+      ? setProgress(binder.cards)
+      : {
+          full: {
+            owned: binder.cards.filter((c) => c.owned > 0).length,
+            total: binder.cards.length,
+          },
+          master: null,
+        },
+  };
+}
