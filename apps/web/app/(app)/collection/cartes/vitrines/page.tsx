@@ -1,30 +1,30 @@
-import { ExternalLink, Globe, Lock } from 'lucide-react';
+import { ExternalLink, Globe, Lock, UserRound } from 'lucide-react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { tcgdexAsset } from '@tcgwatch/market';
 import { FitPage } from '@/components/fit-page';
-import { FormError, FormSuccess } from '@/components/form-message';
+import { FormError } from '@/components/form-message';
 import { PageHeader } from '@/components/page-header';
 import { SafeImg } from '@/components/safe-img';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input, Textarea } from '@/components/ui/input';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { getShowcases } from '@/lib/data/card-collection';
 import { getProfileSettings } from '@/lib/data/profile';
-import { createShowcaseAction, saveProfileAction } from '../actions';
+import { createShowcaseAction } from '../actions';
 import { fitCard, fitColumn, fitGrid, fitScroll } from '@/lib/fit';
 import { cn } from '@/lib/utils';
 import { requireUser } from '@/lib/auth';
 
 export const metadata: Metadata = { title: 'Vitrines' };
 
-type Props = { searchParams: Promise<{ erreur?: string; profil?: string }> };
+type Props = { searchParams: Promise<{ erreur?: string }> };
 
 /** Vitrines : sélections de cartes à montrer, avec un lien public à partager. */
 export default async function ShowcasesPage({ searchParams }: Props) {
-  const { erreur, profil } = await searchParams;
+  const { erreur } = await searchParams;
   const user = await requireUser();
   const [showcases, profile] = await Promise.all([
     getShowcases(user.id),
@@ -38,7 +38,6 @@ export default async function ShowcasesPage({ searchParams }: Props) {
         description="Compose une sélection de cartes (tes plus belles, tes dernières trouvailles…) et partage-la par un lien : la page publique ne montre que la vitrine, rien d’autre de ton TCGWatch."
       />
       <FormError message={erreur} />
-      <FormSuccess message={profil ? 'Page de collectionneur enregistrée.' : undefined} />
 
       <div className={cn(fitGrid, 'lg:grid-cols-[20rem_minmax(0,1fr)]')}>
         <div className={fitColumn}>
@@ -74,105 +73,26 @@ export default async function ShowcasesPage({ searchParams }: Props) {
             </CardContent>
           </Card>
 
-          <Card className={cn(fitCard, 'shrink-0 fit:overflow-y-auto')}>
+          <Card className="shrink-0">
             <CardHeader>
               <CardTitle>Ma page de collectionneur</CardTitle>
               <CardDescription>
-                Une page publique qui regroupe tes classeurs, tes vitrines publiques, tes listes de
-                recherche et tes doubles à l’échange. Ni ton e-mail ni tes prix d’achat n’y
-                figurent.
+                Tes vitrines publiques y sont regroupées avec tes classeurs et tes doubles.
               </CardDescription>
             </CardHeader>
-            <CardContent>
-              <form action={saveProfileAction} className="space-y-3">
-                <label className="flex items-center gap-2 text-sm font-semibold">
-                  <input
-                    type="checkbox"
-                    name="profilePublic"
-                    defaultChecked={profile.profilePublic}
-                  />
-                  Page publique activée
-                </label>
-                <div className="space-y-1.5">
-                  <Label htmlFor="p-slug">Adresse</Label>
-                  <div className="flex h-10 items-center rounded-md border bg-transparent text-sm focus-within:ring-2 focus-within:ring-ring">
-                    <span className="pl-3 text-muted-foreground">/collectionneur/</span>
-                    <input
-                      id="p-slug"
-                      name="profileSlug"
-                      defaultValue={profile.profileSlug ?? ''}
-                      placeholder="sacha-du-bourg"
-                      maxLength={30}
-                      className="h-full min-w-0 flex-1 bg-transparent pr-3 outline-none"
-                    />
-                  </div>
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="p-name">Pseudo</Label>
-                  <Input
-                    id="p-name"
-                    name="profileName"
-                    defaultValue={profile.profileName ?? ''}
-                    maxLength={40}
-                    placeholder="Sacha"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="p-bio">Présentation</Label>
-                  <Textarea
-                    id="p-bio"
-                    name="profileBio"
-                    defaultValue={profile.profileBio ?? ''}
-                    maxLength={300}
-                    rows={3}
-                    placeholder="Je complète les extensions EX, échanges bienvenus."
-                  />
-                </div>
-                <fieldset className="space-y-1.5 text-sm">
-                  <legend className="mb-1 font-medium">Afficher</legend>
-                  <label className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      name="profileBinders"
-                      defaultChecked={profile.profileBinders}
-                    />
-                    Mes classeurs d’extension et leur avancement
-                  </label>
-                  <label className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      name="profileDoubles"
-                      defaultChecked={profile.profileDoubles}
-                    />
-                    Mes doubles à l’échange
-                  </label>
-                  <label className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      name="profilePrices"
-                      defaultChecked={profile.profilePrices}
-                    />
-                    La cote des cartes
-                  </label>
-                  <p className="text-xs text-muted-foreground">
-                    Seules les vitrines et listes de recherche marquées « publiques » apparaissent.
-                  </p>
-                </fieldset>
-                <div className="flex flex-wrap items-center gap-2">
-                  <Button type="submit">Enregistrer</Button>
-                  {profile.profilePublic && profile.profileSlug && (
-                    <Button asChild variant="outline">
-                      <a
-                        href={`/collectionneur/${profile.profileSlug}`}
-                        target="_blank"
-                        rel="noopener"
-                      >
-                        <ExternalLink /> Voir ma page
-                      </a>
-                    </Button>
-                  )}
-                </div>
-              </form>
+            <CardContent className="flex flex-wrap gap-2">
+              <Button asChild variant="secondary">
+                <Link href="/profil">
+                  <UserRound /> Personnaliser mon profil
+                </Link>
+              </Button>
+              {profile.profilePublic && profile.profileSlug && (
+                <Button asChild variant="ghost">
+                  <a href={`/collectionneur/${profile.profileSlug}`} target="_blank" rel="noopener">
+                    <ExternalLink /> Voir
+                  </a>
+                </Button>
+              )}
             </CardContent>
           </Card>
         </div>

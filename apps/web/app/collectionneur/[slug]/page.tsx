@@ -1,4 +1,4 @@
-import { Check } from 'lucide-react';
+import { Check, Heart, MapPin, MessageCircle } from 'lucide-react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
@@ -12,6 +12,7 @@ import { SafeImg } from '@/components/safe-img';
 import { SetProgressBars } from '@/components/set-progress-bars';
 import { Badge } from '@/components/ui/badge';
 import { getPublicProfile, type PublicProfile } from '@/lib/data/profile';
+import { accentColor, contactHref } from '@/lib/profile-accents';
 
 const load = cache((slug: string) => getPublicProfile(slug));
 
@@ -93,17 +94,70 @@ export default async function CollectorPage({ params }: Props) {
   const p = await load(slug);
   if (!p) notFound();
   const spare = p.doubles.reduce((n, d) => n + d.spare, 0);
+  const accent = accentColor(p.accent);
 
   return (
     <main className="mx-auto min-h-dvh max-w-6xl space-y-10 px-4 py-8 sm:px-6">
       <header className="space-y-5">
         <BrandLogo />
-        <div className="space-y-2">
-          <p className="text-sm font-semibold tracking-wide text-primary uppercase">
-            Collectionneur Pokémon
-          </p>
-          <h1 className="font-display text-3xl font-bold tracking-tight md:text-4xl">{p.name}</h1>
-          {p.bio && <p className="max-w-3xl whitespace-pre-line text-muted-foreground">{p.bio}</p>}
+        <div
+          className="flex flex-col gap-5 rounded-3xl border p-5 sm:flex-row sm:items-center sm:p-6"
+          style={{ background: `linear-gradient(120deg, ${accent}38, transparent 65%)` }}
+        >
+          {p.avatar?.image && (
+            <div
+              className="size-24 shrink-0 overflow-hidden rounded-3xl border-2 bg-muted sm:size-28"
+              style={{ borderColor: accent }}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={p.avatar.image}
+                alt={p.avatar.name}
+                referrerPolicy="no-referrer"
+                className="size-full scale-150 object-cover object-[50%_30%]"
+              />
+            </div>
+          )}
+          <div className="min-w-0 space-y-2">
+            <p className="text-sm font-semibold tracking-wide uppercase" style={{ color: accent }}>
+              Collectionneur Pokémon
+            </p>
+            <h1 className="font-display text-3xl font-bold tracking-tight md:text-4xl">{p.name}</h1>
+            {p.bio && (
+              <p className="max-w-3xl whitespace-pre-line text-muted-foreground">{p.bio}</p>
+            )}
+            {(p.favorite || p.location || p.contact) && (
+              <ul className="flex flex-wrap gap-2 text-sm">
+                {p.favorite && (
+                  <li className="inline-flex items-center gap-1.5 rounded-full border bg-background/60 px-3 py-1">
+                    <Heart className="size-3.5" style={{ color: accent }} /> {p.favorite}
+                  </li>
+                )}
+                {p.location && (
+                  <li className="inline-flex items-center gap-1.5 rounded-full border bg-background/60 px-3 py-1">
+                    <MapPin className="size-3.5" style={{ color: accent }} /> {p.location}
+                  </li>
+                )}
+                {p.contact && (
+                  <li className="inline-flex min-w-0 items-center gap-1.5 rounded-full border bg-background/60 px-3 py-1">
+                    <MessageCircle className="size-3.5 shrink-0" style={{ color: accent }} />
+                    {contactHref(p.contact) ? (
+                      <a
+                        href={contactHref(p.contact)!}
+                        target="_blank"
+                        rel="nofollow ugc noopener noreferrer"
+                        className="truncate underline-offset-2 hover:underline"
+                      >
+                        {p.contact.replace(/^https:\/\/(www\.)?/i, '')}
+                      </a>
+                    ) : (
+                      <span className="truncate">{p.contact}</span>
+                    )}
+                  </li>
+                )}
+              </ul>
+            )}
+          </div>
         </div>
         <dl className="flex flex-wrap gap-x-8 gap-y-3 text-sm">
           {[
@@ -124,6 +178,34 @@ export default async function CollectorPage({ params }: Props) {
           ))}
         </dl>
       </header>
+
+      {p.featured && (
+        <Section title={p.featured.wanted ? `Je cherche : ${p.featured.title}` : p.featured.title}>
+          {p.featured.description && (
+            <p className="-mt-2 max-w-3xl text-muted-foreground">{p.featured.description}</p>
+          )}
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+            {p.featured.cards.slice(0, 10).map((c) => (
+              <CollectionCardTile
+                key={c.id}
+                card={c}
+                link={false}
+                showOwned={false}
+                showPrice={p.featured!.showPrices}
+              />
+            ))}
+          </div>
+          {p.featured.cards.length > 10 && (
+            <Link
+              href={`/vitrine/${p.featured.slug}`}
+              className="inline-block text-sm font-semibold hover:underline"
+              style={{ color: accent }}
+            >
+              Voir les {p.featured.cards.length} cartes →
+            </Link>
+          )}
+        </Section>
+      )}
 
       {p.binders.length > 0 && (
         <Section title="Classeurs" count={p.binders.length}>
@@ -186,9 +268,8 @@ export default async function CollectorPage({ params }: Props) {
         </Section>
       )}
 
-      {p.binders.length + p.showcases.length + p.wanted.length + p.doubles.length === 0 && (
-        <p className="text-muted-foreground">Cette page est encore vide.</p>
-      )}
+      {p.binders.length + p.showcases.length + p.wanted.length + p.doubles.length === 0 &&
+        !p.featured && <p className="text-muted-foreground">Cette page est encore vide.</p>}
 
       <footer className="text-xs text-muted-foreground">
         Page de collectionneur partagée depuis TCGWatch

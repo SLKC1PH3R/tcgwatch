@@ -1,7 +1,14 @@
 import 'server-only';
 import { prisma } from '@tcgwatch/db';
+import { tcgdexAsset } from '@tcgwatch/market';
 import { setProgress } from '@/lib/card-sets';
-import { cardSelectFor, getBinder, getBinders, toCollectionCard } from './card-collection';
+import {
+  cardSelectFor,
+  getBinder,
+  getBinders,
+  getShowcase,
+  toCollectionCard,
+} from './card-collection';
 
 /** Réglages de la page publique de collectionneur. */
 export async function getProfileSettings(userId: string) {
@@ -15,9 +22,41 @@ export async function getProfileSettings(userId: string) {
       profileBinders: true,
       profileDoubles: true,
       profilePrices: true,
+      profileAvatarCardId: true,
+      profileAccent: true,
+      profileFavorite: true,
+      profileLocation: true,
+      profileContact: true,
+      profileFeaturedId: true,
+      profileShowcases: true,
+      profileWanted: true,
     },
   });
 }
+
+/** Cartes proposées comme avatar : les plus chères de la collection, avec une image. */
+export async function getAvatarChoices(userId: string, current: string | null) {
+  const cards = await prisma.card.findMany({
+    where: {
+      owned: { some: { userId, quantity: { gt: 0 } } },
+      imageUrl: { not: null },
+    },
+    orderBy: { priceTrend: { sort: 'desc', nulls: 'last' } },
+    take: 24,
+    select: { id: true, name: true, imageUrl: true },
+  });
+  if (current && !cards.some((c) => c.id === current)) {
+    const c = await prisma.card.findUnique({
+      where: { id: current },
+      select: { id: true, name: true, imageUrl: true },
+    });
+    if (c) cards.unshift(c);
+  }
+  return cards.map((c) => ({ id: c.id, name: c.name, image: cardImage(c.imageUrl) }));
+}
+
+const cardImage = (url: string | null, size: '/low.webp' | '/high.webp' = '/low.webp') =>
+  tcgdexAsset(url ?? undefined, size) ?? null;
 
 /**
  * Page publique d'un collectionneur : seulement si elle est activée. Elle montre ses classeurs
@@ -34,12 +73,20 @@ export async function getPublicProfile(slug: string) {
       profileBinders: true,
       profileDoubles: true,
       profilePrices: true,
+      profileAvatarCardId: true,
+      profileAccent: true,
+      profileFavorite: true,
+      profileLocation: true,
+      profileContact: true,
+      profileFeaturedId: true,
+      profileShowcases: true,
+      profileWanted: true,
       createdAt: true,
     },
   });
   if (!user) return null;
 
-  const [binders, showcases, doubles, stats] = await Promise.all([
+  const [binders, showcases, doubles, stats, avatar, featured] = await Promise.all([
     user.profileBinders ? getBinders(user.id) : [],
     prisma.showcase.findMany({
       where: { userId: user.id, public: true },
@@ -68,6 +115,13 @@ export async function getPublicProfile(slug: string) {
       _sum: { quantity: true },
       _count: { cardId: true },
     }),
+    user.profileAvatarCardId
+      ? prisma.card.findUnique({
+          where: { id: user.profileAvatarCardId },
+          select: { name: true, imageUrl: true },
+        })
+      : null,
+    user.profileFeaturedId ? getShowcase({ id: user.profileFeaturedId, userId: user.id }) : null,
   ]);
 
   const percent = (p: { owned: number; total: number }) => (p.total ? p.owned / p.total : 0);
@@ -78,6 +132,14 @@ export async function getPublicProfile(slug: string) {
     bio: user.profileBio,
     since: user.createdAt,
     showPrices: user.profilePrices,
+    accent: user.profileAccent,
+    favorite: user.profileFavorite,
+    location: user.profileLocation,
+    contact: user.profileContact,
+    avatar: avatar?.imageUrl
+      ? { name: avatar.name, image: cardImage(avatar.imageUrl, '/high.webp') }
+      : null,
+    featured: featured?.public && featured.cards.length > 0 ? featured : null,
     stats: {
       copies: stats._sum.quantity ?? 0,
       // Une ligne par carte et par variante : approximation suffisante pour un compteur.
@@ -100,8 +162,10 @@ export async function getPublicProfile(slug: string) {
             percent(a.progress.master ?? a.progress.full) ||
           a.name.localeCompare(b.name, 'fr'),
       ),
-    showcases: showcases.filter((s) => !s.wanted),
-    wanted: showcases.filter((s) => s.wanted),
+    showcases: user.profileShowcases
+      ? showcases.filter((s) => !s.wanted && s.slug !== featured?.slug)
+      : [],
+    wanted: user.profileWanted ? showcases.filter((s) => s.wanted) : [],
     doubles: doubles
       .map((d) => ({
         variant: d.variant,

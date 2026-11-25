@@ -24,6 +24,7 @@ import {
   Sparkles,
   Star,
   Store,
+  UserRound,
   Vault,
   Wallet,
   Wrench,
@@ -66,6 +67,12 @@ export interface NavEntry {
 }
 
 const exact = (href: string) => (path: string) => path === href;
+/** Pages d'ajout de cartes (menu Cartes) ; le reste de /collection va dans Mon profil. */
+const CARD_ADD_PAGES = [
+  '/collection/cartes/ajout-rapide',
+  '/collection/cartes/import',
+  '/collection/cartes/scanner',
+];
 const isProductSheet = (p: string) =>
   /^\/produits\/[^/]+$/.test(p) &&
   !['/produits/prix', '/produits/bons-plans', '/produits/mes-produits'].includes(p);
@@ -84,10 +91,7 @@ export const NAV: NavEntry[] = [
     match: (p) =>
       (p.startsWith('/produits') && !p.startsWith('/produits/prix')) ||
       p.startsWith('/retours-en-stock') ||
-      p.startsWith('/alertes') ||
-      p === '/collection' ||
-      p.startsWith('/collection/ouvertures') ||
-      p.startsWith('/collection/bilan'),
+      p.startsWith('/alertes'),
     groups: [
       {
         label: 'Suivre et acheter',
@@ -129,39 +133,59 @@ export const NAV: NavEntry[] = [
           },
         ],
       },
+    ],
+  },
+  {
+    label: 'Cartes',
+    icon: Layers,
+    match: (p) => CARD_ADD_PAGES.some((h) => p.startsWith(h)),
+    groups: [
       {
-        label: 'Ma collection scellée',
+        label: 'Ajouter des cartes',
         items: [
           {
-            href: '/collection',
-            label: 'Mon scellé',
-            icon: Vault,
-            hint: 'Valeur, plus-value, achats et reventes',
-            active: exact('/collection'),
+            href: '/collection/cartes/ajout-rapide',
+            label: 'Ajout rapide',
+            icon: Zap,
+            hint: 'Toutes les cartes d’une extension, en quelques touchers',
+            active: exact('/collection/cartes/ajout-rapide'),
           },
           {
-            href: '/collection/bilan',
-            label: 'Bilan des reventes',
-            icon: HandCoins,
-            hint: 'Plus-values réalisées de l’année, en CSV ou PDF',
-            active: (p) => p.startsWith('/collection/bilan'),
+            href: '/collection/cartes/import',
+            label: 'Importer un fichier',
+            icon: FileUp,
+            hint: 'Une collection exportée en CSV (Dragon Shield, tableur…)',
+            active: exact('/collection/cartes/import'),
           },
           {
-            href: '/collection/ouvertures',
-            label: 'Ouvertures',
-            icon: PackageOpen,
-            hint: 'Ce qu’un display ou un ETB ouvert a rapporté',
-            active: (p) => p.startsWith('/collection/ouvertures'),
+            href: '/collection/cartes/scanner',
+            label: 'Scanner',
+            icon: ScanLine,
+            hint: 'Par la caméra ou des photos, une carte ou en rafale',
+            active: exact('/collection/cartes/scanner'),
           },
         ],
       },
     ],
   },
   {
-    label: 'Cartes',
-    icon: Layers,
-    match: (p) => p.startsWith('/collection/cartes'),
+    label: 'Mon profil',
+    icon: UserRound,
+    match: (p) =>
+      p.startsWith('/profil') ||
+      (p.startsWith('/collection') && !CARD_ADD_PAGES.some((h) => p.startsWith(h))),
     groups: [
+      {
+        items: [
+          {
+            href: '/profil',
+            label: 'Mon profil',
+            icon: UserRound,
+            hint: 'Ta page de collectionneur, à personnaliser et partager',
+            active: (p) => p.startsWith('/profil'),
+          },
+        ],
+      },
       {
         label: 'Ma collection de cartes',
         items: [
@@ -203,28 +227,28 @@ export const NAV: NavEntry[] = [
         ],
       },
       {
-        label: 'Ajouter des cartes',
+        label: 'Ma collection scellée',
         items: [
           {
-            href: '/collection/cartes/ajout-rapide',
-            label: 'Ajout rapide',
-            icon: Zap,
-            hint: 'Toutes les cartes d’une extension, en quelques touchers',
-            active: exact('/collection/cartes/ajout-rapide'),
+            href: '/collection',
+            label: 'Mon scellé',
+            icon: Vault,
+            hint: 'Valeur, plus-value, achats et reventes',
+            active: exact('/collection'),
           },
           {
-            href: '/collection/cartes/import',
-            label: 'Importer un fichier',
-            icon: FileUp,
-            hint: 'Une collection exportée en CSV (Dragon Shield, tableur…)',
-            active: exact('/collection/cartes/import'),
+            href: '/collection/bilan',
+            label: 'Bilan des reventes',
+            icon: HandCoins,
+            hint: 'Plus-values réalisées de l’année, en CSV ou PDF',
+            active: (p) => p.startsWith('/collection/bilan'),
           },
           {
-            href: '/collection/cartes/scanner',
-            label: 'Scanner',
-            icon: ScanLine,
-            hint: 'Par la caméra ou des photos, une carte ou en rafale',
-            active: exact('/collection/cartes/scanner'),
+            href: '/collection/ouvertures',
+            label: 'Ouvertures',
+            icon: PackageOpen,
+            hint: 'Ce qu’un display ou un ETB ouvert a rapporté',
+            active: (p) => p.startsWith('/collection/ouvertures'),
           },
         ],
       },

@@ -97,40 +97,50 @@ enum Role {
 }
 
 model User {
-  id              String             @id @default(cuid())
-  email           String             @unique
-  name            String?
+  id                  String             @id @default(cuid())
+  email               String             @unique
+  name                String?
   /// Null pour un compte créé avec Google.
-  passwordHash    String?
-  role            Role               @default(USER)
+  passwordHash        String?
+  role                Role               @default(USER)
   /// E-mail confirmé (lien reçu par e-mail, ou compte Google).
-  emailVerifiedAt DateTime?
+  emailVerifiedAt     DateTime?
   /// Identifiant Google (« sub ») du compte lié.
-  googleId        String?            @unique
+  googleId            String?            @unique
   /// Page publique de collectionneur (/collectionneur/{profileSlug}), désactivée par défaut.
-  profilePublic   Boolean            @default(false)
-  profileSlug     String?            @unique
+  profilePublic       Boolean            @default(false)
+  profileSlug         String?            @unique
   /// Pseudo affiché sur la page publique (jamais l'e-mail).
-  profileName     String?
-  profileBio      String?
-  profileBinders  Boolean            @default(true)
-  profileDoubles  Boolean            @default(true)
-  profilePrices   Boolean            @default(false)
-  sessions        Session[]
-  tokens          AuthToken[]
-  follows         ProductFollow[]
-  collection      CollectionItem[]
-  ownedCards      OwnedCard[]
-  binders         CardBinder[]
-  showcases       Showcase[]
-  alertSettings   AlertSettings?
-  alerts          AlertEvent[]
-  pushDevices     PushSubscription[]
-  reports         ErrorReport[]
-  openings        ProductOpening[]
-  cardLots        CardLot[]
-  createdAt       DateTime           @default(now())
-  updatedAt       DateTime           @updatedAt
+  profileName         String?
+  profileBio          String?
+  profileBinders      Boolean            @default(true)
+  profileDoubles      Boolean            @default(true)
+  profilePrices       Boolean            @default(false)
+  /// Personnalisation : carte servant d'avatar, couleur, Pokémon préféré, région, contact.
+  profileAvatarCardId String?
+  profileAccent       String?
+  profileFavorite     String?
+  profileLocation     String?
+  profileContact      String?
+  /// Vitrine mise en avant en haut de la page publique.
+  profileFeaturedId   String?
+  profileShowcases    Boolean            @default(true)
+  profileWanted       Boolean            @default(true)
+  sessions            Session[]
+  tokens              AuthToken[]
+  follows             ProductFollow[]
+  collection          CollectionItem[]
+  ownedCards          OwnedCard[]
+  binders             CardBinder[]
+  showcases           Showcase[]
+  alertSettings       AlertSettings?
+  alerts              AlertEvent[]
+  pushDevices         PushSubscription[]
+  reports             ErrorReport[]
+  openings            ProductOpening[]
+  cardLots            CardLot[]
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
 }
 
 enum ReportKind {

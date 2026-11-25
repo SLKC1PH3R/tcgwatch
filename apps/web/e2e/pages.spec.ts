@@ -20,6 +20,7 @@ const FIT_PAGES = [
   '/collection/cartes/achats',
   '/collection/ouvertures',
   '/collection/bilan',
+  '/profil',
   '/collection/cartes/import',
   '/sources',
   '/revendeurs',
