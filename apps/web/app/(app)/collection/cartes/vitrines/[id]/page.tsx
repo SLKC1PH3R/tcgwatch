@@ -1,9 +1,9 @@
-import { ExternalLink, RefreshCw, Trash2, X } from 'lucide-react';
+import { BookOpen, ExternalLink, RefreshCw, Trash2, X } from 'lucide-react';
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { formatPrice } from '@tcgwatch/shared';
 import { getEnv } from '@tcgwatch/shared/env';
-import { CardPicker } from '@/components/card-picker';
 import { CollectionCardTile } from '@/components/collection-card';
 import { CopyButton } from '@/components/copy-button';
 import { FitPage } from '@/components/fit-page';
@@ -15,7 +15,6 @@ import { Input, Textarea } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { getShowcase } from '@/lib/data/card-collection';
 import {
-  addShowcaseCardAction,
   deleteShowcaseAction,
   removeShowcaseCardAction,
   renewShowcaseLinkAction,
@@ -29,7 +28,7 @@ export const metadata: Metadata = { title: 'Vitrine' };
 
 type Props = {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ q?: string; mine?: string; erreur?: string }>;
+  searchParams: Promise<{ erreur?: string }>;
 };
 
 export default async function ShowcasePage({ params, searchParams }: Props) {
@@ -59,9 +58,14 @@ export default async function ShowcasePage({ params, searchParams }: Props) {
           </h2>
           <div className={fitScroll}>
             {showcase.cards.length === 0 && (
-              <p className="py-10 text-center text-sm text-muted-foreground">
-                Vitrine vide : ajoute des cartes avec la recherche.
-              </p>
+              <div className="flex flex-col items-center gap-3 py-10 text-center text-sm text-muted-foreground">
+                <p>Vitrine vide : ajoute des cartes depuis tes classeurs.</p>
+                <Button asChild>
+                  <Link href={`${base}/ajouter`}>
+                    <BookOpen /> Ajouter des cartes
+                  </Link>
+                </Button>
+              </div>
             )}
             {showcase.cards.length > 0 && (
               <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-5 2xl:grid-cols-6">
@@ -167,13 +171,14 @@ export default async function ShowcasePage({ params, searchParams }: Props) {
 
             <section className="space-y-3">
               <h2 className="font-display text-base font-semibold">Ajouter des cartes</h2>
-              <CardPicker
-                q={query.q}
-                mine={query.mine === '1'}
-                basePath={base}
-                exclude={new Set(showcase.cards.map((c) => c.id))}
-                addAction={(cardId) => addShowcaseCardAction.bind(null, showcase.id, cardId)}
-              />
+              <p className="text-sm text-muted-foreground">
+                Parcours tes classeurs d’extension ou cherche une carte par son nom.
+              </p>
+              <Button asChild>
+                <Link href={`${base}/ajouter`}>
+                  <BookOpen /> Ajouter depuis mes classeurs
+                </Link>
+              </Button>
             </section>
 
             <form action={deleteShowcaseAction.bind(null, showcase.id)}>

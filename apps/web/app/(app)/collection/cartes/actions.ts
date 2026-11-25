@@ -267,6 +267,7 @@ export async function addShowcaseCardAction(showcaseId: string, cardId: string) 
   });
   await prisma.showcase.update({ where: { id: showcaseId }, data: { updatedAt: new Date() } });
   revalidatePath(`${BASE}/vitrines/${showcaseId}`);
+  revalidatePath(`${BASE}/vitrines/${showcaseId}/ajouter`);
 }
 
 export async function removeShowcaseCardAction(showcaseId: string, cardId: string) {
