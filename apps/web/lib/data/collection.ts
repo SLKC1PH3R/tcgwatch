@@ -2,6 +2,7 @@ import 'server-only';
 import { KEPT_DAILY, prisma } from '@tcgwatch/db';
 import { valueCollection } from '@tcgwatch/market';
 import { todayUtc, toNumber } from '@tcgwatch/shared';
+import { getCardValueHistory } from './card-investment';
 import { bestOffer, getProducts } from './products';
 
 /** Dernier prix marché connu par produit (toutes sources confondues). */
@@ -235,11 +236,16 @@ export async function getCollectionHistory(userId: string, days = 365): Promise<
     retailBy.set(id, map);
   }
 
+  const cardsByDay = new Map(
+    (await getCardValueHistory(userId, days)).map((p) => [p.day, p] as const),
+  );
   const today = todayUtc();
-  // Cartes : comptées à partir de leur ajout, à leur cote actuelle (pas d'historique par carte).
+  // Cartes : comptées à partir de leur ajout (cotes quotidiennes, voir getCardValueHistory).
   const firstPurchase = Math.min(
     ...items.map((i) => i.purchaseDate.getTime()),
     ...cardLines.map((l) => l.createdAt.getTime()),
+    // Lots et achats à l'unité datés d'avant l'ajout des cartes.
+    ...[...cardsByDay.keys()].slice(0, 1).map((k) => Date.parse(`${k}T00:00:00Z`)),
   );
   const start = Math.max(firstPurchase, today.getTime() - days * 86_400_000);
   const lastMarket = new Map<string, number>();
@@ -269,10 +275,11 @@ export async function getCollectionHistory(userId: string, days = 365): Promise<
       invested += paid * i.quantity;
       value += (lastMarket.get(i.productId) ?? lastRetail.get(i.productId) ?? paid) * i.quantity;
     }
-    for (const l of cardLines) {
-      if (l.createdAt.getTime() > t + 86_399_999) continue;
-      invested += l.paid * l.quantity;
-      value += l.price * l.quantity;
+    // Cartes : cotes de chaque jour et investi (lots, achats à l'unité).
+    const c = cardsByDay.get(k);
+    if (c) {
+      invested += c.invested;
+      value += c.cm;
     }
     points.push({ day: k, invested: round(invested), value: round(value) });
   }

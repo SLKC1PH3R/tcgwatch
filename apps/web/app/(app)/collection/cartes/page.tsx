@@ -13,11 +13,12 @@ import { SetProgressBars } from '@/components/set-progress-bars';
 import { PRICE_COOKIE, parsePriceSource } from '@/lib/price-source';
 import { percent } from '@/lib/card-sets';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { getCardCollection } from '@/lib/data/card-collection';
-import { getCardInvestment } from '@/lib/data/card-investment';
+import { getCardInvestment, getCardValueHistory } from '@/lib/data/card-investment';
+import { CollectionChart } from '@/components/collection-chart';
 import { refreshOwnedCardPrices } from '@/lib/data/extensions';
-import { fitCard, fitGrid, fitScroll } from '@/lib/fit';
+import { fitCard, fitColumn, fitGrid, fitScroll } from '@/lib/fit';
 import { cn } from '@/lib/utils';
 import { requireUser } from '@/lib/auth';
 
@@ -26,10 +27,11 @@ export const metadata: Metadata = { title: 'Mes cartes' };
 /** Vue d'ensemble des cartes : valeur, avancement par extension, derniers ajouts. */
 export default async function MyCardsPage() {
   const user = await requireUser();
-  const [{ releases, latest, distinct, copies, value, fr }, jar, inv] = await Promise.all([
+  const [{ releases, latest, distinct, copies, value, fr }, jar, inv, history] = await Promise.all([
     getCardCollection(user.id),
     cookies(),
     getCardInvestment(user.id),
+    getCardValueHistory(user.id),
   ]);
   const lotOf = new Map(inv.lots.flatMap((l) => l.releases.map((c) => [c, l] as const)));
   const priceSource = parsePriceSource(jar.get(PRICE_COOKIE)?.value);
@@ -187,18 +189,38 @@ export default async function MyCardsPage() {
             </CardContent>
           </Card>
 
-          <Card className={fitCard}>
-            <CardHeader>
-              <CardTitle>Derniers ajouts</CardTitle>
-            </CardHeader>
-            <CardContent className={fitScroll}>
-              <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 2xl:grid-cols-5">
-                {latest.map((c) => (
-                  <CollectionCardTile key={c.id} card={c} />
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+          <div className={cn(fitColumn, 'gap-4')}>
+            <Card className="shrink-0 gap-3 py-5">
+              <CardHeader>
+                <CardTitle>Valeur dans le temps</CardTitle>
+                <CardDescription>
+                  Cote {priceSource === 'ebay' ? 'eBay FR' : 'Cardmarket'} de chaque jour face à
+                  l’investi (lots et achats à l’unité).
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="flex h-72 flex-col">
+                <CollectionChart
+                  history={history.map((p) => ({
+                    day: p.day,
+                    value: priceSource === 'ebay' ? p.fr : p.cm,
+                    invested: p.invested,
+                  }))}
+                />
+              </CardContent>
+            </Card>
+            <Card className={cn(fitCard, 'fit:flex-1')}>
+              <CardHeader>
+                <CardTitle>Derniers ajouts</CardTitle>
+              </CardHeader>
+              <CardContent className={fitScroll}>
+                <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 2xl:grid-cols-5">
+                  {latest.map((c) => (
+                    <CollectionCardTile key={c.id} card={c} />
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </div>
       )}
     </FitPage>

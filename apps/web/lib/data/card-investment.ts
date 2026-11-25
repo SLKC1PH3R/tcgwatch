@@ -117,3 +117,103 @@ export async function getCardInvestment(userId: string) {
     singlesTotal: sum(singles),
   };
 }
+
+export interface CardValuePoint {
+  day: string;
+  /** Valeur des cartes possédées ce jour-là, cote Cardmarket du jour (toutes langues). */
+  cm: number;
+  /** Valeur au prix eBay FR du jour (cartes déjà relevées). */
+  fr: number;
+  /** Total investi à cette date : lots et cartes achetées à l'unité. */
+  invested: number;
+}
+
+/**
+ * Valeur de la collection de cartes jour par jour, avec les cotes de chaque jour (historique
+ * quotidien) : une carte compte à partir de son achat (ou de son ajout), au dernier prix connu
+ * à cette date — à défaut le premier prix connu, pour ne pas créer de creux avant le premier
+ * relevé. L'investi suit les dates des lots et des achats à l'unité.
+ */
+export async function getCardValueHistory(
+  userId: string,
+  days = 5 * 366,
+): Promise<CardValuePoint[]> {
+  const [owned, lots] = await Promise.all([
+    prisma.ownedCard.findMany({
+      where: { userId, quantity: { gt: 0 } },
+      select: {
+        cardId: true,
+        quantity: true,
+        createdAt: true,
+        purchasePrice: true,
+        purchasedAt: true,
+        card: { select: { priceTrend: true, frPrice: true } },
+      },
+    }),
+    prisma.cardLot.findMany({ where: { userId }, select: { price: true, purchasedAt: true } }),
+  ]);
+  if (owned.length === 0 && lots.length === 0) return [];
+  const ids = [...new Set(owned.map((o) => o.cardId))];
+  const daily = await prisma.cardPriceDaily.findMany({
+    where: { cardId: { in: ids } },
+    select: { cardId: true, date: true, trend: true, frPrice: true },
+    orderBy: { date: 'asc' },
+  });
+  const key = (d: Date) => d.toISOString().slice(0, 10);
+  const trendBy = new Map<string, Map<string, number>>();
+  const frBy = new Map<string, Map<string, number>>();
+  for (const d of daily) {
+    const t = toNumber(d.trend);
+    const f = toNumber(d.frPrice);
+    if (t !== null) trendBy.set(d.cardId, (trendBy.get(d.cardId) ?? new Map()).set(key(d.date), t));
+    if (f !== null) frBy.set(d.cardId, (frBy.get(d.cardId) ?? new Map()).set(key(d.date), f));
+  }
+  const today = new Date(`${new Date().toISOString().slice(0, 10)}T00:00:00Z`);
+  const acquired = (o: (typeof owned)[number]) => (o.purchasedAt ?? o.createdAt).getTime();
+  const first = Math.min(...owned.map(acquired), ...lots.map((l) => l.purchasedAt.getTime()));
+  const start = Math.max(
+    Date.UTC(
+      new Date(first).getUTCFullYear(),
+      new Date(first).getUTCMonth(),
+      new Date(first).getUTCDate(),
+    ),
+    today.getTime() - days * 86_400_000,
+  );
+
+  // Prix de départ : dernier prix avant la fenêtre, sinon premier prix connu, sinon prix actuel.
+  const startKey = key(new Date(start));
+  const seed = (by: Map<string, Map<string, number>>, id: string, current: number | null) => {
+    const series = [...(by.get(id) ?? new Map<string, number>())];
+    const before = series.filter(([k]) => k < startKey).at(-1);
+    return before?.[1] ?? series[0]?.[1] ?? current;
+  };
+  const lastCm = new Map<string, number | null>();
+  const lastFr = new Map<string, number | null>();
+  for (const o of owned) {
+    lastCm.set(o.cardId, seed(trendBy, o.cardId, toNumber(o.card.priceTrend)));
+    lastFr.set(o.cardId, seed(frBy, o.cardId, toNumber(o.card.frPrice)));
+  }
+
+  const points: CardValuePoint[] = [];
+  for (let t = start; t <= today.getTime(); t += 86_400_000) {
+    const k = key(new Date(t));
+    for (const id of ids) {
+      const c = trendBy.get(id)?.get(k);
+      if (c !== undefined) lastCm.set(id, c);
+      const f = frBy.get(id)?.get(k);
+      if (f !== undefined) lastFr.set(id, f);
+    }
+    let cm = 0;
+    let fr = 0;
+    let invested = 0;
+    for (const o of owned) {
+      if (acquired(o) > t + 86_399_999) continue;
+      cm += (lastCm.get(o.cardId) ?? 0) * o.quantity;
+      fr += (lastFr.get(o.cardId) ?? 0) * o.quantity;
+      if (o.purchasePrice !== null) invested += toNumber(o.purchasePrice)! * o.quantity;
+    }
+    for (const l of lots) if (l.purchasedAt.getTime() <= t) invested += toNumber(l.price)!;
+    points.push({ day: k, cm: round(cm), fr: round(fr), invested: round(invested) });
+  }
+  return points;
+}
