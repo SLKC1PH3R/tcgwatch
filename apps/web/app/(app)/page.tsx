@@ -1,3 +1,4 @@
+import { cookies } from 'next/headers';
 import Link from 'next/link';
 import { formatPercent, formatPrice, todayUtc } from '@tcgwatch/shared';
 import { Thumb } from '@/components/thumb';
@@ -6,6 +7,7 @@ import { TabPanels } from '@/components/tab-panels';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { getDashboard } from '@/lib/data/dashboard';
+import { PRICE_COOKIE, parsePriceSource } from '@/lib/price-source';
 import { ago } from '@/lib/time';
 import { ALERT_STYLE } from '@/lib/alerts';
 import { cn } from '@/lib/utils';
@@ -67,7 +69,8 @@ const countdown = (date: Date, today: number) => {
 
 export default async function DashboardPage() {
   const user = await requireUser();
-  const d = await getDashboard(user.id);
+  const source = parsePriceSource((await cookies()).get(PRICE_COOKIE)?.value);
+  const d = await getDashboard(user.id, source);
   const v = d.valuation;
   const gainPositive = v.unrealizedGain >= 0;
   const today = todayUtc().getTime();

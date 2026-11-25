@@ -1,5 +1,6 @@
 import { Trash2, Undo2 } from 'lucide-react';
 import type { Metadata } from 'next';
+import { cookies } from 'next/headers';
 import Link from 'next/link';
 import { after } from 'next/server';
 import {
@@ -10,6 +11,7 @@ import {
   priceCategoryOf,
 } from '@tcgwatch/shared';
 import { AutoSubmitSelect } from '@/components/auto-submit-select';
+import { PriceSourceToggle } from '@/components/price-source-toggle';
 import { CollectionChart } from '@/components/collection-chart';
 import { FitPage } from '@/components/fit-page';
 import { PageHeader } from '@/components/page-header';
@@ -20,6 +22,7 @@ import { breakdownByType } from '@/lib/data/dashboard';
 import { refreshOwnedCardPrices } from '@/lib/data/extensions';
 import { getProductOptions } from '@/lib/data/products';
 import { fitCard, fitColumn, fitGrid, fitScroll } from '@/lib/fit';
+import { PRICE_COOKIE, parsePriceSource } from '@/lib/price-source';
 import { cn } from '@/lib/utils';
 import { cancelSaleAction, deleteCollectionItemAction } from './actions';
 import { AddPurchaseDialog } from './add-purchase-dialog';
@@ -57,13 +60,14 @@ export default async function CollectionPage({ searchParams }: Props) {
   const soldView = vue === 'vendus';
   const today = new Date().toISOString().slice(0, 10);
   const user = await requireUser();
+  const priceSource = parsePriceSource((await cookies()).get(PRICE_COOKIE)?.value);
   const category = PRICE_CATEGORIES.find((c) => c.key === categorie);
   const sort: Sort = SORTS.find((s) => s.value === tri)?.value ?? 'plus-value';
   const [{ rows: allRows, sold: allSold, realized, valuation: v }, products, history] =
     await Promise.all([
-      getCollection(user.id),
+      getCollection(user.id, priceSource),
       getProductOptions(),
-      getCollectionHistory(user.id, 5 * 366),
+      getCollectionHistory(user.id, 5 * 366, priceSource),
     ]);
   const breakdown = breakdownByType(allRows, v.cards.value);
   // Filtre par type (ETB, display…) : la valorisation en tête reste celle de tout le scellé.
@@ -100,7 +104,7 @@ export default async function CollectionPage({ searchParams }: Props) {
     <FitPage>
       <PageHeader
         title={category ? `Ma collection · ${category.label}` : 'Ma collection'}
-        description="Scellé et cartes : le scellé au dernier prix marché connu (à défaut au meilleur prix boutique), les cartes à leur cote Cardmarket."
+        description={`Scellé et cartes : le scellé au dernier prix marché connu (à défaut au meilleur prix boutique), les cartes ${priceSource === 'ebay' ? 'au prix eBay FR (à défaut à leur cote Cardmarket)' : 'à leur cote Cardmarket'}.`}
         actions={
           <>
             <Button asChild variant="outline">
@@ -117,7 +121,10 @@ export default async function CollectionPage({ searchParams }: Props) {
       <div className="grid shrink-0 grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.35fr)] [&>*]:min-w-0">
         <Card className="holo-frame py-4">
           <CardContent className="flex h-full flex-col justify-center gap-1">
-            <p className="text-sm text-muted-foreground">Valeur estimée</p>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-sm text-muted-foreground">Valeur estimée</p>
+              <PriceSourceToggle current={priceSource} />
+            </div>
             <p className="font-display text-4xl font-extrabold tracking-tight tabular-nums">
               {formatPrice(v.estimatedValue)}
             </p>
@@ -128,6 +135,12 @@ export default async function CollectionPage({ searchParams }: Props) {
                 {v.cards.copies > 1 ? 's' : ''})
               </Link>
             </p>
+            {v.cards.fallbackCopies > 0 && (
+              <p className="text-sm text-muted-foreground">
+                Dont {v.cards.fallbackCopies} carte{v.cards.fallbackCopies > 1 ? 's' : ''} sans prix
+                eBay FR, comptée{v.cards.fallbackCopies > 1 ? 's' : ''} à la cote Cardmarket.
+              </p>
+            )}
             {v.estimatedFromRetail > 0 && (
               <p className="text-sm text-muted-foreground">
                 Dont {formatPrice(v.estimatedFromRetail)} estimés au prix boutique (pas de prix

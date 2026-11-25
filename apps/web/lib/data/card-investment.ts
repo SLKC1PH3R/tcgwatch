@@ -124,6 +124,8 @@ export interface CardValuePoint {
   cm: number;
   /** Valeur au prix eBay FR du jour (cartes déjà relevées). */
   fr: number;
+  /** Prix eBay FR, à défaut la cote Cardmarket (cartes pas encore relevées en français). */
+  frOrCm: number;
   /** Total investi à cette date : lots et cartes achetées à l'unité. */
   invested: number;
 }
@@ -205,15 +207,23 @@ export async function getCardValueHistory(
     }
     let cm = 0;
     let fr = 0;
+    let frOrCm = 0;
     let invested = 0;
     for (const o of owned) {
       if (acquired(o) > t + 86_399_999) continue;
       cm += (lastCm.get(o.cardId) ?? 0) * o.quantity;
       fr += (lastFr.get(o.cardId) ?? 0) * o.quantity;
+      frOrCm += (lastFr.get(o.cardId) ?? lastCm.get(o.cardId) ?? 0) * o.quantity;
       if (o.purchasePrice !== null) invested += toNumber(o.purchasePrice)! * o.quantity;
     }
     for (const l of lots) if (l.purchasedAt.getTime() <= t) invested += toNumber(l.price)!;
-    points.push({ day: k, cm: round(cm), fr: round(fr), invested: round(invested) });
+    points.push({
+      day: k,
+      cm: round(cm),
+      fr: round(fr),
+      frOrCm: round(frOrCm),
+      invested: round(invested),
+    });
   }
   return points;
 }

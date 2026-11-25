@@ -1,4 +1,5 @@
 import 'server-only';
+import type { PriceSource } from '@/lib/price-source';
 import { KEPT_DAILY, prisma } from '@tcgwatch/db';
 import { priceChange } from '@tcgwatch/market';
 import { toNumber, type ProductTypeKey } from '@tcgwatch/shared';
@@ -164,7 +165,7 @@ export async function getTopPriceMoves(limit = 6): Promise<PriceMove[]> {
   return moves.sort((a, b) => Math.abs(b.change) - Math.abs(a.change)).slice(0, limit);
 }
 
-export async function getDashboard(userId: string) {
+export async function getDashboard(userId: string, source: PriceSource = 'cardmarket') {
   const [
     upcoming,
     restocks,
@@ -179,12 +180,12 @@ export async function getDashboard(userId: string) {
     getUpcomingEvents(10),
     getRecentRestocks(),
     getActiveAlerts(userId),
-    getCollection(userId),
+    getCollection(userId, source),
     getTopPriceMoves(),
     prisma.listing.count({ where: { state: { not: 'PAUSED' } } }),
     prisma.listing.aggregate({ _max: { lastCheckedAt: true } }),
     // Depuis le premier achat (jusqu'à 5 ans) : la période « Tout » du graphique de l'accueil.
-    getCollectionHistory(userId, 5 * 366),
+    getCollectionHistory(userId, 5 * 366, source),
     getSealedPrices(),
   ]);
   return {

@@ -2,6 +2,7 @@ import 'server-only';
 import { KEPT_DAILY, prisma } from '@tcgwatch/db';
 import { valueCollection } from '@tcgwatch/market';
 import { todayUtc, toNumber } from '@tcgwatch/shared';
+import type { PriceSource } from '@/lib/price-source';
 import { getCardValueHistory } from './card-investment';
 import { bestOffer, getProducts } from './products';
 
@@ -19,10 +20,11 @@ export async function latestMarketPrices(): Promise<
 }
 
 /**
- * Cartes possédées valorisées à leur cote Cardmarket (tendance). Sans prix d'achat saisi, une
- * carte compte pour 0 € investi : elle vient en général d'un booster déjà payé.
+ * Cartes possédées valorisées à leur cote Cardmarket (tendance), ou au prix eBay FR (à défaut
+ * la cote Cardmarket pour les cartes pas encore relevées). Sans prix d'achat saisi, une carte
+ * compte pour 0 € investi : elle vient en général d'un booster déjà payé.
  */
-async function getOwnedCardLines(userId: string) {
+async function getOwnedCardLines(userId: string, source: PriceSource = 'cardmarket') {
   const owned = await prisma.ownedCard.findMany({
     where: { userId },
     select: {
@@ -30,19 +32,22 @@ async function getOwnedCardLines(userId: string) {
       quantity: true,
       purchasePrice: true,
       createdAt: true,
-      card: { select: { priceTrend: true } },
+      card: { select: { priceTrend: true, frPrice: true } },
     },
   });
   return owned.map((o) => ({
     cardId: o.cardId,
     quantity: o.quantity,
     paid: toNumber(o.purchasePrice) ?? 0,
-    price: toNumber(o.card.priceTrend) ?? 0,
+    price:
+      (source === 'ebay' ? toNumber(o.card.frPrice) : null) ?? toNumber(o.card.priceTrend) ?? 0,
+    /** Pas de prix FR : compté à la cote Cardmarket. */
+    fallback: source === 'ebay' && toNumber(o.card.frPrice) === null,
     createdAt: o.createdAt,
   }));
 }
 
-export async function getCollection(userId: string) {
+export async function getCollection(userId: string, source: PriceSource = 'cardmarket') {
   const [items, market, products, cardLines] = await Promise.all([
     prisma.collectionItem.findMany({
       where: { userId },
@@ -51,7 +56,7 @@ export async function getCollection(userId: string) {
     }),
     latestMarketPrices(),
     getProducts(userId),
-    getOwnedCardLines(userId),
+    getOwnedCardLines(userId, source),
   ]);
 
   const retail = new Map<string, number>();
@@ -144,6 +149,9 @@ export async function getCollection(userId: string) {
     value: round(cardLines.reduce((s, l) => s + l.price * l.quantity, 0)),
     cost: round(cardLines.reduce((s, l) => s + l.paid * l.quantity, 0) + lotsPaid),
     copies: cardLines.reduce((n, l) => n + l.quantity, 0),
+    /** Cartes comptées à la cote Cardmarket faute de prix FR (source eBay FR). */
+    fallbackCopies: cardLines.reduce((n, l) => n + (l.fallback ? l.quantity : 0), 0),
+    source,
     distinct: new Set(cardLines.map((l) => l.cardId)).size,
   };
   // Valorisation de toute la collection : scellé + cartes.
@@ -184,7 +192,11 @@ export type CollectionPoint = {
  * Valeur de la collection jour par jour, reconstruite à partir des prix marché et des résumés
  * quotidiens des boutiques (dernier prix connu à chaque date), à côté du total investi.
  */
-export async function getCollectionHistory(userId: string, days = 365): Promise<CollectionPoint[]> {
+export async function getCollectionHistory(
+  userId: string,
+  days = 365,
+  source: PriceSource = 'cardmarket',
+): Promise<CollectionPoint[]> {
   const [items, cardLines] = await Promise.all([
     prisma.collectionItem.findMany({
       where: { userId },
@@ -197,7 +209,7 @@ export async function getCollectionHistory(userId: string, days = 365): Promise<
         soldAt: true,
       },
     }),
-    getOwnedCardLines(userId),
+    getOwnedCardLines(userId, source),
   ]);
   if (items.length === 0 && cardLines.length === 0) return [];
   const ids = [...new Set(items.map((i) => i.productId))];
@@ -279,7 +291,7 @@ export async function getCollectionHistory(userId: string, days = 365): Promise<
     const c = cardsByDay.get(k);
     if (c) {
       invested += c.invested;
-      value += c.cm;
+      value += source === 'ebay' ? c.frOrCm : c.cm;
     }
     points.push({ day: k, invested: round(invested), value: round(value) });
   }
