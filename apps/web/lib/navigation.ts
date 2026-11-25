@@ -171,95 +171,6 @@ export const NAV: NavEntry[] = [
     ],
   },
   {
-    label: 'Mon profil',
-    icon: UserRound,
-    match: (p) =>
-      p.startsWith('/profil') ||
-      (p.startsWith('/collection') && !CARD_ADD_PAGES.some((h) => p.startsWith(h))),
-    groups: [
-      {
-        label: 'Ma collection de cartes',
-        items: [
-          {
-            href: '/collection/cartes',
-            label: 'Mes cartes',
-            icon: LayoutGrid,
-            hint: 'Valeur et avancement par extension',
-            active: exact('/collection/cartes'),
-          },
-          {
-            href: '/collection/cartes/classeurs',
-            label: 'Classeurs',
-            icon: Library,
-            hint: 'Full Set, Master Set ou personnels',
-            active: (p) => p.startsWith('/collection/cartes/classeurs'),
-          },
-          {
-            href: '/collection/cartes/manquantes',
-            label: 'Ce qu’il me manque',
-            icon: ListChecks,
-            hint: 'Cartes manquantes et coût pour compléter un set',
-            active: exact('/collection/cartes/manquantes'),
-          },
-          {
-            href: '/collection/cartes/achats',
-            label: 'Achats et plus-value',
-            icon: Receipt,
-            hint: 'Lots, cartes achetées à l’unité et leur valeur',
-            active: exact('/collection/cartes/achats'),
-          },
-          {
-            href: '/collection/cartes/vitrines',
-            label: 'Vitrines',
-            icon: Sparkles,
-            hint: 'Tes plus belles cartes, à partager par un lien',
-            active: (p) => p.startsWith('/collection/cartes/vitrines'),
-          },
-        ],
-      },
-      {
-        label: 'Mon profil',
-        side: true,
-        items: [
-          {
-            href: '/profil',
-            label: 'Mon profil',
-            icon: UserRound,
-            hint: 'Ta page de collectionneur, à personnaliser et partager',
-            active: (p) => p.startsWith('/profil'),
-          },
-        ],
-      },
-      {
-        label: 'Ma collection scellée',
-        side: true,
-        items: [
-          {
-            href: '/collection',
-            label: 'Mon scellé',
-            icon: Vault,
-            hint: 'Valeur, plus-value, achats et reventes',
-            active: exact('/collection'),
-          },
-          {
-            href: '/collection/bilan',
-            label: 'Bilan des reventes',
-            icon: HandCoins,
-            hint: 'Plus-values réalisées de l’année, en CSV ou PDF',
-            active: (p) => p.startsWith('/collection/bilan'),
-          },
-          {
-            href: '/collection/ouvertures',
-            label: 'Ouvertures',
-            icon: PackageOpen,
-            hint: 'Ce qu’un display ou un ETB ouvert a rapporté',
-            active: (p) => p.startsWith('/collection/ouvertures'),
-          },
-        ],
-      },
-    ],
-  },
-  {
     label: 'Marché',
     icon: ChartLine,
     match: (p) => p.startsWith('/marche') || p.startsWith('/produits/prix'),
@@ -381,6 +292,95 @@ export const NAV: NavEntry[] = [
             icon: Wallet,
             hint: 'Les meilleurs achats pour une somme donnée',
             active: (p) => p.startsWith('/calculateurs/budget'),
+          },
+        ],
+      },
+    ],
+  },
+  {
+    label: 'Mon profil',
+    icon: UserRound,
+    match: (p) =>
+      p.startsWith('/profil') ||
+      (p.startsWith('/collection') && !CARD_ADD_PAGES.some((h) => p.startsWith(h))),
+    groups: [
+      {
+        label: 'Ma collection de cartes',
+        items: [
+          {
+            href: '/collection/cartes',
+            label: 'Mes cartes',
+            icon: LayoutGrid,
+            hint: 'Valeur et avancement par extension',
+            active: exact('/collection/cartes'),
+          },
+          {
+            href: '/collection/cartes/classeurs',
+            label: 'Classeurs',
+            icon: Library,
+            hint: 'Full Set, Master Set ou personnels',
+            active: (p) => p.startsWith('/collection/cartes/classeurs'),
+          },
+          {
+            href: '/collection/cartes/manquantes',
+            label: 'Ce qu’il me manque',
+            icon: ListChecks,
+            hint: 'Cartes manquantes et coût pour compléter un set',
+            active: exact('/collection/cartes/manquantes'),
+          },
+          {
+            href: '/collection/cartes/achats',
+            label: 'Achats et plus-value',
+            icon: Receipt,
+            hint: 'Lots, cartes achetées à l’unité et leur valeur',
+            active: exact('/collection/cartes/achats'),
+          },
+          {
+            href: '/collection/cartes/vitrines',
+            label: 'Vitrines',
+            icon: Sparkles,
+            hint: 'Tes plus belles cartes, à partager par un lien',
+            active: (p) => p.startsWith('/collection/cartes/vitrines'),
+          },
+        ],
+      },
+      {
+        label: 'Mon profil',
+        side: true,
+        items: [
+          {
+            href: '/profil',
+            label: 'Mon profil',
+            icon: UserRound,
+            hint: 'Ta page de collectionneur, à personnaliser et partager',
+            active: (p) => p.startsWith('/profil'),
+          },
+        ],
+      },
+      {
+        label: 'Ma collection scellée',
+        side: true,
+        items: [
+          {
+            href: '/collection',
+            label: 'Mon scellé',
+            icon: Vault,
+            hint: 'Valeur, plus-value, achats et reventes',
+            active: exact('/collection'),
+          },
+          {
+            href: '/collection/bilan',
+            label: 'Bilan des reventes',
+            icon: HandCoins,
+            hint: 'Plus-values réalisées de l’année, en CSV ou PDF',
+            active: (p) => p.startsWith('/collection/bilan'),
+          },
+          {
+            href: '/collection/ouvertures',
+            label: 'Ouvertures',
+            icon: PackageOpen,
+            hint: 'Ce qu’un display ou un ETB ouvert a rapporté',
+            active: (p) => p.startsWith('/collection/ouvertures'),
           },
         ],
       },
