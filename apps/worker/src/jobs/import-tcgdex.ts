@@ -1,5 +1,5 @@
 import { prisma } from '@tcgwatch/db';
-import { setCodeFromId, tcgdexAsset, TcgdexClient } from '@tcgwatch/market';
+import { setCodeFromId, TCGDEX_BASE_URL, tcgdexAsset, TcgdexClient } from '@tcgwatch/market';
 import { parseFrenchDate } from '@tcgwatch/shared';
 import type { WorkerContext } from '../context';
 
@@ -40,6 +40,14 @@ export async function importTcgdex(
   const recent = new Date(Date.now() - RECENT_DAYS * 86_400_000);
 
   const all = await client.listSeries();
+  // Noms anglais des extensions (import de collections exportées en anglais).
+  const english = new Map(
+    (
+      await new TcgdexClient(TCGDEX_BASE_URL.replace(/\/fr$/, '/en'))
+        .listSets()
+        .catch(() => [] as { id: string; name: string }[])
+    ).map((s) => [s.id, s.name]),
+  );
   for (const [order, brief] of all.entries()) {
     if (IGNORED_SERIES.has(brief.id) || (wanted && !wanted(brief.id))) continue;
     const serie = await client.getSerie(brief.id);
@@ -59,6 +67,8 @@ export async function importTcgdex(
       const stale =
         !existing ||
         existing.cardCountTotal === null ||
+        // Nom anglais et sigle pas encore connus (ajoutés pour l'import de collections).
+        (existing.nameEn === null && english.has(setBrief.id)) ||
         !existing.releaseDate ||
         existing.releaseDate >= recent;
       if (!stale && !weekly) {
@@ -80,6 +90,8 @@ export async function importTcgdex(
         symbolUrl: tcgdexAsset(set.symbol ?? unlisted.symbol, '.png') ?? null,
         cardCountOfficial: set.cardCount?.official ?? null,
         cardCountTotal: set.cardCount?.total ?? null,
+        nameEn: english.get(set.id) ?? existing?.nameEn ?? null,
+        abbreviation: set.abbreviation?.official ?? existing?.abbreviation ?? null,
       };
 
       if (!existing) {

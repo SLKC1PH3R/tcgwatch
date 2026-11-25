@@ -6,6 +6,7 @@ import {
   Calculator,
   CalendarDays,
   ChartLine,
+  FileUp,
   FlaskConical,
   GraduationCap,
   Layers,
@@ -201,6 +202,13 @@ export const NAV: NavEntry[] = [
             icon: Zap,
             hint: 'Toutes les cartes d’une extension, en quelques touchers',
             active: exact('/collection/cartes/ajout-rapide'),
+          },
+          {
+            href: '/collection/cartes/import',
+            label: 'Importer un fichier',
+            icon: FileUp,
+            hint: 'Une collection exportée en CSV (Dragon Shield, tableur…)',
+            active: exact('/collection/cartes/import'),
           },
           {
             href: '/collection/cartes/scanner',

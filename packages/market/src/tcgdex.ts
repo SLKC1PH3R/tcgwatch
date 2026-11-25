@@ -147,6 +147,11 @@ export class TcgdexClient {
     return this.get(`/sets/${encodeURIComponent(id)}`, setSchema);
   }
 
+  /** Toutes les extensions (identifiant et nom dans la langue du client). */
+  async listSets(): Promise<{ id: string; name: string }[]> {
+    return this.get('/sets', z.array(z.object({ id: z.string(), name: z.string() })));
+  }
+
   /**
    * Logo et symbole publiés sur le CDN de TCGdex mais pas (encore) déclarés par l'API :
    * fréquent pour les extensions récentes. Logo français d'abord, puis anglais.

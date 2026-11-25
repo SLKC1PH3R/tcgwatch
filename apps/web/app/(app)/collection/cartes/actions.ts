@@ -5,7 +5,9 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
 import { prisma } from '@tcgwatch/db';
+import { parseCollectionCsv } from '@tcgwatch/shared';
 import { requireUser } from '@/lib/auth';
+import { previewImport } from '@/lib/data/collection-import';
 import {
   firstIssue,
   formToObject,
@@ -342,4 +344,98 @@ export async function setCardPurchaseAction(
   });
   revalidatePath(`/cartes/${encodeURIComponent(cardId)}`);
   revalidatePath(BASE, 'layout');
+}
+
+// ─── Import de collection ────────────────────────────────
+
+/** Analyse d'un fichier CSV : colonnes reconnues et carte trouvée pour chaque ligne. */
+export async function previewImportAction(text: string) {
+  await requireUser();
+  if (text.length > 2_000_000) return { error: 'Fichier trop gros (2 Mo au plus)' } as const;
+  const { columns, rows } = parseCollectionCsv(text);
+  if (rows.length === 0) {
+    return {
+      error:
+        'Aucune ligne lisible : il faut au moins une colonne « Numéro » ou « Nom » dans la première ligne.',
+    } as const;
+  }
+  if (rows.length > 5000) return { error: '5 000 lignes au plus par import' } as const;
+  return { columns, rows: await previewImport(rows) } as const;
+}
+
+const importSchema = z
+  .array(
+    z.object({
+      cardId: z.string().min(1).max(80),
+      variant: z.enum(VARIANTS),
+      quantity: z.number().int().min(1).max(999),
+      price: z.number().min(0).max(100_000).nullable(),
+    }),
+  )
+  .min(1)
+  .max(5000);
+
+/**
+ * Import confirmé : exemplaires ajoutés à ceux déjà possédés ; le prix d'achat du fichier est
+ * gardé quand la carte n'en a pas encore.
+ */
+export async function importCardsAction(
+  items: { cardId: string; variant: string; quantity: number; price: number | null }[],
+): Promise<{ saved: number; error?: string }> {
+  const user = await requireUser();
+  const parsed = importSchema.safeParse(items);
+  if (!parsed.success) return { saved: 0, error: firstIssue(parsed.error) };
+  // Lignes identiques regroupées (même carte, même version).
+  const merged = new Map<
+    string,
+    { cardId: string; variant: string; quantity: number; price: number | null }
+  >();
+  for (const i of parsed.data) {
+    const k = `${i.cardId}:${i.variant}`;
+    const prev = merged.get(k);
+    merged.set(
+      k,
+      prev
+        ? { ...prev, quantity: prev.quantity + i.quantity, price: prev.price ?? i.price }
+        : { ...i },
+    );
+  }
+  const rows = [...merged.values()];
+  const known = new Set(
+    (
+      await prisma.card.findMany({
+        where: { id: { in: rows.map((r) => r.cardId) } },
+        select: { id: true },
+      })
+    ).map((c) => c.id),
+  );
+  const valid = rows.filter((r) => known.has(r.cardId));
+  for (let i = 0; i < valid.length; i += 200) {
+    await prisma.$transaction(
+      valid.slice(i, i + 200).map((r) =>
+        prisma.ownedCard.upsert({
+          where: {
+            userId_cardId_variant: { userId: user.id, cardId: r.cardId, variant: r.variant },
+          },
+          update: { quantity: { increment: r.quantity } },
+          create: {
+            userId: user.id,
+            cardId: r.cardId,
+            variant: r.variant,
+            quantity: r.quantity,
+            purchasePrice: r.price,
+          },
+        }),
+      ),
+    );
+    // Prix d'achat pour les cartes qui n'en avaient pas.
+    for (const r of valid.slice(i, i + 200).filter((x) => x.price !== null)) {
+      await prisma.ownedCard.updateMany({
+        where: { userId: user.id, cardId: r.cardId, variant: r.variant, purchasePrice: null },
+        data: { purchasePrice: r.price },
+      });
+    }
+  }
+  revalidatePath(BASE, 'layout');
+  return { saved: valid.reduce((n, r) => n + r.quantity, 0) };
 }

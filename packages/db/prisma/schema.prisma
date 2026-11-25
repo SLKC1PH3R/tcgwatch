@@ -239,6 +239,9 @@ model Release {
   nameFr            String
   setCode           String? /// ex. "ME06"
   tcgdexId          String?       @unique /// id du set TCGdex (ex. "me06")
+  /// Nom anglais et sigle officiel (« Delta Reign », « DRI ») : import de collections.
+  nameEn            String?
+  abbreviation      String?
   externalId        String?       @unique /// id dans une autre source (ex. "pokecardex:3382")
   msrp              Decimal?      @db.Decimal(10, 2) /// prix public conseillé annoncé
   serie             String? /// ex. "Méga-Évolution"
