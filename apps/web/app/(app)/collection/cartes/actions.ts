@@ -6,7 +6,14 @@ import { redirect } from 'next/navigation';
 import { z } from 'zod';
 import { prisma } from '@tcgwatch/db';
 import { requireUser } from '@/lib/auth';
-import { firstIssue, formToObject, optionalText } from '@/lib/form';
+import {
+  firstIssue,
+  formToObject,
+  optionalDate,
+  optionalPrice,
+  optionalText,
+  requiredPrice,
+} from '@/lib/form';
 
 const BASE = '/collection/cartes';
 const VARIANTS = ['normal', 'reverse', 'holo', 'firstEdition'] as const;
@@ -266,4 +273,73 @@ export async function removeShowcaseCardAction(showcaseId: string, cardId: strin
     where: { showcaseId, cardId, showcase: { userId: user.id } },
   });
   revalidatePath(`${BASE}/vitrines/${showcaseId}`);
+}
+
+// ─── Prix d'achat ────────────────────────────────────────
+
+export interface LotState {
+  error?: string;
+  success?: string;
+}
+
+const lotSchema = z.object({
+  id: z.string().optional(),
+  name: z.string().trim().min(1, 'Donne un nom au lot').max(80),
+  price: requiredPrice,
+  purchasedAt: optionalDate.refine((d) => d !== null, 'Date d’achat requise'),
+  notes: optionalText,
+});
+
+/** Crée ou modifie un lot d'achat (prix payé, extensions couvertes). */
+export async function saveCardLotAction(_prev: LotState, formData: FormData): Promise<LotState> {
+  const user = await requireUser();
+  const parsed = lotSchema.safeParse(formToObject(formData));
+  if (!parsed.success) return { error: firstIssue(parsed.error) };
+  const releases = [...new Set(formData.getAll('releases').map(String))].filter(Boolean);
+  if (releases.length === 0) return { error: 'Coche au moins une extension' };
+  const data = {
+    name: parsed.data.name,
+    price: parsed.data.price,
+    purchasedAt: parsed.data.purchasedAt!,
+    notes: parsed.data.notes,
+    releases,
+  };
+  if (parsed.data.id) {
+    await prisma.cardLot.updateMany({ where: { id: parsed.data.id, userId: user.id }, data });
+  } else {
+    await prisma.cardLot.create({ data: { ...data, userId: user.id } });
+  }
+  revalidatePath(BASE, 'layout');
+  return { success: parsed.data.id ? 'Lot modifié' : 'Lot ajouté' };
+}
+
+export async function deleteCardLotAction(id: string) {
+  const user = await requireUser();
+  await prisma.cardLot.deleteMany({ where: { id, userId: user.id } });
+  revalidatePath(BASE, 'layout');
+}
+
+const purchaseSchema = z.object({
+  purchasePrice: optionalPrice,
+  purchasedAt: optionalDate,
+});
+
+/** Prix d'achat par exemplaire d'une carte possédée (vide : prix inconnu, lot ou booster). */
+export async function setCardPurchaseAction(
+  cardId: string,
+  variant: string,
+  formData: FormData,
+): Promise<void> {
+  const user = await requireUser();
+  const parsed = purchaseSchema.safeParse(formToObject(formData));
+  if (!parsed.success) redirect(`/cartes/${encodeURIComponent(cardId)}?erreur=achat`);
+  await prisma.ownedCard.updateMany({
+    where: { userId: user.id, cardId, variant },
+    data: {
+      purchasePrice: parsed.data.purchasePrice,
+      purchasedAt: parsed.data.purchasePrice === null ? null : parsed.data.purchasedAt,
+    },
+  });
+  revalidatePath(`/cartes/${encodeURIComponent(cardId)}`);
+  revalidatePath(BASE, 'layout');
 }

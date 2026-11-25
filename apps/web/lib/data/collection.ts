@@ -135,9 +135,13 @@ export async function getCollection(userId: string) {
     retailPrice: retail,
   });
 
+  // Coût des cartes : achats à l'unité et lots d'achat.
+  const lotsPaid = (
+    await prisma.cardLot.findMany({ where: { userId }, select: { price: true } })
+  ).reduce((n, l) => n + toNumber(l.price)!, 0);
   const cards = {
     value: round(cardLines.reduce((s, l) => s + l.price * l.quantity, 0)),
-    cost: round(cardLines.reduce((s, l) => s + l.paid * l.quantity, 0)),
+    cost: round(cardLines.reduce((s, l) => s + l.paid * l.quantity, 0) + lotsPaid),
     copies: cardLines.reduce((n, l) => n + l.quantity, 0),
     distinct: new Set(cardLines.map((l) => l.cardId)).size,
   };

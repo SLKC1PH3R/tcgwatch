@@ -21,7 +21,7 @@ import { ReportButton } from '@/components/report-button';
 import { requireUser } from '@/lib/auth';
 import { cn } from '@/lib/utils';
 import { prisma } from '@tcgwatch/db';
-import { adjustOwnedCardAction } from '../../collection/cartes/actions';
+import { adjustOwnedCardAction, setCardPurchaseAction } from '../../collection/cartes/actions';
 import { followCardAction, setCardAlertAction, unfollowCardAction } from '../actions';
 
 type Props = {
@@ -43,9 +43,21 @@ export default async function CardPage({ params, searchParams }: Props) {
   const owned = card.local
     ? await prisma.ownedCard.findMany({
         where: { cardId: tcgdexId, userId: user.id },
-        select: { variant: true, quantity: true },
+        select: { variant: true, quantity: true, purchasePrice: true, purchasedAt: true },
       })
     : [];
+  const purchaseOf = Object.fromEntries(
+    owned.map((o) => [
+      o.variant,
+      { price: toNumber(o.purchasePrice), at: o.purchasedAt?.toISOString().slice(0, 10) ?? '' },
+    ]),
+  );
+  // Prix d'achat moyen des exemplaires achetés à l'unité : repère sur la courbe.
+  const bought = owned.filter((o) => o.purchasePrice !== null);
+  const purchaseLine = bought.length
+    ? bought.reduce((n, o) => n + toNumber(o.purchasePrice)! * o.quantity, 0) /
+      bought.reduce((n, o) => n + o.quantity, 0)
+    : null;
   const ownedBy = Object.fromEntries(owned.map((o) => [o.variant, o.quantity]));
   const variants = [
     ...new Set([
@@ -227,7 +239,7 @@ export default async function CardPage({ params, searchParams }: Props) {
               </nav>
             </CardHeader>
             <CardContent className="fit:min-h-0 fit:flex-1">
-              <CardChart data={history} />
+              <CardChart data={history} purchase={purchaseLine} />
             </CardContent>
           </Card>
           {siblings.length > 0 && (
@@ -318,6 +330,60 @@ export default async function CardPage({ params, searchParams }: Props) {
                     </li>
                   ))}
                 </ul>
+                {owned.length > 0 && (
+                  <div className="space-y-2 border-t pt-2">
+                    <p className="text-xs text-muted-foreground">
+                      Prix d’achat par exemplaire, si tu l’as achetée à l’unité (laisse vide pour
+                      une carte tirée d’un booster ou d’un lot).
+                    </p>
+                    {owned.map((o) => {
+                      const p = purchaseOf[o.variant]!;
+                      const now = card.current?.trend ?? null;
+                      return (
+                        <form
+                          key={o.variant}
+                          action={setCardPurchaseAction.bind(null, tcgdexId, o.variant)}
+                          className="space-y-1"
+                        >
+                          <p className="text-xs font-semibold">
+                            {VARIANT_LABELS[o.variant] ?? o.variant} · {o.quantity} ex.
+                            {p.price !== null && now !== null && (
+                              <span
+                                className={cn(
+                                  'ml-2 font-normal',
+                                  now >= p.price ? 'text-success' : 'text-destructive',
+                                )}
+                              >
+                                {now >= p.price ? '+' : ''}
+                                {formatPrice((now - p.price) * o.quantity)} depuis l’achat
+                              </span>
+                            )}
+                          </p>
+                          <div className="flex items-center gap-1.5">
+                            <Input
+                              name="purchasePrice"
+                              inputMode="decimal"
+                              placeholder="Prix payé (u.)"
+                              aria-label={`Prix payé par exemplaire (${VARIANT_LABELS[o.variant] ?? o.variant})`}
+                              defaultValue={fmt(p.price)}
+                              className="h-8 min-w-0 flex-1"
+                            />
+                            <Input
+                              name="purchasedAt"
+                              type="date"
+                              aria-label="Date d’achat"
+                              defaultValue={p.at}
+                              className="h-8 w-36"
+                            />
+                            <Button type="submit" size="sm" variant="outline" className="h-8">
+                              OK
+                            </Button>
+                          </div>
+                        </form>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             )}
             {card.tracked && user.role === 'ADMIN' && (

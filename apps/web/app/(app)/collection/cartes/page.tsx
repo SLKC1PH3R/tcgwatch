@@ -15,6 +15,7 @@ import { percent } from '@/lib/card-sets';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { getCardCollection } from '@/lib/data/card-collection';
+import { getCardInvestment } from '@/lib/data/card-investment';
 import { refreshOwnedCardPrices } from '@/lib/data/extensions';
 import { fitCard, fitGrid, fitScroll } from '@/lib/fit';
 import { cn } from '@/lib/utils';
@@ -25,10 +26,12 @@ export const metadata: Metadata = { title: 'Mes cartes' };
 /** Vue d'ensemble des cartes : valeur, avancement par extension, derniers ajouts. */
 export default async function MyCardsPage() {
   const user = await requireUser();
-  const [{ releases, latest, distinct, copies, value, fr }, jar] = await Promise.all([
+  const [{ releases, latest, distinct, copies, value, fr }, jar, inv] = await Promise.all([
     getCardCollection(user.id),
     cookies(),
+    getCardInvestment(user.id),
   ]);
+  const lotOf = new Map(inv.lots.flatMap((l) => l.releases.map((c) => [c, l] as const)));
   const priceSource = parsePriceSource(jar.get(PRICE_COOKIE)?.value);
   after(() => refreshOwnedCardPrices().then(() => undefined));
 
@@ -49,6 +52,9 @@ export default async function MyCardsPage() {
             </Button>
             <Button asChild variant="outline">
               <Link href="/collection/cartes/manquantes">Ce qu’il me manque</Link>
+            </Button>
+            <Button asChild variant="outline">
+              <Link href="/collection/cartes/achats">Achats</Link>
             </Button>
             <Button asChild variant="outline">
               <Link href="/collection/cartes/scanner">
@@ -79,8 +85,34 @@ export default async function MyCardsPage() {
               : 'prix français en cours de relevé (annonces eBay)'
           }
         />
-        <Tile label="Cartes différentes" value={distinct.toLocaleString('fr-FR')} />
-        <Tile label="Exemplaires" value={copies.toLocaleString('fr-FR')} />
+        <Link
+          href="/collection/cartes/achats"
+          className="min-w-0 rounded-xl border bg-card px-4 py-3 transition-colors hover:bg-accent"
+        >
+          <p className="text-xs font-medium text-muted-foreground">Investi</p>
+          <p className="font-display text-xl font-bold tabular-nums">
+            {inv.covered.paid > 0 ? formatPrice(inv.covered.paid) : '—'}
+          </p>
+          {inv.covered.paid > 0 ? (
+            (() => {
+              const now = priceSource === 'ebay' ? inv.covered.fr : inv.covered.cm;
+              const gain = now - inv.covered.paid;
+              return (
+                <p className={cn('text-xs', gain >= 0 ? 'text-success' : 'text-destructive')}>
+                  vaut {formatPrice(now)} · {gain >= 0 ? '+' : ''}
+                  {formatPrice(gain)}
+                </p>
+              );
+            })()
+          ) : (
+            <p className="text-xs text-muted-foreground">ajoute tes lots et achats à l’unité</p>
+          )}
+        </Link>
+        <Tile
+          label="Cartes différentes"
+          value={distinct.toLocaleString('fr-FR')}
+          hint={`${copies.toLocaleString('fr-FR')} exemplaire${copies > 1 ? 's' : ''}`}
+        />
       </div>
 
       {releases.length === 0 ? (
@@ -126,6 +158,12 @@ export default async function MyCardsPage() {
                           )}
                         </p>
                         <SetProgressBars progress={r.progress} />
+                        {lotOf.get(r.code) && (
+                          <p className="truncate text-[11px] text-muted-foreground">
+                            Lot « {lotOf.get(r.code)!.name} » ·{' '}
+                            {formatPrice(lotOf.get(r.code)!.paid)}
+                          </p>
+                        )}
                         {r.progress.full.owned < r.progress.full.total && (
                           <p className="text-[11px] text-muted-foreground tabular-nums">
                             Il manque {r.progress.full.total - r.progress.full.owned} cartes · ≈{' '}

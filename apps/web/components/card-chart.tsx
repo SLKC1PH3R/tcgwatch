@@ -5,6 +5,7 @@ import {
   Legend,
   Line,
   LineChart,
+  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -40,7 +41,14 @@ type Point = {
  * Cotes Cardmarket d'une carte (toutes langues) : une courbe par indicateur, gardés séparément
  * chaque jour, et le prix français relevé sur eBay (pointillés) pour suivre l'écart.
  */
-export function CardChart({ data }: { data: Point[] }) {
+export function CardChart({
+  data,
+  purchase = null,
+}: {
+  data: Point[];
+  /** Prix d'achat moyen (cartes achetées à l'unité) : ligne de repère. */
+  purchase?: number | null;
+}) {
   if (data.length < 2) {
     return (
       <p className="py-10 text-center text-sm text-muted-foreground">
@@ -85,6 +93,20 @@ export function CardChart({ data }: { data: Point[] }) {
             }}
           />
           <Legend wrapperStyle={{ fontSize: 12 }} />
+          {purchase !== null && (
+            <ReferenceLine
+              y={purchase}
+              stroke="var(--muted-foreground)"
+              strokeDasharray="2 4"
+              ifOverflow="extendDomain"
+              label={{
+                value: `Prix d’achat ${eur.format(purchase)}`,
+                position: 'insideTopLeft',
+                fill: 'var(--muted-foreground)',
+                fontSize: 11,
+              }}
+            />
+          )}
           {present.map((s) => (
             <Line
               key={s.key}

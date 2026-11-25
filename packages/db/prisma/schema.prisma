@@ -119,6 +119,7 @@ model User {
   pushDevices     PushSubscription[]
   reports         ErrorReport[]
   openings        ProductOpening[]
+  cardLots        CardLot[]
   createdAt       DateTime           @default(now())
   updatedAt       DateTime           @updatedAt
 }
@@ -695,7 +696,9 @@ model OwnedCard {
   /// normal, reverse, holo, firstEdition
   variant       String   @default("normal")
   quantity      Int      @default(1)
+  /// Prix payé par exemplaire (cartes achetées à l'unité), sinon inconnu (lot, booster…).
   purchasePrice Decimal? @db.Decimal(10, 2)
+  purchasedAt   DateTime? @db.Date
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
@@ -819,4 +822,22 @@ model ApiUsage {
   calls  Int      @default(0)
 
   @@id([source, day])
+}
+
+/// Achat groupé de cartes (lot, master set, demi-display ouvert…) couvrant une ou plusieurs
+/// extensions : les cartes de ces extensions sans prix d'achat à l'unité y sont rattachées.
+model CardLot {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String
+  price       Decimal  @db.Decimal(10, 2)
+  purchasedAt DateTime @db.Date
+  /// Codes TCGdex des extensions couvertes (« 30th », « 30th-c »).
+  releases    String[]
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId])
 }

@@ -30,11 +30,13 @@ export async function GET() {
           variant: true,
           quantity: true,
           purchasePrice: true,
+          purchasedAt: true,
           createdAt: true,
         },
       },
       binders: { include: { cards: { select: { cardId: true, position: true } } } },
       showcases: { include: { cards: { select: { cardId: true, position: true } } } },
+      cardLots: true,
       openings: {
         include: {
           product: { select: { id: true, name: true } },

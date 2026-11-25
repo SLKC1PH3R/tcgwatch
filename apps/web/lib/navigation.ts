@@ -17,6 +17,7 @@ import {
   PackageCheck,
   PackageOpen,
   PackageSearch,
+  Receipt,
   ScanLine,
   Sparkles,
   Star,
@@ -174,6 +175,13 @@ export const NAV: NavEntry[] = [
             icon: ListChecks,
             hint: 'Cartes manquantes et coût pour compléter un set',
             active: exact('/collection/cartes/manquantes'),
+          },
+          {
+            href: '/collection/cartes/achats',
+            label: 'Achats et plus-value',
+            icon: Receipt,
+            hint: 'Lots, cartes achetées à l’unité et leur valeur',
+            active: exact('/collection/cartes/achats'),
           },
           {
             href: '/collection/cartes/vitrines',
