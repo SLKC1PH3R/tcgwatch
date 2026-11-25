@@ -11,3 +11,4 @@ export * from './scrape-health';
 export * from './phash';
 export * from './card-listings';
 export * from './collection-import';
+export * from './restock-pattern';

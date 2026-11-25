@@ -8,6 +8,7 @@ import {
   isBuyable,
   PRODUCT_TYPE_LABELS,
   type ProductTypeKey,
+  WEEKDAYS_FR,
 } from '@tcgwatch/shared';
 import { AvailabilityBadge } from '@/components/availability-badge';
 import { FitPage } from '@/components/fit-page';
@@ -15,8 +16,13 @@ import { PageHeader } from '@/components/page-header';
 import { Thumb } from '@/components/thumb';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { getRestocks, type RestockKind, type RestockRow } from '@/lib/data/restocks';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  getRestockPatterns,
+  getRestocks,
+  type RestockKind,
+  type RestockRow,
+} from '@/lib/data/restocks';
 import { fitCard, fitColumn, fitGrid, fitScroll } from '@/lib/fit';
 import { cn } from '@/lib/utils';
 
@@ -64,7 +70,10 @@ export default async function RestocksPage({ searchParams }: Props) {
   const period = PERIODS.find((p) => p.key === q.periode) ?? PERIODS[1];
   const kind = KINDS.find((k) => k.key === q.type)?.key ?? 'stock';
   const available = q.dispo === '1';
-  const rows = await getRestocks({ days: period.days, kind, available });
+  const [rows, patterns] = await Promise.all([
+    getRestocks({ days: period.days, kind, available }),
+    getRestockPatterns(),
+  ]);
 
   const href = (params: Record<string, string | undefined>) => {
     const s = new URLSearchParams();
@@ -106,7 +115,6 @@ export default async function RestocksPage({ searchParams }: Props) {
   const shops = [
     ...countBy(rows.map((r) => r.listing?.retailerName).filter((n): n is string => !!n)),
   ];
-  const maxShop = Math.max(1, ...shops.map(([, n]) => n));
   const noun =
     kind === 'precommandes' ? 'Précommandes' : kind === 'tout' ? 'Événements' : 'Retours';
 
@@ -207,25 +215,59 @@ export default async function RestocksPage({ searchParams }: Props) {
           </Card>
           <Card className={cn(fitCard, 'fit:flex-1')}>
             <CardHeader>
-              <CardTitle>Boutiques les plus actives</CardTitle>
+              <CardTitle>Habitudes de réassort</CardTitle>
+              <CardDescription>
+                Sur six mois : jour et heure (de Paris) où chaque boutique remet le plus souvent en
+                stock. Relevés environ toutes les heures.
+              </CardDescription>
             </CardHeader>
             <CardContent className={fitScroll}>
-              {shops.length === 0 ? (
-                <p className="text-sm text-muted-foreground">Rien sur cette période.</p>
+              {patterns.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  Pas encore assez de retours relevés.
+                </p>
               ) : (
-                <ul className="space-y-2.5">
-                  {shops.map(([name, n]) => (
-                    <li key={name} className="flex items-center gap-3 text-sm">
-                      <span className="w-28 shrink-0 truncate font-semibold">{name}</span>
-                      <span className="h-2 flex-1 overflow-hidden rounded-full bg-muted">
-                        <span
-                          className="block h-full rounded-full bg-success"
-                          style={{ width: `${(n / maxShop) * 100}%` }}
-                        />
-                      </span>
-                      <span className="w-6 text-right text-muted-foreground tabular-nums">{n}</span>
-                    </li>
-                  ))}
+                <ul className="space-y-3">
+                  {patterns.map((r) => {
+                    const max = Math.max(1, ...r.pattern.byDay);
+                    const inPeriod = shops.find(([n]) => n === r.name)?.[1] ?? 0;
+                    return (
+                      <li key={r.slug} className="space-y-1">
+                        <div className="flex items-baseline justify-between gap-2 text-sm">
+                          <span className="truncate font-semibold">{r.name}</span>
+                          <span className="shrink-0 text-xs text-muted-foreground tabular-nums">
+                            {r.pattern.count} en 6 mois
+                            {inPeriod > 0 && ` · ${inPeriod} sur ${period.label}`}
+                          </span>
+                        </div>
+                        <div
+                          className="flex h-9 items-end gap-1"
+                          role="img"
+                          aria-label={`Retours par jour : ${WEEKDAYS_FR.map((d, i) => `${d} ${r.pattern.byDay[i]}`).join(', ')}`}
+                        >
+                          {r.pattern.byDay.map((n, i) => (
+                            <div key={i} className="flex flex-1 flex-col items-center gap-0.5">
+                              <span
+                                className={cn(
+                                  'w-full rounded-sm',
+                                  r.pattern.topDay?.day === i && r.pattern.topDay.share >= 0.3
+                                    ? 'bg-success'
+                                    : 'bg-success/30',
+                                )}
+                                style={{ height: `${Math.max(2, (n / max) * 22)}px` }}
+                              />
+                              <span className="text-[9px] leading-none text-muted-foreground">
+                                {WEEKDAYS_FR[i]!.slice(0, 2)}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          {r.summary ?? 'Trop peu de retours pour dégager une habitude.'}
+                        </p>
+                      </li>
+                    );
+                  })}
                 </ul>
               )}
             </CardContent>

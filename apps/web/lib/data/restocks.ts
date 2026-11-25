@@ -1,6 +1,12 @@
 import 'server-only';
 import { prisma, type Prisma } from '@tcgwatch/db';
-import { isBuyable, toNumber, type Availability } from '@tcgwatch/shared';
+import {
+  describeRestockPattern,
+  isBuyable,
+  restockPattern,
+  toNumber,
+  type Availability,
+} from '@tcgwatch/shared';
 import { bestOffer, getProductsByIds, type ListingDTO } from './products';
 
 /** Événements listés : retour en stock, et ouverture des précommandes si demandé. */
@@ -115,4 +121,37 @@ export async function getRestocks(filters: RestockFilters, limit = 300) {
     });
   }
   return rows;
+}
+
+/**
+ * Habitudes de réassort par boutique sur les six derniers mois : jour et plage horaire les plus
+ * fréquents, écart habituel entre deux retours en stock.
+ */
+export async function getRestockPatterns(days = 183) {
+  const events = await prisma.alertEvent.findMany({
+    where: {
+      type: 'BACK_IN_STOCK',
+      listingId: { not: null },
+      createdAt: { gte: new Date(Date.now() - days * 86_400_000) },
+    },
+    distinct: ['dedupeKey'],
+    select: {
+      createdAt: true,
+      listing: { select: { retailer: { select: { id: true, name: true, slug: true } } } },
+    },
+  });
+  const byRetailer = new Map<string, { name: string; slug: string; dates: Date[] }>();
+  for (const e of events) {
+    const r = e.listing?.retailer;
+    if (!r) continue;
+    const entry = byRetailer.get(r.id) ?? { name: r.name, slug: r.slug, dates: [] };
+    entry.dates.push(e.createdAt);
+    byRetailer.set(r.id, entry);
+  }
+  return [...byRetailer.values()]
+    .map((r) => {
+      const pattern = restockPattern(r.dates);
+      return { name: r.name, slug: r.slug, pattern, summary: describeRestockPattern(pattern) };
+    })
+    .sort((a, b) => b.pattern.count - a.pattern.count || a.name.localeCompare(b.name, 'fr'));
 }
