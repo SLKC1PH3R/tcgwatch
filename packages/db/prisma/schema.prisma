@@ -107,6 +107,15 @@ model User {
   emailVerifiedAt DateTime?
   /// Identifiant Google (« sub ») du compte lié.
   googleId        String?            @unique
+  /// Page publique de collectionneur (/collectionneur/{profileSlug}), désactivée par défaut.
+  profilePublic   Boolean            @default(false)
+  profileSlug     String?            @unique
+  /// Pseudo affiché sur la page publique (jamais l'e-mail).
+  profileName     String?
+  profileBio      String?
+  profileBinders  Boolean            @default(true)
+  profileDoubles  Boolean            @default(true)
+  profilePrices   Boolean            @default(false)
   sessions        Session[]
   tokens          AuthToken[]
   follows         ProductFollow[]
@@ -691,19 +700,19 @@ model MarketListing {
 
 /// Cartes de la collection : une ligne par carte et par variante (normale, reverse…).
 model OwnedCard {
-  id            String   @id @default(cuid())
+  id            String    @id @default(cuid())
   userId        String
-  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   cardId        String
-  card          Card     @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  card          Card      @relation(fields: [cardId], references: [id], onDelete: Cascade)
   /// normal, reverse, holo, firstEdition
-  variant       String   @default("normal")
-  quantity      Int      @default(1)
+  variant       String    @default("normal")
+  quantity      Int       @default(1)
   /// Prix payé par exemplaire (cartes achetées à l'unité), sinon inconnu (lot, booster…).
-  purchasePrice Decimal? @db.Decimal(10, 2)
+  purchasePrice Decimal?  @db.Decimal(10, 2)
   purchasedAt   DateTime? @db.Date
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
   @@unique([userId, cardId, variant])
   @@index([userId, createdAt])

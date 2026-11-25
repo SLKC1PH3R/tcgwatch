@@ -439,3 +439,64 @@ export async function importCardsAction(
   revalidatePath(BASE, 'layout');
   return { saved: valid.reduce((n, r) => n + r.quantity, 0) };
 }
+
+// ─── Page publique de collectionneur ─────────────────────
+
+const RESERVED_SLUGS = new Set(['admin', 'tcgwatch', 'moderation', 'support', 'contact']);
+const profileSchema = z.object({
+  profileSlug: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .transform((s) =>
+      s
+        .normalize('NFD')
+        .replace(/[̀-ͯ]/g, '')
+        .replace(/[\s_]+/g, '-'),
+    )
+    .pipe(
+      z
+        .string()
+        .regex(
+          /^(|[a-z0-9][a-z0-9-]{1,28}[a-z0-9])$/,
+          'Adresse : 3 à 30 caractères, lettres, chiffres et tirets',
+        ),
+    ),
+  profileName: z.string().trim().max(40, 'Pseudo : 40 caractères au plus').optional(),
+  profileBio: z.string().trim().max(300, 'Présentation : 300 caractères au plus').optional(),
+});
+
+export async function saveProfileAction(formData: FormData) {
+  const user = await requireUser();
+  const data = formToObject(formData);
+  const parsed = profileSchema.safeParse(data);
+  const back = (q: string) => redirect(`${BASE}/vitrines?${q}`);
+  if (!parsed.success) back(`erreur=${encodeURIComponent(firstIssue(parsed.error))}`);
+  const { profileSlug, profileName, profileBio } = parsed.data!;
+  const publish = data.profilePublic === 'on';
+  if (publish && !profileSlug)
+    back(`erreur=${encodeURIComponent('Choisis une adresse pour ta page')}`);
+  if (RESERVED_SLUGS.has(profileSlug))
+    back(`erreur=${encodeURIComponent('Cette adresse est réservée')}`);
+  if (
+    profileSlug &&
+    (await prisma.user.count({ where: { profileSlug, id: { not: user.id } } })) > 0
+  ) {
+    back(`erreur=${encodeURIComponent('Cette adresse est déjà prise')}`);
+  }
+  await prisma.user.update({
+    where: { id: user.id },
+    data: {
+      profilePublic: publish,
+      profileSlug: profileSlug || null,
+      profileName: profileName || null,
+      profileBio: profileBio || null,
+      profileBinders: data.profileBinders === 'on',
+      profileDoubles: data.profileDoubles === 'on',
+      profilePrices: data.profilePrices === 'on',
+    },
+  });
+  revalidatePath(`${BASE}/vitrines`);
+  if (profileSlug) revalidatePath(`/collectionneur/${profileSlug}`);
+  back('profil=enregistre');
+}

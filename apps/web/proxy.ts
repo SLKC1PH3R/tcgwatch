@@ -6,6 +6,7 @@ import { NextResponse, type NextRequest } from 'next/server';
  */
 // /cards : illustrations de la page de connexion (fichiers statiques de public/).
 // /vitrine : vitrines de cartes partagées par lien (seulement celles rendues publiques).
+// /collectionneur : pages publiques de collectionneur (seulement celles activées).
 // /mot-de-passe, /verifier-email, /api/auth : récupération du compte et connexion Google.
 const PUBLIC_PATHS = [
   '/connexion',
@@ -16,6 +17,7 @@ const PUBLIC_PATHS = [
   '/api/health',
   '/cards',
   '/vitrine',
+  '/collectionneur',
   // Appli installable : service worker, manifeste, icônes, page hors-ligne.
   '/sw.js',
   '/manifest.webmanifest',

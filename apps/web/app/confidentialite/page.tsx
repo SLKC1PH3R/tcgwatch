@@ -29,7 +29,10 @@ export default function PrivacyPage() {
             <td>Exécution du service</td>
           </tr>
           <tr>
-            <td>Collection, produits suivis, bons prix, vitrines, réglages d’alertes</td>
+            <td>
+              Collection, produits suivis, bons prix, vitrines, page de collectionneur (publique
+              seulement si tu l’actives), réglages d’alertes
+            </td>
             <td>Les fonctions que tu utilises</td>
             <td>Exécution du service</td>
           </tr>

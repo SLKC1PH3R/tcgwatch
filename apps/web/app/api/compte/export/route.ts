@@ -13,6 +13,13 @@ export async function GET() {
       role: true,
       emailVerifiedAt: true,
       googleId: true,
+      profilePublic: true,
+      profileSlug: true,
+      profileName: true,
+      profileBio: true,
+      profileBinders: true,
+      profileDoubles: true,
+      profilePrices: true,
       createdAt: true,
       alertSettings: { select: { quietStart: true, quietEnd: true, mutedTypes: true } },
       follows: {
