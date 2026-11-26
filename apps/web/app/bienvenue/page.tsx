@@ -18,7 +18,7 @@ import { AlertSwitches, ScannerBand, type ScanCard } from './scanner-band';
 export const metadata: Metadata = {
   title: 'TCGWatch — stocks, prix et alertes Pokémon JCC en France',
   description:
-    'Restocks des ETB, displays et coffrets Pokémon chez les boutiques françaises, prix comparés port compris, cote du marché, scanner et collection de cartes, alertes sur ton téléphone. Gratuit.',
+    'Restocks des ETB, displays et coffrets Pokémon chez les boutiques françaises, prix comparés port compris, cote du marché, scanner et collection de cartes, alertes sur votre téléphone. Gratuit.',
 };
 
 /** Cartes de secours quand l'encyclopédie n'a pas encore de cote. */
@@ -27,54 +27,54 @@ const LOCAL_CARDS = ['b', 'g', 'r'].map((c) => `/cards/30e-anniversaire-${c}.web
 const STEPS = [
   {
     title: 'Scanner',
-    text: 'Vise une carte avec l’appareil photo, ou importe tes photos en rafale : TCGWatch la reconnaît.',
+    text: 'Photographiez une carte ou importez une série de photos : elle est identifiée automatiquement.',
   },
   {
     title: 'Coter',
-    text: 'Cote Cardmarket du jour ou prix des ventes eBay en français, au choix.',
+    text: 'Cote Cardmarket du jour ou prix des ventes eBay en France, au choix.',
   },
   {
     title: 'Classer',
-    text: 'Elle rejoint le classeur de son extension, en Full Set ou en Master Set.',
+    text: 'La carte rejoint le classeur de son extension, en Full Set ou en Master Set.',
   },
   {
     title: 'Partager',
-    text: 'Vitrines, doubles à l’échange et page de collectionneur à ton image.',
+    text: 'Vitrines, doubles disponibles à l’échange et page de collectionneur publique.',
   },
 ];
 
 const FAQ = [
   {
-    q: 'TCGWatch est-il vraiment gratuit ?',
-    a: 'Oui : pas d’abonnement, pas de publicité, pas de revente de données. Le site est tenu par un collectionneur, pour les collectionneurs.',
+    q: 'TCGWatch est-il gratuit ?',
+    a: 'Oui. Aucun abonnement, aucune publicité, aucune revente de données.',
   },
   {
     q: 'Quelles boutiques sont surveillées ?',
-    a: 'Des boutiques françaises spécialisées et des grandes enseignes, relevées environ toutes les heures. Les sites douteux sont écartés, et chaque prix est comparé frais de port compris.',
+    a: 'Des boutiques spécialisées et des grandes enseignes françaises, relevées environ toutes les heures. Les sites douteux sont exclus et chaque prix est comparé frais de port compris.',
   },
   {
-    q: 'Comment suis-je prévenu d’un restock ?',
-    a: 'Par notification sur ton téléphone (en installant l’appli depuis le site), par ntfy ou par Telegram. Tu choisis les produits suivis, les types d’alerte et un prix cible si tu veux.',
+    q: 'Comment les alertes sont-elles envoyées ?',
+    a: 'Par notification sur votre téléphone (après installation de l’application depuis le site), par ntfy ou par Telegram. Vous choisissez les produits suivis, les types d’alerte et, si besoin, un prix cible.',
   },
   {
     q: 'D’où viennent les cotes des cartes ?',
-    a: 'De la cote Cardmarket (tendance du jour) et, pour les cartes que tu possèdes, de la médiane des annonces eBay en français. Tu peux afficher l’une ou l’autre partout dans le site.',
+    a: 'De la cote Cardmarket (tendance du jour) et, pour les cartes de votre collection, de la médiane des annonces eBay en France. L’une ou l’autre peut être affichée dans tout le site.',
   },
   {
     q: 'Le scanner reconnaît-il toutes les cartes ?',
-    a: 'Il compare ta photo aux illustrations de l’encyclopédie, toutes extensions françaises comprises, y compris les promos. En cas de doute, il te propose les cartes les plus proches.',
+    a: 'Il compare la photo aux illustrations de l’encyclopédie, toutes extensions françaises et promos comprises. En cas de doute, les cartes les plus proches sont proposées.',
   },
   {
-    q: 'Puis-je importer ma collection existante ?',
-    a: 'Oui : un export Pokécardex, Dragon Shield ou ton propre tableur en CSV. Un aperçu ligne par ligne te montre ce qui a été reconnu avant l’import.',
+    q: 'Peut-on importer une collection existante ?',
+    a: 'Oui, depuis un export Pokécardex, Dragon Shield ou un tableur au format CSV. Un aperçu ligne par ligne précède l’import.',
   },
   {
-    q: 'Faut-il passer par un store pour l’appli ?',
-    a: 'Non : sur iPhone comme sur Android, l’appli s’ajoute à l’écran d’accueil depuis le site, en deux gestes. Elle se met à jour toute seule.',
+    q: 'L’application nécessite-t-elle un store ?',
+    a: 'Non. Sur iPhone comme sur Android, elle s’installe depuis le site et se met à jour automatiquement.',
   },
   {
-    q: 'Et mes données ?',
-    a: 'Elles restent les tiennes : export complet à tout moment, suppression du compte en un clic, et ta page de collectionneur n’est publique que si tu l’actives.',
+    q: 'Que deviennent mes données ?',
+    a: 'Elles vous appartiennent : export complet à tout moment, suppression du compte en un clic. La page de collectionneur n’est publique que si vous l’activez.',
   },
 ];
 
@@ -235,26 +235,27 @@ export default async function LandingPage() {
               className={cn(s.headline, s.grad, s.lilac, s.h1, s.rise)}
               style={{ '--d': '.2s' } as React.CSSProperties}
             >
-              <span>Ne rate</span> <span className={cn(s.grad, s.ember)}>plus aucun</span>{' '}
-              <span>restock</span>
+              <span>Surveillez</span> <span>le marché</span>{' '}
+              <span className={cn(s.grad, s.ember)}>Pokémon</span>
             </h1>
             <p
               className={cn(s.lede, s.rise)}
               style={{ marginTop: 28, maxWidth: 560, '--d': '.35s' } as React.CSSProperties}
             >
-              TCGWatch surveille les boutiques françaises, <strong>t’alerte à la minute</strong>{' '}
-              quand un ETB, un display ou un coffret revient, et <strong>scanne tes cartes</strong>{' '}
-              pour tenir ta collection et sa cote à jour. Gratuit, sans pub.
+              TCGWatch relève les boutiques françaises toutes les heures,{' '}
+              <strong>signale les retours en stock</strong> et compare les prix livrés. Le{' '}
+              <strong>scanner de cartes</strong> tient votre collection et sa cote à jour. Gratuit
+              et sans publicité.
             </p>
             <div
               className={cn(s.heroActions, s.rise)}
               style={{ '--d': '.5s' } as React.CSSProperties}
             >
               <Link href={signUp} className={cn(s.btn, s.btnPrimary)}>
-                {open ? 'Commencer' : 'Se connecter'} <Arrow />
+                {open ? 'Créer un compte' : 'Se connecter'} <Arrow />
               </Link>
               <a href="#scanner" className={cn(s.btn, s.btnGhost)}>
-                Voir le scanner
+                Découvrir le scanner
               </a>
             </div>
           </div>
@@ -398,13 +399,13 @@ export default async function LandingPage() {
               <b>02</b> — Le scanner
             </p>
             <h2 id="scanner-titre" className={cn(s.headline, s.grad, s.indigo, s.h2)}>
-              Chaque carte qui passe la ligne est reconnue, cotée et rangée dans ton classeur.
+              Chaque carte scannée est identifiée, cotée et classée.
             </h2>
           </div>
           <div>
             <p className={s.lede}>
-              Photo par photo ou en rafale : le scanner compare ta carte aux illustrations de toute
-              l’encyclopédie et l’ajoute à ta collection, variante comprise.
+              Photo à l’unité ou en série : le scanner compare l’image aux illustrations de
+              l’encyclopédie et ajoute la carte à votre collection, variante comprise.
             </p>
             <div className={s.miniStats}>
               <div>
@@ -449,7 +450,7 @@ export default async function LandingPage() {
           </div>
           <p className={s.lede}>
             Un seul compte pour guetter les restocks, comparer les prix livrés, suivre la cote et
-            savoir ce que vaut vraiment ta collection.
+            mesurer la valeur de votre collection.
           </p>
         </div>
 
@@ -463,8 +464,8 @@ export default async function LandingPage() {
                   En direct
                 </span>
               </div>
-              <h3>Les derniers restocks, relevés pour toi.</h3>
-              <p>Chaque boutique relevée toutes les heures, le prix livré à côté.</p>
+              <h3>Derniers retours en stock</h3>
+              <p>Boutiques relevées toutes les heures, prix livré indiqué.</p>
               <div className={s.viz}>
                 <div className={s.ledger}>
                   <div className={s.ledgerRow}>
@@ -500,15 +501,15 @@ export default async function LandingPage() {
             <div className={s.tileIn}>
               <div className={s.tileHead}>
                 <span>Alertes</span>
-                <span>Essaie-les</span>
+                <span>Démonstration</span>
               </div>
-              <h3>Tu choisis quand être prévenu.</h3>
+              <h3>Alertes paramétrables</h3>
               <div className={s.viz}>
                 <AlertSwitches
                   items={[
-                    { title: 'Retour en stock', hint: 'produits que tu suis', on: true },
+                    { title: 'Retour en stock', hint: 'produits suivis', on: true },
                     { title: 'Précommande ouverte', hint: 'dès l’ouverture', on: true },
-                    { title: 'Prix sous ton seuil', hint: 'port compris', on: true },
+                    { title: 'Prix sous le seuil', hint: 'port compris', on: true },
                     { title: 'Nouvelle sortie', hint: 'au calendrier', on: false },
                   ]}
                 />
@@ -522,7 +523,7 @@ export default async function LandingPage() {
                 <span>Boutiques</span>
                 <span>{fr.format(retailers)} suivies</span>
               </div>
-              <h3>Toutes les boutiques, un seul prix livré.</h3>
+              <h3>Prix livrés comparés</h3>
               <div className={cn(s.viz, s.orbit)} aria-hidden>
                 <svg viewBox="0 0 100 100" preserveAspectRatio="none">
                   <ellipse
@@ -566,8 +567,8 @@ export default async function LandingPage() {
                 <span>Habitudes de réassort</span>
                 <span>6 mois</span>
               </div>
-              <h3>Sache quand guetter.</h3>
-              <p>Le jour, l’heure et le rythme habituels de chaque boutique.</p>
+              <h3>Fréquence de réassort</h3>
+              <p>Jour, horaire et rythme habituels des retours en stock, boutique par boutique.</p>
               <div className={cn(s.viz, s.days)} aria-hidden>
                 {['lu', 'ma', 'me', 'je', 've', 'sa', 'di'].map((d, i) => (
                   <div key={d} className={i === 1 ? s.top : undefined}>
@@ -582,11 +583,11 @@ export default async function LandingPage() {
           <article className={cn(s.tile, s.span2)}>
             <div className={s.tileIn}>
               <div className={s.tileHead}>
-                <span>Plus-value</span>
+                <span>Suivi financier</span>
                 <span>Scellé et cartes</span>
               </div>
-              <b className={cn(s.headline, s.grad, s.ember, s.big)}>Au clair</b>
-              <p>Ce que tu as payé, ce que ça vaut, ce que tes reventes ont rapporté.</p>
+              <b className={cn(s.headline, s.grad, s.ember, s.big)}>Plus-value</b>
+              <p>Prix d’achat, valeur actuelle et plus-values réalisées sur les reventes.</p>
               <div className={cn(s.viz, s.bars)} aria-hidden>
                 <div className={s.bar} style={{ '--w': '58%' } as React.CSSProperties}>
                   <span>Investi</span>
@@ -604,17 +605,17 @@ export default async function LandingPage() {
             <div className={s.tileIn}>
               <div className={s.tileHead}>
                 <span>Profil</span>
-                <span>À partager</span>
+                <span>Optionnel</span>
               </div>
-              <h3>Ta page de collectionneur.</h3>
-              <p>Classeurs terminés, vitrines, doubles à l’échange et recherches.</p>
+              <h3>Page de collectionneur</h3>
+              <p>Classeurs complétés, vitrines, doubles et recherches sur une page publique.</p>
               <div className={s.viz}>
                 <div className={s.profileCard}>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={heroA.image} alt="" referrerPolicy="no-referrer" />
                   <div>
-                    <b>Ton pseudo</b>
-                    <span>Avatar, couleur et présentation à ton goût</span>
+                    <b>Pseudo</b>
+                    <span>Avatar, couleur et présentation personnalisables</span>
                   </div>
                 </div>
               </div>
@@ -631,12 +632,12 @@ export default async function LandingPage() {
               <b>04</b> — FAQ
             </span>
             <h2 id="faq-titre" className={cn(s.headline, s.grad, s.lilac, s.h2)}>
-              Tes questions,
+              Questions
               <br />
-              nos réponses.
+              fréquentes
             </h2>
             <p className={s.lede} style={{ marginTop: 24 }}>
-              Ce que demandent les collectionneurs avant de confier leurs alertes à TCGWatch.
+              Fonctionnement, sources des données et confidentialité.
             </p>
           </div>
           <div>
@@ -661,32 +662,32 @@ export default async function LandingPage() {
         <span className={cn(s.hud, s.hudBr)} aria-hidden />
         <div>
           <span className={s.label} style={{ display: 'block', marginBottom: 20 }}>
-            <b>05</b> — Prochain drop
+            <b>05</b> — Inscription
           </span>
           <h2 id="cta-titre" className={cn(s.headline, s.grad, s.lilac, s.ctaH2)}>
-            Laisse TCGWatch <span className={cn(s.grad, s.ember)}>guetter pour toi.</span>
+            Suivez vos produits <span className={cn(s.grad, s.ember)}>dès aujourd’hui.</span>
           </h2>
           <p className={s.lede} style={{ marginTop: 22, maxWidth: 520 }}>
-            Crée ton compte en 30 secondes, suis les produits que tu vises, scanne tes premières
-            cartes.
+            Création de compte en 30 secondes. Sélectionnez les produits à suivre et ajoutez vos
+            premières cartes.
           </p>
           <div style={{ marginTop: 36 }}>
             <Link href={signUp} className={s.glowBtn}>
               <span>
-                {open ? 'Créer mon compte' : 'Se connecter'} <Arrow />
+                {open ? 'Créer un compte' : 'Se connecter'} <Arrow />
               </span>
             </Link>
           </div>
         </div>
         <div className={s.ctaSide}>
-          <p className={s.label}>L’appli, sans store</p>
+          <p className={s.label}>Application mobile, sans store</p>
           <div
             className={s.qr}
             // QR code généré côté serveur à partir de l'adresse du site.
             dangerouslySetInnerHTML={{ __html: qr }}
           />
           <Link href="/installer" className={cn(s.btn, s.btnGhost)}>
-            Installer l’appli
+            Installer l’application
           </Link>
         </div>
       </section>

@@ -79,8 +79,8 @@ export function IosSteps({ className }: { className?: string }) {
           <Share className="size-4" />
         </span>
         <span>
-          Touche le bouton <strong>Partager</strong> de Safari (le carré avec une flèche, en bas de
-          l’écran ou à côté de l’adresse).
+          Appuyez sur le bouton <strong>Partager</strong> de Safari (le carré avec une flèche, en
+          bas de l’écran ou à côté de l’adresse).
         </span>
       </li>
       <li className="flex items-start gap-3">
@@ -88,8 +88,8 @@ export function IosSteps({ className }: { className?: string }) {
           <SquarePlus className="size-4" />
         </span>
         <span>
-          Choisis <strong>Sur l’écran d’accueil</strong> (fais défiler la liste si besoin), puis{' '}
-          <strong>Ajouter</strong>.
+          Choisissez <strong>Sur l’écran d’accueil</strong> (faites défiler la liste si besoin),
+          puis <strong>Ajouter</strong>.
         </span>
       </li>
       <li className="flex items-start gap-3">
@@ -97,7 +97,7 @@ export function IosSteps({ className }: { className?: string }) {
           <Check className="size-4" />
         </span>
         <span>
-          Ouvre TCGWatch depuis sa nouvelle icône : les alertes peuvent alors arriver en
+          Ouvrez TCGWatch depuis sa nouvelle icône : les alertes peuvent alors arriver en
           notifications (iOS 16.4 ou plus récent).
         </span>
       </li>

@@ -305,6 +305,8 @@
 }
 .h1 {
   font-size: clamp(2.8rem, 6vw, 6.6rem);
+  /* Place pour les accents des capitales (É de « marché », « Pokémon »). */
+  line-height: 1.02;
   text-transform: uppercase;
 }
 .h1 span {

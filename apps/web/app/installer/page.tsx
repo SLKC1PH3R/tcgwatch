@@ -12,14 +12,14 @@ import { getCurrentUser } from '@/lib/auth';
 export const metadata: Metadata = {
   title: 'Installer l’appli TCGWatch',
   description:
-    'TCGWatch sur ton téléphone, gratuitement et sans store : icône sur l’écran d’accueil, alertes de restock en notifications, collection hors ligne.',
+    'TCGWatch sur votre téléphone, gratuitement et sans store : icône sur l’écran d’accueil, alertes de restock en notifications, collection hors ligne.',
 };
 
 const PERKS = [
   {
     icon: BellRing,
     title: 'Alertes en notifications',
-    text: 'Restocks, précommandes, prix sous ton seuil.',
+    text: 'Restocks, précommandes, prix sous le seuil.',
   },
   {
     icon: Zap,
@@ -29,7 +29,7 @@ const PERKS = [
   {
     icon: WifiOff,
     title: 'Collection hors ligne',
-    text: 'Tes cartes restent consultables sans réseau.',
+    text: 'Votre collection reste consultable sans réseau.',
   },
 ];
 
@@ -61,11 +61,11 @@ export default async function InstallPage() {
               Gratuit, sans store
             </p>
             <h1 className="font-display text-3xl font-bold tracking-tight md:text-5xl">
-              TCGWatch sur ton téléphone
+              TCGWatch sur votre téléphone
             </h1>
             <p className="max-w-xl text-muted-foreground">
               L’appli s’installe directement depuis le site, en quelques secondes, sur iPhone,
-              Android ou ordinateur. Elle se met à jour toute seule.
+              Android ou ordinateur, et se met à jour automatiquement.
             </p>
             <InstallAppButton size="lg" variant="default" showWhenInstalled />
             <ul className="grid gap-3 pt-2 sm:grid-cols-3">
@@ -85,7 +85,7 @@ export default async function InstallPage() {
               dangerouslySetInnerHTML={{ __html: qr }}
             />
             <figcaption className="text-xs text-muted-foreground">
-              Sur ordinateur ? Vise ce code avec l’appareil photo du téléphone.
+              Depuis un ordinateur : scannez ce code avec l’appareil photo du téléphone.
             </figcaption>
           </figure>
         </section>
@@ -104,13 +104,13 @@ export default async function InstallPage() {
             </h2>
             <p className="text-xs text-muted-foreground">Avec Chrome, Edge ou Samsung Internet.</p>
             <ol className="list-decimal space-y-2 pl-5 text-sm">
-              <li>Touche le bouton « Installer l’appli » ci-dessus.</li>
+              <li>Appuyez sur le bouton « Installer l’appli » ci-dessus.</li>
               <li>
-                Sinon, ouvre le menu{' '}
+                Sinon, ouvrez le menu{' '}
                 <EllipsisVertical className="inline size-4 align-text-bottom" /> puis{' '}
                 <strong>Installer l’application</strong> (ou « Ajouter à l’écran d’accueil »).
               </li>
-              <li>Autorise les notifications pour recevoir les alertes.</li>
+              <li>Autorisez les notifications pour recevoir les alertes.</li>
             </ol>
           </article>
           <article className="space-y-3 rounded-2xl border bg-card p-5">
@@ -119,7 +119,7 @@ export default async function InstallPage() {
             </h2>
             <p className="text-xs text-muted-foreground">Avec Chrome ou Edge.</p>
             <ol className="list-decimal space-y-2 pl-5 text-sm">
-              <li>Clique sur l’icône d’installation, à droite de la barre d’adresse.</li>
+              <li>Cliquez sur l’icône d’installation, à droite de la barre d’adresse.</li>
               <li>
                 Ou menu <strong>⋮</strong> puis <strong>Installer TCGWatch</strong> (Edge : «
                 Applications »).
