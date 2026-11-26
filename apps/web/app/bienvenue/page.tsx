@@ -235,7 +235,7 @@ export default async function LandingPage() {
               className={cn(s.headline, s.grad, s.lilac, s.h1, s.rise)}
               style={{ '--d': '.2s' } as React.CSSProperties}
             >
-              <span>Surveillez</span> <span>le marché</span>{' '}
+              <span>Le tout-en-un</span> <span>de l’univers</span>{' '}
               <span className={cn(s.grad, s.ember)}>Pokémon</span>
             </h1>
             <p
