@@ -330,7 +330,7 @@ export default async function AlertsPage({ searchParams }: Props) {
 
         {/* Réglages */}
         <div className={fitColumn}>
-          <Card className={cn(fitCard, 'shrink-0')}>
+          <Card className={cn(fitCard, 'fit:max-h-[58%]')}>
             <CardHeader>
               <div className="space-y-1">
                 <CardTitle className="flex items-center gap-2">
@@ -342,7 +342,7 @@ export default async function AlertsPage({ searchParams }: Props) {
                 </CardDescription>
               </div>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className={cn('space-y-4', fitScroll)}>
               {vapidKey && (
                 <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border p-3">
                   <div className="min-w-0">
