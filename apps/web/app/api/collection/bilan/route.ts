@@ -62,10 +62,10 @@ export async function GET(request: Request) {
     ];
     const lines = r.lines.map((l) => [
       day(l.soldAt),
-      l.product.name,
-      l.product.type,
+      l.name,
+      l.type,
       l.quantity,
-      day(l.purchaseDate),
+      l.purchaseDate ? day(l.purchaseDate) : '',
       num(l.cost),
       num(l.salePrice),
       num(l.salePrice * l.quantity),
@@ -139,7 +139,7 @@ ${
 ${r.lines
   .map(
     (l) =>
-      `<tr><td class="n">${formatDate(l.soldAt)}</td><td>${html(l.product.name)}</td><td class="n">${l.quantity}</td><td class="n">${formatDate(l.purchaseDate)}</td><td class="n">${formatPrice(l.cost)}</td><td class="n">${formatPrice(l.salePrice * l.quantity)}</td><td class="n">${formatPrice(l.saleFees)}</td><td class="n">${formatPrice(l.proceeds)}</td><td class="n ${l.gain >= 0 ? 'pos' : 'neg'}">${signed(l.gain)}</td><td>${html(l.saleChannel ?? '—')}</td></tr>`,
+      `<tr><td class="n">${formatDate(l.soldAt)}</td><td>${html(l.name)}</td><td class="n">${l.quantity}</td><td class="n">${l.purchaseDate ? formatDate(l.purchaseDate) : '—'}</td><td class="n">${formatPrice(l.cost)}</td><td class="n">${formatPrice(l.salePrice * l.quantity)}</td><td class="n">${formatPrice(l.saleFees)}</td><td class="n">${formatPrice(l.proceeds)}</td><td class="n ${l.gain >= 0 ? 'pos' : 'neg'}">${signed(l.gain)}</td><td>${html(l.saleChannel ?? '—')}</td></tr>`,
   )
   .join('\n')}
 </tbody><tfoot><tr><td colspan="2">Total</td><td class="n">${t.count}</td><td></td><td class="n">${formatPrice(t.cost)}</td><td class="n">${formatPrice(t.gross)}</td><td class="n">${formatPrice(t.fees)}</td><td class="n">${formatPrice(t.proceeds)}</td><td class="n">${signed(t.gain)}</td><td></td></tr></tfoot></table>`
@@ -165,7 +165,7 @@ ${r.channels
 }
 <div class="note">
   <p><b>Ventes en ligne :</b> ${r.platform.sales} vente${r.platform.sales > 1 ? 's' : ''} pour ${formatPrice(r.platform.gross)}. Les plateformes transmettent au fisc les vendeurs qui dépassent ${PLATFORM_REPORT_SALES} ventes ou ${formatPrice(PLATFORM_REPORT_AMOUNT)} dans l’année${r.platform.reportable ? ' : <b>seuil atteint</b> (chaque plateforme compte séparément).' : '.'}</p>
-  <p><b>Ventes au-dessus de ${formatPrice(MOVABLE_EXEMPTION_PRICE)} l’objet :</b> ${r.aboveExemption.length === 0 ? 'aucune' : html(r.aboveExemption.map((l) => l.product.name).join(', '))}. Sous ce prix de cession, la plus-value sur un bien meuble est en principe exonérée.</p>
+  <p><b>Ventes au-dessus de ${formatPrice(MOVABLE_EXEMPTION_PRICE)} l’objet :</b> ${r.aboveExemption.length === 0 ? 'aucune' : html(r.aboveExemption.map((l) => l.name).join(', '))}. Sous ce prix de cession, la plus-value sur un bien meuble est en principe exonérée.</p>
   <p class="muted">Document indicatif établi à partir des ventes saisies dans TCGWatch ; ce n’est pas un conseil fiscal.</p>
 </div>
 </body></html>`;

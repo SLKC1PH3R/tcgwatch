@@ -21,7 +21,12 @@ import { ReportButton } from '@/components/report-button';
 import { requireUser } from '@/lib/auth';
 import { cn } from '@/lib/utils';
 import { prisma } from '@tcgwatch/db';
-import { adjustOwnedCardAction, setCardPurchaseAction } from '../../collection/cartes/actions';
+import {
+  adjustOwnedCardAction,
+  cancelCardSaleAction,
+  setCardPurchaseAction,
+} from '../../collection/cartes/actions';
+import { SellCardDialog } from './sell-card-dialog';
 import { followCardAction, setCardAlertAction, unfollowCardAction } from '../actions';
 
 type Props = {
@@ -44,6 +49,13 @@ export default async function CardPage({ params, searchParams }: Props) {
     ? await prisma.ownedCard.findMany({
         where: { cardId: tcgdexId, userId: user.id },
         select: { variant: true, quantity: true, purchasePrice: true, purchasedAt: true },
+      })
+    : [];
+  const sales = card.local
+    ? await prisma.cardSale.findMany({
+        where: { cardId: tcgdexId, userId: user.id },
+        orderBy: { soldAt: 'desc' },
+        take: 10,
       })
     : [];
   const purchaseOf = Object.fromEntries(
@@ -333,8 +345,8 @@ export default async function CardPage({ params, searchParams }: Props) {
                 {owned.length > 0 && (
                   <div className="space-y-2 border-t pt-2">
                     <p className="text-xs text-muted-foreground">
-                      Prix d’achat par exemplaire, si tu l’as achetée à l’unité (laisse vide pour
-                      une carte tirée d’un booster ou d’un lot).
+                      Prix d’achat par exemplaire, si vous l’avez achetée à l’unité (laissez vide
+                      pour une carte tirée d’un booster ou d’un lot).
                     </p>
                     {owned.map((o) => {
                       const p = purchaseOf[o.variant]!;
@@ -382,6 +394,57 @@ export default async function CardPage({ params, searchParams }: Props) {
                         </form>
                       );
                     })}
+                  </div>
+                )}
+                {owned.length > 0 && (
+                  <SellCardDialog
+                    cardId={tcgdexId}
+                    name={card.name}
+                    owned={owned.map((o) => ({
+                      variant: o.variant,
+                      label: VARIANT_LABELS[o.variant] ?? o.variant,
+                      quantity: o.quantity,
+                    }))}
+                    suggestedPrice={toNumber(card.local.frPrice) ?? card.current?.trend ?? null}
+                    today={new Date().toISOString().slice(0, 10)}
+                  />
+                )}
+                {sales.length > 0 && (
+                  <div className="space-y-1.5 border-t pt-2">
+                    <p className="flex items-center justify-between text-xs font-semibold">
+                      Ventes
+                      <Link href="/collection/bilan" className="font-normal text-primary">
+                        Bilan des reventes
+                      </Link>
+                    </p>
+                    <ul className="space-y-1">
+                      {sales.map((s) => {
+                        const proceeds =
+                          toNumber(s.salePrice)! * s.quantity - toNumber(s.saleFees)!;
+                        return (
+                          <li key={s.id} className="flex items-center gap-2 text-xs">
+                            <span className="min-w-0 flex-1">
+                              {s.quantity} × {VARIANT_LABELS[s.variant] ?? s.variant} ·{' '}
+                              {s.soldAt.toLocaleDateString('fr-FR', { timeZone: 'UTC' })}
+                              {s.saleChannel && ` · ${s.saleChannel}`}
+                            </span>
+                            <b className="tabular-nums">{formatPrice(proceeds)}</b>
+                            <form action={cancelCardSaleAction.bind(null, s.id)}>
+                              <Button
+                                type="submit"
+                                size="icon"
+                                variant="ghost"
+                                className="size-6 text-muted-foreground hover:text-destructive"
+                                aria-label="Annuler cette vente (les cartes reviennent dans la collection)"
+                                title="Annuler la vente"
+                              >
+                                <Trash2 />
+                              </Button>
+                            </form>
+                          </li>
+                        );
+                      })}
+                    </ul>
                   </div>
                 )}
               </div>

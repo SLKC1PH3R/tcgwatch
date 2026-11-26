@@ -49,7 +49,7 @@ export default async function SalesReportPage({ searchParams }: Props) {
     <FitPage>
       <PageHeader
         title={`Bilan des reventes ${r.year}`}
-        description="Ce que tes reventes de scellé ont rapporté sur l’année : prix de vente, frais, prix d’achat et plus-value réalisée."
+        description="Ce que vos reventes de scellé et de cartes ont rapporté sur l’année : prix de vente, frais, prix d’achat et plus-value réalisée."
         actions={
           <>
             <Button asChild variant="outline">
@@ -118,11 +118,11 @@ export default async function SalesReportPage({ searchParams }: Props) {
         <Card className={cn(fitCard, 'overflow-hidden py-0')}>
           {r.lines.length === 0 ? (
             <p className="py-10 text-center text-sm text-muted-foreground">
-              Aucune revente enregistrée en {r.year}. Utilise le bouton « Vendre » d’une ligne de{' '}
+              Aucune revente enregistrée en {r.year}. Utilisez le bouton « Vendre » d’une ligne de{' '}
               <Link href="/collection" className="underline">
                 Mon scellé
-              </Link>
-              .
+              </Link>{' '}
+              ou « Enregistrer une vente » sur la fiche d’une carte.
             </p>
           ) : (
             <div className={cn('relative overflow-x-auto', fitScroll)}>
@@ -130,7 +130,7 @@ export default async function SalesReportPage({ searchParams }: Props) {
                 <thead className="text-xs tracking-wide text-muted-foreground uppercase fit:sticky fit:top-0 fit:z-10 fit:bg-card">
                   <tr className="border-b">
                     <th className="px-5 py-3 text-left font-semibold">Vente</th>
-                    <th className="px-3 py-3 text-left font-semibold">Produit</th>
+                    <th className="px-3 py-3 text-left font-semibold">Objet</th>
                     <th className="px-3 py-3 text-right font-semibold">Coût</th>
                     <th className="px-3 py-3 text-right font-semibold">Vendu</th>
                     <th className="px-3 py-3 text-right font-semibold">Frais</th>
@@ -148,17 +148,11 @@ export default async function SalesReportPage({ searchParams }: Props) {
                         </span>
                       </td>
                       <td className="px-3 py-3">
-                        <Link
-                          href={`/produits/${l.product.id}`}
-                          className="font-semibold hover:underline"
-                        >
+                        <Link href={l.href} className="font-semibold hover:underline">
                           {l.quantity > 1 && `${l.quantity} × `}
-                          {l.product.name}
+                          {l.name}
                         </Link>
-                        <span className="block text-xs text-muted-foreground">
-                          acheté le {formatDate(l.purchaseDate)}
-                          {l.store && ` · ${l.store}`}
-                        </span>
+                        <span className="block text-xs text-muted-foreground">{l.detail}</span>
                       </td>
                       <td className="px-3 py-3 text-right text-muted-foreground tabular-nums">
                         {formatPrice(l.cost)}
@@ -276,7 +270,7 @@ export default async function SalesReportPage({ searchParams }: Props) {
                 <p className="text-muted-foreground">
                   {r.aboveExemption.length === 0
                     ? 'Aucune. '
-                    : `${r.aboveExemption.map((l) => l.product.name).join(', ')}. `}
+                    : `${r.aboveExemption.map((l) => l.name).join(', ')}. `}
                   Sous ce prix de cession par objet, la plus-value sur un bien meuble est en
                   principe exonérée.
                 </p>

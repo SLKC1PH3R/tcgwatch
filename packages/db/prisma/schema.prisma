@@ -139,6 +139,7 @@ model User {
   reports             ErrorReport[]
   openings            ProductOpening[]
   cardLots            CardLot[]
+  cardSales           CardSale[]
   createdAt           DateTime           @default(now())
   updatedAt           DateTime           @updatedAt
 }
@@ -560,6 +561,7 @@ model Card {
   cardmarketCheckedAt DateTime?
   updatedAt           DateTime         @updatedAt
   owned               OwnedCard[]
+  sales               CardSale[]
   binderEntries       BinderCard[]
   showcaseEntries     ShowcaseCard[]
   dailyPrices         CardPriceDaily[]
@@ -862,4 +864,27 @@ model CardLot {
   updatedAt   DateTime @updatedAt
 
   @@index([userId])
+}
+
+/// Revente d'une carte à l'unité : retirée de la collection, comptée dans le bilan des reventes.
+model CardSale {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cardId      String
+  card        Card      @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  variant     String    @default("normal")
+  quantity    Int       @default(1)
+  /// Prix de vente unitaire.
+  salePrice   Decimal   @db.Decimal(10, 2)
+  /// Frais pour toute la vente (commission, port à sa charge).
+  saleFees    Decimal   @default(0) @db.Decimal(10, 2)
+  saleChannel String?
+  soldAt      DateTime  @db.Date
+  /// Prix d'achat unitaire connu au moment de la vente (null : carte de booster ou de lot).
+  unitCost    Decimal?  @db.Decimal(10, 2)
+  purchasedAt DateTime? @db.Date
+  createdAt   DateTime  @default(now())
+
+  @@index([userId, soldAt])
 }

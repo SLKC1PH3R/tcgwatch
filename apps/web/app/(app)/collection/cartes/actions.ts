@@ -440,3 +440,92 @@ export async function importCardsAction(
   revalidatePath(BASE, 'layout');
   return { saved: valid.reduce((n, r) => n + r.quantity, 0) };
 }
+
+// ─── Revente de cartes ───────────────────────────────────
+
+const cardSaleSchema = z.object({
+  variant: z.enum(VARIANTS),
+  quantity: z.coerce.number().int().min(1, 'Quantité minimale : 1').max(999),
+  salePrice: requiredPrice,
+  saleFees: optionalPrice,
+  soldAt: optionalDate.refine((d) => d !== null, 'Date de vente requise'),
+  saleChannel: optionalText,
+});
+
+export type CardSaleState = { error?: string; success?: string };
+
+/**
+ * Revente d'exemplaires d'une carte : retirés de la collection et enregistrés avec leur prix
+ * d'achat connu, pour le bilan des reventes.
+ */
+export async function sellCardAction(
+  cardId: string,
+  _prev: CardSaleState,
+  formData: FormData,
+): Promise<CardSaleState> {
+  const user = await requireUser();
+  const parsed = cardSaleSchema.safeParse(formToObject(formData));
+  if (!parsed.success) return { error: firstIssue(parsed.error) };
+  const d = parsed.data;
+  const owned = await prisma.ownedCard.findUnique({
+    where: { userId_cardId_variant: { userId: user.id, cardId, variant: d.variant } },
+  });
+  if (!owned) return { error: 'Vous ne possédez pas cette variante.' };
+  if (d.quantity > owned.quantity) {
+    return { error: `Vous n’en possédez que ${owned.quantity}.` };
+  }
+  if (d.soldAt! > new Date()) return { error: 'La date de vente est dans le futur.' };
+  await prisma.$transaction([
+    prisma.cardSale.create({
+      data: {
+        userId: user.id,
+        cardId,
+        variant: d.variant,
+        quantity: d.quantity,
+        salePrice: d.salePrice,
+        saleFees: d.saleFees ?? 0,
+        saleChannel: d.saleChannel,
+        soldAt: d.soldAt!,
+        unitCost: owned.purchasePrice,
+        purchasedAt: owned.purchasedAt,
+      },
+    }),
+    d.quantity === owned.quantity
+      ? prisma.ownedCard.delete({ where: { id: owned.id } })
+      : prisma.ownedCard.update({
+          where: { id: owned.id },
+          data: { quantity: owned.quantity - d.quantity },
+        }),
+  ]);
+  revalidatePath(`/cartes/${encodeURIComponent(cardId)}`);
+  revalidatePath(BASE, 'layout');
+  revalidatePath('/collection/bilan');
+  return { success: 'Vente enregistrée.' };
+}
+
+/** Annule une vente : les exemplaires reviennent dans la collection. */
+export async function cancelCardSaleAction(id: string): Promise<void> {
+  const user = await requireUser();
+  const sale = await prisma.cardSale.findFirst({ where: { id, userId: user.id } });
+  if (!sale) return;
+  await prisma.$transaction([
+    prisma.cardSale.delete({ where: { id: sale.id } }),
+    prisma.ownedCard.upsert({
+      where: {
+        userId_cardId_variant: { userId: user.id, cardId: sale.cardId, variant: sale.variant },
+      },
+      update: { quantity: { increment: sale.quantity } },
+      create: {
+        userId: user.id,
+        cardId: sale.cardId,
+        variant: sale.variant,
+        quantity: sale.quantity,
+        purchasePrice: sale.unitCost,
+        purchasedAt: sale.purchasedAt,
+      },
+    }),
+  ]);
+  revalidatePath(`/cartes/${encodeURIComponent(sale.cardId)}`);
+  revalidatePath(BASE, 'layout');
+  revalidatePath('/collection/bilan');
+}
