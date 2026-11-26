@@ -35,6 +35,28 @@ export default async function AccountPage() {
     <>
       <PageHeader title="Mon compte" description={`Inscrit le ${formatDateTime(user.createdAt)}`} />
       <div className="mt-4 grid gap-6 lg:grid-cols-2 [&>*]:min-w-0">
+        {current.role === 'ADMIN' && (
+          <Card className="lg:col-span-2">
+            <CardHeader>
+              <div className="space-y-1">
+                <CardTitle>Administration</CardTitle>
+                <CardDescription>Pages réservées aux administrateurs.</CardDescription>
+              </div>
+            </CardHeader>
+            <CardContent className="flex flex-wrap gap-2">
+              {[
+                { href: '/sources/erreurs', label: 'Erreurs du worker' },
+                { href: '/sources', label: 'Sources de données' },
+                { href: '/revendeurs/etat', label: 'État des relevés' },
+                { href: '/signalements', label: 'Signalements' },
+              ].map((l) => (
+                <Button key={l.href} asChild variant="outline">
+                  <Link href={l.href}>{l.label}</Link>
+                </Button>
+              ))}
+            </CardContent>
+          </Card>
+        )}
         <Card>
           <CardHeader>
             <div className="space-y-1">

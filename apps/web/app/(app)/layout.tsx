@@ -1,4 +1,4 @@
-import { Bell, Flag, LogOut } from 'lucide-react';
+import { Bell, Flag, LogOut, ServerCog } from 'lucide-react';
 import Link from 'next/link';
 import { Suspense } from 'react';
 import { cookies } from 'next/headers';
@@ -17,11 +17,16 @@ import { PageTrail } from '@/components/page-trail';
 import { SearchBox } from '@/components/search-box';
 import { logoutAction } from '../(auth)/actions';
 
+/** Début des dernières 24 heures (erreurs du worker signalées dans l'en-tête). */
+const lastDay = () => new Date(Date.now() - 86_400_000);
+
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const user = await requireUser();
-  const [unread, reports] = await Promise.all([
+  const admin = user.role === 'ADMIN';
+  const [unread, reports, workerErrors] = await Promise.all([
     prisma.alertEvent.count({ where: { userId: user.id, acknowledged: false } }),
-    user.role === 'ADMIN' ? prisma.errorReport.count({ where: { status: 'OPEN' } }) : 0,
+    admin ? prisma.errorReport.count({ where: { status: 'OPEN' } }) : 0,
+    admin ? prisma.workerError.count({ where: { lastAt: { gte: lastDay() } } }) : 0,
   ]);
   const theme = parseTheme((await cookies()).get('theme')?.value);
   return (
@@ -48,6 +53,25 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             </Suspense>
             <InstallAppButton variant="ghost" className="hidden xl:inline-flex" label="Installer" />
             <ThemeToggle initial={theme} />
+            {admin && (
+              <Link
+                href="/sources/erreurs"
+                title="Administration : erreurs du worker et sources de données"
+                aria-label={
+                  workerErrors > 0
+                    ? `Erreurs du worker, ${workerErrors} groupe${workerErrors > 1 ? 's' : ''} en 24 h`
+                    : 'Erreurs du worker'
+                }
+                className="relative flex size-9 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-accent"
+              >
+                <ServerCog className="size-4.5" />
+                {workerErrors > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-warning px-1 text-[10px] font-bold text-background tabular-nums">
+                    {workerErrors > 99 ? '99+' : workerErrors}
+                  </span>
+                )}
+              </Link>
+            )}
             {reports > 0 && (
               <Link
                 href="/signalements"
