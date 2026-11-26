@@ -153,6 +153,11 @@
   position: relative;
   isolation: isolate;
   overflow: hidden;
+  /* Pleine page : la section suivante commence sous la ligne de flottaison. */
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100svh;
   background:
     radial-gradient(ellipse 42% 50% at 72% 40%, rgb(124 58 237 / 0.24), transparent 70%),
     radial-gradient(ellipse 60% 40% at 0% 100%, rgb(76 29 149 / 0.18), transparent 70%),
@@ -269,6 +274,7 @@
   align-items: center;
   gap: 2vw;
   padding: 0 6vw;
+  flex: 1;
   min-height: 560px;
 }
 .eyebrow {
@@ -324,7 +330,7 @@
 /* Scène du héros : anneau, cartes flottantes, panneaux de verre. */
 .scene {
   position: relative;
-  height: 560px;
+  height: clamp(560px, calc(100svh - 300px), 760px);
 }
 .sceneInner {
   position: absolute;
@@ -496,7 +502,8 @@
 .pipeline {
   position: absolute;
   left: 4%;
-  bottom: 4%;
+  bottom: -2%;
+  z-index: 3;
   display: flex;
   align-items: center;
   gap: 16px;
