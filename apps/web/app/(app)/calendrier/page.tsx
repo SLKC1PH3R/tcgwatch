@@ -257,7 +257,7 @@ export default async function CalendarPage({
                         </Link>
                         <p className="text-xs text-muted-foreground">{shortDate.format(e.date)}</p>
                       </div>
-                      <span className="shrink-0 text-xs font-bold text-primary tabular-nums">
+                      <span className="shrink-0 rounded-full border border-primary/30 px-2 py-0.5 font-mono text-xs font-bold text-primary tabular-nums">
                         {countdown(e.date)}
                       </span>
                     </li>
@@ -325,7 +325,7 @@ function countdown(date: Date): string {
 function DayPanel({ day, events }: { day: string | undefined; events: CalendarEvent[] }) {
   if (!day) {
     return (
-      <Card className="holo-frame">
+      <Card>
         <CardContent className="py-8 text-center text-sm text-muted-foreground">
           Cliquez sur un jour pour voir ses sorties.
         </CardContent>
@@ -337,16 +337,19 @@ function DayPanel({ day, events }: { day: string | undefined; events: CalendarEv
   const items = events.filter((e) => e !== main || events.length === 1);
   return (
     // En plein écran, le détail du jour prend au plus 60 % de la colonne et défile au-delà.
-    <Card className="holo-frame fit:max-h-[60%] fit:min-h-0 fit:shrink-0">
+    <Card className="fit:max-h-[60%] fit:min-h-0 fit:shrink-0">
       <CardContent className={cn('space-y-3 pt-5', scrollBody)}>
-        <p className="text-xs text-muted-foreground first-letter:uppercase">
-          {longDate.format(date)} · {countdown(date)}
-        </p>
+        <div className="flex items-end justify-between gap-3">
+          <p className="label-mono text-muted-foreground">{longDate.format(date)}</p>
+          <p className="text-grad-ember font-display text-5xl leading-none font-black tracking-[-0.04em]">
+            {countdown(date)}
+          </p>
+        </div>
         {main ? (
           <>
             <Link
               href={main.href}
-              className="block font-display text-xl leading-tight font-bold hover:underline"
+              className="block font-display text-2xl leading-[1.05] font-black tracking-[-0.02em] text-balance hover:underline"
             >
               {main.productType ? (main.subtitle ?? main.title) : main.title}
             </Link>
@@ -364,7 +367,7 @@ function DayPanel({ day, events }: { day: string | undefined; events: CalendarEv
                   >
                     {e.title}
                   </Link>
-                  <span className="shrink-0 text-muted-foreground tabular-nums">
+                  <span className="shrink-0 font-mono text-muted-foreground tabular-nums">
                     {e.msrp !== null ? formatPrice(e.msrp) : '—'}
                   </span>
                 </li>
@@ -377,7 +380,7 @@ function DayPanel({ day, events }: { day: string | undefined; events: CalendarEv
                 </Link>
               </Button>
             </div>
-            <p className="text-xs text-muted-foreground">
+            <p className="label-mono text-[10px] text-muted-foreground">
               Source :{' '}
               {main.source ? (SOURCE_LABEL[main.source] ?? main.source) : 'import automatique'}
             </p>

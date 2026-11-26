@@ -14,6 +14,7 @@ import {
 import { AvailabilityBadge } from '@/components/availability-badge';
 import { Countdown } from '@/components/countdown';
 import { FitPage } from '@/components/fit-page';
+import { KeyStrip } from '@/components/key-strip';
 import { PageHeader } from '@/components/page-header';
 import { SafeImg } from '@/components/safe-img';
 import { Sparkline } from '@/components/sparkline';
@@ -98,6 +99,40 @@ export default async function ExtensionPage({ params, searchParams }: Props) {
             )}
           </span>
         }
+      />
+
+      <KeyStrip
+        className="max-sm:hidden"
+        items={[
+          {
+            label: 'Sortie FR',
+            value: ext.releaseDate ? formatDate(ext.releaseDate) : '—',
+            hint: ext.serieRef?.name ?? ext.serie ?? undefined,
+          },
+          {
+            label: 'Cartes',
+            value: String(ext.cardCountOfficial ?? ext._count.cards),
+            hint:
+              ext.cardCountTotal && ext.cardCountOfficial !== null
+                ? ext.cardCountTotal > ext.cardCountOfficial
+                  ? `+ ${ext.cardCountTotal - ext.cardCountOfficial} secrètes`
+                  : 'sans carte secrète'
+                : undefined,
+          },
+          {
+            label: 'Produits scellés',
+            value: String(ext._count.extensionProducts),
+            href: tabHref('produits'),
+            hint: 'displays, ETB, coffrets…',
+          },
+          {
+            label: 'Cartes phares',
+            value: String(ext._count.chaseCards),
+            href: tabHref('phares'),
+            valueClass: ext._count.chaseCards ? 'text-grad-ember' : undefined,
+            hint: 'cotées chaque jour',
+          },
+        ]}
       />
 
       <nav aria-label="Onglets de l’extension" className="flex shrink-0 flex-wrap gap-1.5">

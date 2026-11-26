@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { cardListingQuery, formatPercent, formatPrice, toNumber } from '@tcgwatch/shared';
 import { CardChart } from '@/components/card-chart';
+import { HeroStage } from '@/components/hero-stage';
 import { FitPage } from '@/components/fit-page';
 import { FormError } from '@/components/form-message';
 import { PageHeader } from '@/components/page-header';
@@ -168,33 +169,33 @@ export default async function CardPage({ params, searchParams }: Props) {
         )}
       >
         {/* La carte en grand : sur une page plein écran, elle suit la hauteur disponible. */}
-        <div className="holo-frame flex items-start justify-center overflow-hidden rounded-[1.375rem] border bg-card p-3 fit:min-h-0 fit:items-center">
+        <HeroStage className="min-h-80 p-6 fit:min-h-0">
           {card.image ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
               referrerPolicy="no-referrer"
               src={card.image}
               alt={card.name}
-              className="aspect-[63/88] w-full rounded-xl border bg-muted object-contain fit:h-full fit:max-h-full fit:w-auto fit:max-w-full"
+              className="aspect-[63/88] w-full max-w-72 -rotate-3 rounded-xl object-contain shadow-[0_30px_60px_-20px_rgb(0_0_0/0.6),0_0_50px_-8px_color-mix(in_oklab,var(--primary)_50%,transparent)] fit:h-[88%] fit:w-auto fit:max-w-[88%]"
             />
           ) : (
-            <div className="aspect-[63/88] w-full max-w-72 rounded-xl border bg-muted" />
+            <div className="aspect-[63/88] w-full max-w-60 -rotate-3 rounded-xl border bg-muted" />
           )}
-        </div>
+        </HeroStage>
 
         <div className={fitColumn}>
           <div
             className={cn(
-              'grid shrink-0 grid-cols-2 gap-3',
+              'card-frame grid shrink-0 grid-cols-2 gap-px overflow-hidden rounded-[1.375rem] border bg-border shadow-(--card-shadow)',
               stats.length > 4 ? 'sm:grid-cols-3 2xl:grid-cols-5' : 'sm:grid-cols-4',
             )}
           >
             {stats.map((s, i) => (
-              <div key={s.label} className="min-w-0 rounded-xl border bg-card px-4 py-3">
-                <p className="text-xs text-muted-foreground">{s.label}</p>
+              <div key={s.label} className="min-w-0 bg-card px-5 py-4">
+                <p className="label-mono text-muted-foreground">{s.label}</p>
                 <p
                   className={cn(
-                    'font-display text-xl font-bold tabular-nums',
+                    'mt-1.5 font-display text-xl font-bold tabular-nums',
                     i === 0 && 'text-primary',
                     i === 4 && 'text-info',
                   )}

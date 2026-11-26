@@ -24,6 +24,7 @@ import { FitPage } from '@/components/fit-page';
 import { FormError } from '@/components/form-message';
 import { PriceChart } from '@/components/price-chart';
 import { TrendChart } from '@/components/trend-chart';
+import { HeroStage } from '@/components/hero-stage';
 import { ProductGallery } from '@/components/product-gallery';
 import { TabPanels } from '@/components/tab-panels';
 import { Badge } from '@/components/ui/badge';
@@ -131,7 +132,7 @@ export default async function ProductPage({ params, searchParams }: Props) {
         )}
       >
         {/* Identité du produit */}
-        <Card className={cn(fitCard, 'holo-frame px-5')}>
+        <Card className={cn(fitCard, 'px-5')}>
           <div className={cn('space-y-4', fitScroll)}>
             <Link
               href="/produits"
@@ -139,18 +140,18 @@ export default async function ProductPage({ params, searchParams }: Props) {
             >
               <ArrowLeft className="size-4" /> Produits suivis
             </Link>
-            <div className="rounded-xl bg-white/[0.03] p-2">
-              {product.images.length > 0 ? (
-                <ProductGallery images={product.images} alt={product.name} />
-              ) : (
-                <p className="flex h-64 items-center justify-center rounded-lg border border-dashed p-4 text-center text-sm text-muted-foreground">
+            {product.images.length > 0 ? (
+              <ProductGallery images={product.images} alt={product.name} />
+            ) : (
+              <HeroStage className="h-72">
+                <p className="max-w-[14rem] text-center text-sm text-muted-foreground">
                   Pas encore d’image : elle sera reprise de la première fiche revendeur relevée.
                 </p>
-              )}
-            </div>
+              </HeroStage>
+            )}
             <div className="space-y-1">
-              <p className="text-sm text-muted-foreground">
-                {typeLabel}
+              <p className="label-mono text-muted-foreground">
+                <b className="font-medium text-primary">{typeLabel}</b>
                 {extension && (
                   <>
                     {' · '}
@@ -165,7 +166,7 @@ export default async function ProductPage({ params, searchParams }: Props) {
                 )}
                 {releaseDate && ` · sortie le ${formatDate(releaseDate)}`}
               </p>
-              <h1 className="font-display text-2xl leading-tight font-bold tracking-tight text-balance">
+              <h1 className="text-grad pt-1 font-display text-[1.75rem] leading-[1.02] font-black tracking-[-0.03em] text-balance">
                 {product.name}
               </h1>
               <ReportButton productId={product.id} subject={product.name} defaultKind="OTHER" />
@@ -185,7 +186,7 @@ export default async function ProductPage({ params, searchParams }: Props) {
                 )}
               </div>
             </div>
-            <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
+            <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border bg-border text-sm [&>*]:bg-card [&>*]:px-3.5 [&>*]:py-3">
               <Meta label="Marque" value={product.brand} />
               <Meta label="EAN" value={product.ean} mono />
               <Meta
@@ -193,7 +194,7 @@ export default async function ProductPage({ params, searchParams }: Props) {
                 value={product.msrp !== null ? formatPrice(product.msrp) : null}
               />
               <div className="min-w-0">
-                <dt className="text-muted-foreground">Prix cible</dt>
+                <dt className="label-mono text-[10px] text-muted-foreground">Prix cible</dt>
                 <dd>
                   <form action={setProductTargetAction.bind(null, product.id)} className="mt-1">
                     <Input
@@ -203,7 +204,7 @@ export default async function ProductPage({ params, searchParams }: Props) {
                       placeholder="ex. 70"
                       title="Prix cible en euros : Entrée pour enregistrer, vide pour aucun"
                       aria-label="Prix cible en euros"
-                      className="h-9 w-28"
+                      className="h-8 w-full"
                     />
                   </form>
                 </dd>
@@ -226,7 +227,7 @@ export default async function ProductPage({ params, searchParams }: Props) {
               />
               {categories.length > 0 && (
                 <div className="col-span-2 min-w-0">
-                  <dt className="text-muted-foreground">Rayons</dt>
+                  <dt className="label-mono text-[10px] text-muted-foreground">Rayons</dt>
                   <dd className="font-medium">{categories.join(' · ')}</dd>
                 </div>
               )}
@@ -236,7 +237,7 @@ export default async function ProductPage({ params, searchParams }: Props) {
 
         {/* Prix : chiffres clés, courbe, revendeurs */}
         <div className={fitColumn}>
-          <div className="grid shrink-0 gap-3 sm:grid-cols-2 2xl:grid-cols-4">
+          <div className="card-frame grid shrink-0 gap-px overflow-hidden rounded-[1.375rem] border bg-border shadow-(--card-shadow) sm:grid-cols-2 2xl:grid-cols-4">
             <HeroStat
               label="Meilleur prix"
               value={formatPrice(bestPrice)}
@@ -384,14 +385,14 @@ export default async function ProductPage({ params, searchParams }: Props) {
                         </p>
                       ) : (
                         <table className="w-full text-sm">
-                          <thead className="text-xs tracking-wide text-muted-foreground uppercase">
+                          <thead className="label-mono text-muted-foreground">
                             <tr className="border-b">
-                              <th className="py-2 text-left font-semibold">Site</th>
-                              <th className="py-2 text-left font-semibold">Statut</th>
-                              <th className="hidden py-2 text-left font-semibold sm:table-cell">
+                              <th className="py-2 text-left font-medium">Boutique</th>
+                              <th className="py-2 text-left font-medium">Statut</th>
+                              <th className="hidden py-2 text-left font-medium sm:table-cell">
                                 Dernier relevé
                               </th>
-                              <th className="py-2 text-right font-semibold">Prix</th>
+                              <th className="py-2 text-right font-medium">Prix livré</th>
                               <th className="py-2">
                                 <span className="sr-only">Action</span>
                               </th>
@@ -407,11 +408,17 @@ export default async function ProductPage({ params, searchParams }: Props) {
                                 <td className="hidden py-3 pr-2 text-muted-foreground sm:table-cell">
                                   {l.lastCheckedAt ? ago(l.lastCheckedAt) : 'jamais'}
                                 </td>
-                                <td className="py-3 text-right font-semibold whitespace-nowrap tabular-nums">
-                                  {formatPrice(l.price)}
+                                <td
+                                  className={cn(
+                                    'py-3 text-right font-mono font-bold whitespace-nowrap tabular-nums',
+                                    l.id === product.best?.listingId && 'text-success',
+                                    !isBuyable(l.availability) && 'text-muted-foreground',
+                                  )}
+                                >
+                                  {formatPrice(l.delivered ?? l.price)}
                                   {l.delivered !== null && l.delivered !== l.price && (
-                                    <span className="block text-xs font-normal text-muted-foreground">
-                                      livré {formatPrice(l.delivered)}
+                                    <span className="block font-sans text-xs font-normal text-muted-foreground">
+                                      {formatPrice(l.price)} + port
                                     </span>
                                   )}
                                 </td>
@@ -865,9 +872,14 @@ function HeroStat({
   hintClass?: string;
 }) {
   return (
-    <div className="min-w-0 rounded-xl border bg-card px-4 py-3">
-      <p className="text-xs text-muted-foreground">{label}</p>
-      <p className={cn('font-display text-xl font-bold tabular-nums 2xl:text-2xl', valueClass)}>
+    <div className="min-w-0 bg-card px-5 py-4">
+      <p className="label-mono text-muted-foreground">{label}</p>
+      <p
+        className={cn(
+          'mt-1.5 font-display text-xl font-bold tabular-nums 2xl:text-2xl',
+          valueClass,
+        )}
+      >
         {value}
       </p>
       {hint && (
@@ -882,8 +894,8 @@ function HeroStat({
 function Meta({ label, value, mono }: { label: string; value: string | null; mono?: boolean }) {
   return (
     <div className="min-w-0">
-      <dt className="text-muted-foreground">{label}</dt>
-      <dd className={cn('truncate font-medium', mono && 'font-mono text-xs leading-5')}>
+      <dt className="label-mono text-[10px] text-muted-foreground">{label}</dt>
+      <dd className={cn('mt-1 truncate font-medium', mono && 'font-mono text-xs leading-5')}>
         {value ?? '—'}
       </dd>
     </div>

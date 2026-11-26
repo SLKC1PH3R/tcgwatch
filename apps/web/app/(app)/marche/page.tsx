@@ -13,6 +13,7 @@ import {
 } from '@tcgwatch/shared';
 import { getEnv } from '@tcgwatch/shared/env';
 import { FitPage } from '@/components/fit-page';
+import { KeyStrip } from '@/components/key-strip';
 import { PageHeader } from '@/components/page-header';
 import { Thumb } from '@/components/thumb';
 import { Badge } from '@/components/ui/badge';
@@ -80,11 +81,53 @@ export default async function MarketPage({
         (b.p.releaseDate?.getTime() ?? 0) - (a.p.releaseDate?.getTime() ?? 0),
     );
 
+  // Chiffres clés : produits cotés, médiane de la plus-value vs prix conseillé, boutiques sous
+  // le prix conseillé, cartes phares relevées.
+  const gains = sealed
+    .map(({ p, m }) => (m && p.msrp ? m.price / p.msrp - 1 : null))
+    .filter((g): g is number => g !== null)
+    .sort((a, b) => a - b);
+  const medianGain = gains.length ? gains[Math.floor(gains.length / 2)]! : null;
+  const underMsrp = sealed.filter(({ p, best }) => best && p.msrp && best.price < p.msrp).length;
+  const resold = sealed.filter(({ m }) => m).length;
+
   return (
     <FitPage>
       <PageHeader
         title="Marché secondaire"
         description="Prix constatés hors boutiques. Cardmarket n’est jamais scrapé : saisie manuelle ou API tierces."
+      />
+
+      <KeyStrip
+        items={[
+          {
+            label: 'Produits cotés',
+            value: String(resold),
+            hint: `${sealed.length} produits avec au moins un prix`,
+          },
+          {
+            label: 'Plus-value médiane',
+            value: formatPercent(medianGain),
+            valueClass:
+              medianGain === null
+                ? undefined
+                : medianGain >= 0
+                  ? 'text-success'
+                  : 'text-destructive',
+            hint: 'revente face au prix conseillé de sortie',
+          },
+          {
+            label: 'Sous le prix conseillé',
+            value: String(underMsrp),
+            valueClass: underMsrp ? 'text-success' : undefined,
+            hint: 'produits achetables en boutique sous leur prix de sortie',
+          },
+          {
+            label: 'Cartes phares',
+            value: String(cards.length),
+            hint: 'secrètes des dernières extensions, cotées chaque jour',
+          },
+        ]}
       />
 
       <div className={cn(fitGrid, 'xl:grid-cols-[minmax(0,1fr)_24rem]')}>
@@ -120,11 +163,15 @@ export default async function MarketPage({
               <TableHeader>
                 <TableRow>
                   <TableHead>Produit</TableHead>
-                  <TableHead className="text-right">Prix conseillé (sortie)</TableHead>
-                  <TableHead className="text-right">Meilleur prix boutique</TableHead>
-                  <TableHead className="text-right">vs conseillé</TableHead>
-                  <TableHead className="text-right">Prix de revente</TableHead>
-                  <TableHead className="text-right">Plus-value</TableHead>
+                  <TableHead className="text-right whitespace-normal">
+                    Prix conseillé (sortie)
+                  </TableHead>
+                  <TableHead className="text-right whitespace-normal">
+                    Meilleur prix boutique
+                  </TableHead>
+                  <TableHead className="text-right whitespace-normal">vs conseillé</TableHead>
+                  <TableHead className="text-right whitespace-normal">Prix de revente</TableHead>
+                  <TableHead className="text-right whitespace-normal">Plus-value</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
