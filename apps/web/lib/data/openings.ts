@@ -3,23 +3,6 @@ import { prisma } from '@tcgwatch/db';
 import { tcgdexAsset } from '@tcgwatch/market';
 import { toNumber } from '@tcgwatch/shared';
 
-/** Produits qu'on peut ouvrir (scellés liés à une extension). */
-export async function getOpenableProducts() {
-  return prisma.product.findMany({
-    where: {
-      OR: [{ extensionId: { not: null } }, { releaseId: { not: null } }],
-      type: { notIn: ['DECK', 'AUTRE'] },
-    },
-    select: {
-      id: true,
-      name: true,
-      type: true,
-      extension: { select: { nameFr: true, releaseDate: true } },
-    },
-    orderBy: [{ extension: { releaseDate: { sort: 'desc', nulls: 'last' } } }, { name: 'asc' }],
-  });
-}
-
 type CardPrices = { quantity: number; card: { priceTrend: unknown; frPrice: unknown } };
 
 /** Valeur des cartes tirées, au prix Cardmarket et au prix eBay FR (cartes cotées seulement). */

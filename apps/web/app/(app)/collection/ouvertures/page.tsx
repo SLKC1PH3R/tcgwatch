@@ -15,7 +15,8 @@ import { PriceSourceToggle } from '@/components/price-source-toggle';
 import { SafeImg } from '@/components/safe-img';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { requireUser } from '@/lib/auth';
-import { getOpenableProducts, getOpenings, getOpeningStats } from '@/lib/data/openings';
+import { getOpenings, getOpeningStats } from '@/lib/data/openings';
+import { getProductOptions } from '@/lib/data/products';
 import { fitCard, fitGrid, fitScroll } from '@/lib/fit';
 import { PRICE_COOKIE, parsePriceSource } from '@/lib/price-source';
 import { cn } from '@/lib/utils';
@@ -32,7 +33,7 @@ export default async function OpeningsPage() {
   const [openings, stats, products, jar] = await Promise.all([
     getOpenings(user.id),
     getOpeningStats(),
-    getOpenableProducts(),
+    getProductOptions(),
     cookies(),
   ]);
   const priceSource = parsePriceSource(jar.get(PRICE_COOKIE)?.value);
@@ -156,11 +157,7 @@ export default async function OpeningsPage() {
             <CardContent>
               <NewOpeningForm
                 today={todayUtc().toISOString().slice(0, 10)}
-                products={products.map((p) => ({
-                  id: p.id,
-                  name: p.name,
-                  release: p.extension?.nameFr ?? 'Autres produits',
-                }))}
+                products={products.filter((p) => p.type !== 'DECK' && p.type !== 'AUTRE')}
               />
             </CardContent>
           </Card>

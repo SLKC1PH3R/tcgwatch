@@ -5,43 +5,18 @@ import { FormError } from '@/components/form-message';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { ProductPicker } from '@/components/product-picker';
+import type { ProductOption } from '@/lib/data/products';
 import { createOpeningAction, type OpeningState } from './actions';
 
 /** Produit ouvert, prix payé, date : la saisie des cartes suit sur la page de l'ouverture. */
-export function NewOpeningForm({
-  products,
-  today,
-}: {
-  products: { id: string; name: string; release: string }[];
-  today: string;
-}) {
+export function NewOpeningForm({ products, today }: { products: ProductOption[]; today: string }) {
   const [state, action, pending] = useActionState<OpeningState, FormData>(createOpeningAction, {});
-  const byRelease = new Map<string, { id: string; name: string }[]>();
-  for (const p of products) byRelease.set(p.release, [...(byRelease.get(p.release) ?? []), p]);
   return (
     <form action={action} className="space-y-3">
       <div className="space-y-1.5">
         <Label htmlFor="o-product">Produit ouvert</Label>
-        <select
-          id="o-product"
-          name="productId"
-          required
-          defaultValue=""
-          className="h-10 w-full rounded-lg border border-input bg-card px-3 text-sm"
-        >
-          <option value="" disabled>
-            Choisir…
-          </option>
-          {[...byRelease].map(([release, list]) => (
-            <optgroup key={release} label={release}>
-              {list.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </optgroup>
-          ))}
-        </select>
+        <ProductPicker id="o-product" products={products} />
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1.5">
