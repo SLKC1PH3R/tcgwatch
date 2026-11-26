@@ -139,7 +139,7 @@ export async function getCardCollection(userId: string) {
     prisma.ownedCard.findMany({
       where: { userId },
       orderBy: { updatedAt: 'desc' },
-      take: 12,
+      take: 60,
       select: { card: { select: cardSelectFor(userId) } },
     }),
   ]);
