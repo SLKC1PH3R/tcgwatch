@@ -224,6 +224,17 @@
   body {
     @apply bg-background text-foreground antialiased;
   }
+  /* Listes déroulantes natives : options lisibles dans les deux thèmes (Windows affiche sinon
+     le texte clair du thème sombre sur un menu blanc). */
+  select option,
+  select optgroup {
+    background-color: var(--popover);
+    color: var(--popover-foreground);
+  }
+  select optgroup {
+    color: var(--muted-foreground);
+    font-weight: 600;
+  }
   /* Halo violet en haut de page, comme sur la page d'accueil : franc en sombre, à peine teinté
      en clair. */
   body {

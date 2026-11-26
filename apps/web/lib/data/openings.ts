@@ -6,14 +6,17 @@ import { toNumber } from '@tcgwatch/shared';
 /** Produits qu'on peut ouvrir (scellés liés à une extension). */
 export async function getOpenableProducts() {
   return prisma.product.findMany({
-    where: { releaseId: { not: null }, type: { notIn: ['DECK', 'AUTRE'] } },
+    where: {
+      OR: [{ extensionId: { not: null } }, { releaseId: { not: null } }],
+      type: { notIn: ['DECK', 'AUTRE'] },
+    },
     select: {
       id: true,
       name: true,
       type: true,
-      release: { select: { nameFr: true, releaseDate: true } },
+      extension: { select: { nameFr: true, releaseDate: true } },
     },
-    orderBy: [{ release: { releaseDate: { sort: 'desc', nulls: 'last' } } }, { name: 'asc' }],
+    orderBy: [{ extension: { releaseDate: { sort: 'desc', nulls: 'last' } } }, { name: 'asc' }],
   });
 }
 

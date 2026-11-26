@@ -159,7 +159,7 @@ export default async function OpeningsPage() {
                 products={products.map((p) => ({
                   id: p.id,
                   name: p.name,
-                  release: p.release?.nameFr ?? 'Autres',
+                  release: p.extension?.nameFr ?? 'Autres produits',
                 }))}
               />
             </CardContent>

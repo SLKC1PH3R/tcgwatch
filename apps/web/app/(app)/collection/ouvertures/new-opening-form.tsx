@@ -27,7 +27,7 @@ export function NewOpeningForm({
           name="productId"
           required
           defaultValue=""
-          className="h-10 w-full rounded-lg border border-input bg-transparent px-3 text-sm"
+          className="h-10 w-full rounded-lg border border-input bg-card px-3 text-sm"
         >
           <option value="" disabled>
             Choisir…
