@@ -14,6 +14,7 @@ import { ago } from '@/lib/time';
 import { cn } from '@/lib/utils';
 import s from './landing.module.css';
 import { AlertSwitches, ScannerBand, type ScanCard } from './scanner-band';
+import { SectionPager } from './section-pager';
 
 export const metadata: Metadata = {
   title: 'TCGWatch — stocks, prix et alertes Pokémon JCC en France',
@@ -195,8 +196,9 @@ export default async function LandingPage() {
 
   return (
     <div className={s.page}>
+      <SectionPager />
       {/* ---------- Héros ---------- */}
-      <section className={s.hero} id="haut">
+      <section className={cn(s.hero, s.snap)} id="haut" data-snap>
         <div className={s.heroGrid} aria-hidden />
         <div className={s.dust} aria-hidden />
 
@@ -392,7 +394,12 @@ export default async function LandingPage() {
       </section>
 
       {/* ---------- Scanner ---------- */}
-      <section className={s.scanner} id="scanner" aria-labelledby="scanner-titre">
+      <section
+        className={cn(s.scanner, s.snap, s.snapCenter)}
+        data-snap
+        id="scanner"
+        aria-labelledby="scanner-titre"
+      >
         <div className={s.scannerHead}>
           <div>
             <p className={s.label} style={{ marginBottom: 20 }}>
@@ -436,7 +443,12 @@ export default async function LandingPage() {
       </section>
 
       {/* ---------- Outils ---------- */}
-      <section className={s.sec} id="outils" aria-labelledby="outils-titre">
+      <section
+        className={cn(s.sec, s.snap, s.snapCenter)}
+        data-snap
+        id="outils"
+        aria-labelledby="outils-titre"
+      >
         <div className={s.secHead}>
           <div>
             <span className={s.label}>
@@ -625,7 +637,12 @@ export default async function LandingPage() {
       </section>
 
       {/* ---------- FAQ ---------- */}
-      <section className={s.sec} id="faq" aria-labelledby="faq-titre">
+      <section
+        className={cn(s.sec, s.snap, s.snapCenter)}
+        data-snap
+        id="faq"
+        aria-labelledby="faq-titre"
+      >
         <div className={s.faqGrid}>
           <div>
             <span className={s.label} style={{ display: 'block', marginBottom: 20 }}>
@@ -655,57 +672,59 @@ export default async function LandingPage() {
       </section>
 
       {/* ---------- Appel final ---------- */}
-      <section className={s.cta} aria-labelledby="cta-titre">
-        <span className={cn(s.hud, s.hudTl)} aria-hidden />
-        <span className={cn(s.hud, s.hudTr)} aria-hidden />
-        <span className={cn(s.hud, s.hudBl)} aria-hidden />
-        <span className={cn(s.hud, s.hudBr)} aria-hidden />
-        <div>
-          <span className={s.label} style={{ display: 'block', marginBottom: 20 }}>
-            <b>05</b> — Inscription
-          </span>
-          <h2 id="cta-titre" className={cn(s.headline, s.grad, s.lilac, s.ctaH2)}>
-            Suivez vos produits <span className={cn(s.grad, s.ember)}>dès aujourd’hui.</span>
-          </h2>
-          <p className={s.lede} style={{ marginTop: 22, maxWidth: 520 }}>
-            Création de compte en 30 secondes. Sélectionnez les produits à suivre et ajoutez vos
-            premières cartes.
-          </p>
-          <div style={{ marginTop: 36 }}>
-            <Link href={signUp} className={s.glowBtn}>
-              <span>
-                {open ? 'Créer un compte' : 'Se connecter'} <Arrow />
-              </span>
+      <div className={cn(s.snap, s.finale)} data-snap>
+        <section className={s.cta} aria-labelledby="cta-titre">
+          <span className={cn(s.hud, s.hudTl)} aria-hidden />
+          <span className={cn(s.hud, s.hudTr)} aria-hidden />
+          <span className={cn(s.hud, s.hudBl)} aria-hidden />
+          <span className={cn(s.hud, s.hudBr)} aria-hidden />
+          <div>
+            <span className={s.label} style={{ display: 'block', marginBottom: 20 }}>
+              <b>05</b> — Inscription
+            </span>
+            <h2 id="cta-titre" className={cn(s.headline, s.grad, s.lilac, s.ctaH2)}>
+              Suivez vos produits <span className={cn(s.grad, s.ember)}>dès aujourd’hui.</span>
+            </h2>
+            <p className={s.lede} style={{ marginTop: 22, maxWidth: 520 }}>
+              Création de compte en 30 secondes. Sélectionnez les produits à suivre et ajoutez vos
+              premières cartes.
+            </p>
+            <div style={{ marginTop: 36 }}>
+              <Link href={signUp} className={s.glowBtn}>
+                <span>
+                  {open ? 'Créer un compte' : 'Se connecter'} <Arrow />
+                </span>
+              </Link>
+            </div>
+          </div>
+          <div className={s.ctaSide}>
+            <p className={s.label}>Application mobile, sans store</p>
+            <div
+              className={s.qr}
+              // QR code généré côté serveur à partir de l'adresse du site.
+              dangerouslySetInnerHTML={{ __html: qr }}
+            />
+            <Link href="/installer" className={cn(s.btn, s.btnGhost)}>
+              Installer l’application
             </Link>
           </div>
-        </div>
-        <div className={s.ctaSide}>
-          <p className={s.label}>Application mobile, sans store</p>
-          <div
-            className={s.qr}
-            // QR code généré côté serveur à partir de l'adresse du site.
-            dangerouslySetInnerHTML={{ __html: qr }}
-          />
-          <Link href="/installer" className={cn(s.btn, s.btnGhost)}>
-            Installer l’application
-          </Link>
-        </div>
-      </section>
+        </section>
 
-      <p className={cn(s.wordmark, s.headline, s.grad, s.indigo)} aria-hidden>
-        TCGWatch
-      </p>
-      <footer className={s.footer}>
-        <p>TCGWatch n’est pas affilié à The Pokémon Company, Nintendo ou aux boutiques citées.</p>
-        <nav aria-label="Liens du site">
-          <Link href="/installer">Installer l’appli</Link>
-          <Link href="/methode">Méthode</Link>
-          <Link href="/guides">Guides</Link>
-          <Link href="/mentions-legales">Mentions légales</Link>
-          <Link href="/cgu">CGU</Link>
-          <Link href="/confidentialite">Confidentialité</Link>
-        </nav>
-      </footer>
+        <p className={cn(s.wordmark, s.headline, s.grad, s.indigo)} aria-hidden>
+          TCGWatch
+        </p>
+        <footer className={s.footer}>
+          <p>TCGWatch n’est pas affilié à The Pokémon Company, Nintendo ou aux boutiques citées.</p>
+          <nav aria-label="Liens du site">
+            <Link href="/installer">Installer l’appli</Link>
+            <Link href="/methode">Méthode</Link>
+            <Link href="/guides">Guides</Link>
+            <Link href="/mentions-legales">Mentions légales</Link>
+            <Link href="/cgu">CGU</Link>
+            <Link href="/confidentialite">Confidentialité</Link>
+          </nav>
+        </footer>
+      </div>
     </div>
   );
 }

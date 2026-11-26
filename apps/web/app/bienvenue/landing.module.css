@@ -741,8 +741,18 @@
 }
 .bento {
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(12, minmax(0, 1fr));
   gap: 16px;
+}
+/* Restocks et alertes sur la première ligne, les quatre autres tuiles sur la seconde. */
+.bento > :nth-child(1) {
+  grid-column: span 8;
+}
+.bento > :nth-child(2) {
+  grid-column: span 4;
+}
+.bento > :nth-child(n + 3) {
+  grid-column: span 3;
 }
 .tile {
   position: relative;
@@ -1239,8 +1249,87 @@
   opacity: 0.9;
 }
 
+/* ---------- Défilement par écran ----------
+ * Sur ordinateur, chaque section occupe l'écran ; SectionPager fait glisser d'une section à
+ * la suivante. Désactivé sur les petits écrans et quand l'utilisateur réduit les animations.
+ */
+@media (min-width: 1025px) and (min-height: 700px) and (prefers-reduced-motion: no-preference) {
+  .snap {
+    min-height: 100vh;
+    min-height: 100svh;
+    box-sizing: border-box;
+  }
+  .snapCenter {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+  .sec.snapCenter {
+    padding-block: 44px;
+  }
+  .scanner.snapCenter {
+    padding-block: 48px;
+  }
+  .scanner.snapCenter .scannerHead {
+    padding-bottom: 32px;
+  }
+  .scanner.snapCenter .steps {
+    padding-top: 32px;
+  }
+  .secHead {
+    margin-bottom: 32px;
+  }
+  /* Bento compacté pour tenir dans un écran. */
+  #outils .secHead {
+    margin-bottom: 24px;
+  }
+  #outils .h2 {
+    font-size: clamp(1.8rem, 2.8vw, 2.8rem);
+  }
+  .bento {
+    gap: 12px;
+  }
+  .tileIn {
+    padding: 18px 20px;
+    gap: 8px;
+  }
+  .tile h3 {
+    font-size: 18px;
+  }
+  .tile p {
+    font-size: 13.5px;
+  }
+  .ledgerRow {
+    padding: 7px 14px;
+  }
+  .switches li {
+    padding: 5px 0;
+  }
+  .orbit {
+    height: 150px;
+  }
+  .days {
+    height: 72px;
+  }
+  .big {
+    font-size: clamp(2.4rem, 3.4vw, 3.2rem);
+  }
+  .finale {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    padding-top: 48px;
+  }
+}
+
 /* ---------- Tablette et téléphone ---------- */
 @media (max-width: 1024px) {
+  .bento {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .bento > :nth-child(n) {
+    grid-column: auto;
+  }
   .heroMain,
   .scannerHead,
   .secHead,
