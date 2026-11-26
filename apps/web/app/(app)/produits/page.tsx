@@ -272,7 +272,7 @@ function FilterLink({
       aria-current={on ? 'true' : undefined}
       className={cn(
         'flex min-h-8 max-w-full items-center rounded-full border px-3 py-1 text-xs font-semibold transition-colors hover:bg-accent',
-        on && 'border-foreground bg-foreground text-background hover:bg-foreground',
+        on && 'border-ink bg-ink text-ink-foreground hover:bg-ink',
       )}
     >
       {children}

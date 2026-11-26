@@ -33,7 +33,7 @@ export async function SeriesBoard({ mode, serie: picked }: { mode: SeriesMode; s
           className={cn(
             'flex shrink-0 items-center gap-2 rounded-full border px-3 py-1.5 text-sm transition-colors hover:bg-accent lg:rounded-lg lg:border-transparent lg:py-2',
             on &&
-              'border-foreground bg-foreground text-background hover:bg-foreground lg:bg-accent lg:text-foreground lg:hover:bg-accent',
+              'border-ink bg-ink text-ink-foreground hover:bg-ink lg:bg-accent lg:text-foreground lg:hover:bg-accent',
           )}
         >
           <span className="min-w-0 flex-1 truncate font-medium">{s.name}</span>
@@ -122,7 +122,7 @@ function SerieCard({ serie, mode }: { serie: SerieWithSets; mode: SeriesMode }) 
                 aria-current={mode === key ? 'page' : undefined}
                 className={cn(
                   'rounded-full px-3 py-1 text-sm font-semibold text-muted-foreground hover:text-foreground',
-                  mode === key && 'bg-foreground text-background hover:text-background',
+                  mode === key && 'bg-ink text-ink-foreground hover:text-ink-foreground',
                 )}
               >
                 {label}

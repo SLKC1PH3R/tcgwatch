@@ -140,8 +140,7 @@ export default async function CalendarPage({
             aria-current={filter === f.value ? 'page' : undefined}
             className={cn(
               'flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold transition-colors hover:bg-accent',
-              filter === f.value &&
-                'border-foreground bg-foreground text-background hover:bg-foreground',
+              filter === f.value && 'border-ink bg-ink text-ink-foreground hover:bg-ink',
             )}
           >
             <span aria-hidden className={cn('size-1.5 rounded-full', dotClass(f.value ?? 'ALL'))} />

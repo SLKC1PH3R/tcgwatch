@@ -181,11 +181,13 @@ export default async function DashboardPage() {
                         href={
                           a.product
                             ? `/produits/${a.product.id}`
-                            : `/cartes/${encodeURIComponent(a.chaseCard?.tcgdexId ?? '')}`
+                            : a.chaseCard
+                              ? `/cartes/${encodeURIComponent(a.chaseCard.tcgdexId)}`
+                              : (a.url ?? '/alertes')
                         }
                         className="block truncate text-sm font-semibold hover:underline"
                       >
-                        {a.product?.name ?? a.chaseCard?.name ?? '—'}
+                        {a.product?.name ?? a.chaseCard?.name ?? a.title}
                       </Link>
                       <p className="truncate text-xs text-muted-foreground" title={a.message}>
                         {a.message}

@@ -99,7 +99,7 @@ export async function PriceBoard({
         active &&
           (kind === 'filter'
             ? 'border-primary bg-primary text-primary-foreground hover:bg-primary/90'
-            : 'border-foreground bg-foreground text-background hover:bg-foreground/90'),
+            : 'border-ink bg-ink text-ink-foreground hover:bg-ink/90'),
       )}
     >
       {label}

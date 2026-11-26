@@ -65,7 +65,7 @@ export default async function PublicBinderPage({ params, searchParams }: Props) 
   const pill = (active: boolean) =>
     cn(
       'rounded-full px-3.5 py-1.5 text-sm font-semibold text-muted-foreground transition-colors hover:text-foreground',
-      active && 'bg-foreground text-background hover:text-background',
+      active && 'bg-ink text-ink-foreground hover:text-ink-foreground',
     );
 
   return (

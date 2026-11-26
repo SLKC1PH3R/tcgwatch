@@ -342,7 +342,7 @@ export default async function ProductPage({ params, searchParams }: Props) {
                       className={cn(
                         'rounded-full border px-2.5 py-1 text-xs font-medium text-muted-foreground hover:bg-accent',
                         p.key === period.key &&
-                          'border-foreground bg-foreground text-background hover:bg-foreground',
+                          'border-ink bg-ink text-ink-foreground hover:bg-ink',
                       )}
                     >
                       {p.label}

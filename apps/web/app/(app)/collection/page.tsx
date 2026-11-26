@@ -227,7 +227,7 @@ export default async function CollectionPage({ searchParams }: Props) {
                   aria-current={soldView === t.sold ? 'page' : undefined}
                   className={cn(
                     'rounded-full px-3.5 py-1.5 text-sm font-semibold text-muted-foreground transition-colors hover:text-foreground',
-                    soldView === t.sold && 'bg-foreground text-background hover:text-background',
+                    soldView === t.sold && 'bg-ink text-ink-foreground hover:text-ink-foreground',
                   )}
                 >
                   {t.label}

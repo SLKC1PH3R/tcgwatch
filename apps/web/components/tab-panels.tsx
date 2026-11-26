@@ -41,7 +41,7 @@ export function TabPanels({ tabs, bodyClassName }: { tabs: TabPanel[]; bodyClass
                 onClick={() => setActive(t.id)}
                 className={cn(
                   'h-8 shrink-0 cursor-pointer rounded-full px-3 font-display text-sm font-semibold whitespace-nowrap text-muted-foreground transition-colors hover:text-foreground',
-                  on && 'bg-foreground text-background hover:text-background',
+                  on && 'bg-ink text-ink-foreground hover:text-ink-foreground',
                 )}
               >
                 {t.label}

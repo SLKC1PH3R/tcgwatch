@@ -75,7 +75,7 @@ export default async function ReportsPage({ searchParams }: Props) {
             href={t.href}
             className={cn(
               'rounded-full border px-3.5 py-1.5 text-sm font-semibold text-muted-foreground',
-              t.on && 'bg-foreground text-background',
+              t.on && 'bg-ink text-ink-foreground',
             )}
           >
             {t.label}

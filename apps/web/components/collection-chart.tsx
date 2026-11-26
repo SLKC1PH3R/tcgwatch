@@ -170,7 +170,7 @@ export function CollectionChart({ history }: { history: Point[] }) {
             }}
             className={cn(
               'h-8 flex-1 cursor-pointer rounded-[0.6rem] text-sm font-bold text-muted-foreground transition-colors hover:text-foreground',
-              period === p.id && 'bg-foreground text-background hover:text-background',
+              period === p.id && 'bg-ink text-ink-foreground hover:text-ink-foreground',
             )}
           >
             {p.label}

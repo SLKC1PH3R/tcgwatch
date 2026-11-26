@@ -241,8 +241,7 @@ export default async function CardPage({ params, searchParams }: Props) {
                     aria-current={p.key === period.key ? 'true' : undefined}
                     className={cn(
                       'rounded-full border px-2.5 py-1 text-xs font-medium text-muted-foreground hover:bg-accent',
-                      p.key === period.key &&
-                        'border-foreground bg-foreground text-background hover:bg-foreground',
+                      p.key === period.key && 'border-ink bg-ink text-ink-foreground hover:bg-ink',
                     )}
                   >
                     {p.label}
