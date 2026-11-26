@@ -72,7 +72,7 @@ export default async function MyCardsPage() {
         }
       />
 
-      <div className="grid shrink-0 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="card-frame grid shrink-0 overflow-hidden rounded-[1.375rem] border bg-card sm:grid-cols-2 xl:grid-cols-4 [&>*]:border-border max-sm:[&>*+*]:border-t xl:[&>*+*]:border-l sm:[&>*:nth-child(even)]:border-l sm:[&>*:nth-child(n+3)]:border-t xl:[&>*:nth-child(n+3)]:border-t-0">
         <Tile
           label="Valeur estimée"
           value={formatPrice(value)}
@@ -89,10 +89,10 @@ export default async function MyCardsPage() {
         />
         <Link
           href="/collection/cartes/achats"
-          className="min-w-0 rounded-xl border bg-card px-4 py-3 transition-colors hover:bg-accent"
+          className="min-w-0 px-5 py-4 transition-colors hover:bg-accent/50"
         >
-          <p className="text-xs font-medium text-muted-foreground">Investi</p>
-          <p className="font-display text-xl font-bold tabular-nums">
+          <p className="label-mono text-muted-foreground">Investi</p>
+          <p className="mt-1.5 font-display text-2xl font-bold tabular-nums">
             {inv.covered.paid > 0 ? formatPrice(inv.covered.paid) : '—'}
           </p>
           {inv.covered.paid > 0 ? (
@@ -229,9 +229,9 @@ export default async function MyCardsPage() {
 
 function Tile({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
-    <div className="min-w-0 rounded-xl border bg-card px-4 py-3">
-      <p className="text-xs font-medium text-muted-foreground">{label}</p>
-      <p className="font-display text-xl font-bold tabular-nums">{value}</p>
+    <div className="min-w-0 px-5 py-4">
+      <p className="label-mono text-muted-foreground">{label}</p>
+      <p className="mt-1.5 font-display text-2xl font-bold tabular-nums">{value}</p>
       {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
     </div>
   );

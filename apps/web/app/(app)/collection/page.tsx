@@ -122,7 +122,7 @@ export default async function CollectionPage({ searchParams }: Props) {
         <Card className="holo-frame py-4">
           <CardContent className="flex h-full flex-col justify-center gap-1">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <p className="text-sm text-muted-foreground">Valeur estimée</p>
+              <p className="label-mono text-muted-foreground">Valeur estimée</p>
               <PriceSourceToggle current={priceSource} />
             </div>
             <p className="font-display text-4xl font-extrabold tracking-tight tabular-nums">
@@ -152,7 +152,7 @@ export default async function CollectionPage({ searchParams }: Props) {
         <Card className="py-4">
           <CardContent className="grid grid-cols-2 gap-4 sm:grid-cols-3">
             <div>
-              <p className="text-xs text-muted-foreground">Investi</p>
+              <p className="label-mono text-muted-foreground">Investi</p>
               <p className="font-display text-xl font-bold tabular-nums 2xl:text-2xl">
                 {formatPrice(v.totalCost)}
               </p>
@@ -166,7 +166,7 @@ export default async function CollectionPage({ searchParams }: Props) {
               )}
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Plus-value latente</p>
+              <p className="label-mono text-muted-foreground">Plus-value latente</p>
               <p
                 className={cn(
                   'font-display text-xl font-bold tabular-nums 2xl:text-2xl',
@@ -187,7 +187,7 @@ export default async function CollectionPage({ searchParams }: Props) {
               )}
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Plus-value réalisée</p>
+              <p className="label-mono text-muted-foreground">Plus-value réalisée</p>
               <p
                 className={cn(
                   'font-display text-xl font-bold tabular-nums 2xl:text-2xl',

@@ -61,6 +61,12 @@
     #f2733d 75%,
     #8a2a1a 120%
   );
+  --frame: linear-gradient(
+    160deg,
+    rgb(196 181 253 / 0.34),
+    rgb(196 181 253 / 0.07) 40%,
+    rgb(196 181 253 / 0.18)
+  );
   --scrollbar-track: rgb(196 181 253 / 0.05);
   color-scheme: dark;
 }
@@ -95,6 +101,12 @@
   --chart-4: #16a34a;
   --chart-5: #e0457b;
   --scrollbar-track: rgb(20 21 31 / 0.06);
+  --frame: linear-gradient(
+    160deg,
+    rgb(91 63 208 / 0.3),
+    rgb(91 63 208 / 0.08) 40%,
+    rgb(91 63 208 / 0.18)
+  );
   --grad-title: linear-gradient(120deg, #2a1d6e, #5b3fd0 60%, #7c5cf0);
   --grad-ember: linear-gradient(120deg, #a33a12, #d9622b 60%, #e8893f);
   color-scheme: light;
@@ -128,6 +140,12 @@
     --chart-4: #16a34a;
     --chart-5: #e0457b;
     --scrollbar-track: rgb(20 21 31 / 0.06);
+    --frame: linear-gradient(
+      160deg,
+      rgb(91 63 208 / 0.3),
+      rgb(91 63 208 / 0.08) 40%,
+      rgb(91 63 208 / 0.18)
+    );
     --grad-title: linear-gradient(120deg, #2a1d6e, #5b3fd0 60%, #7c5cf0);
     --grad-ember: linear-gradient(120deg, #a33a12, #d9622b 60%, #e8893f);
     color-scheme: light;
@@ -224,6 +242,40 @@
 }
 
 @layer components {
+  /* Liseré en dégradé des cartes (comme les tuiles de la page d'accueil) : un pseudo-élément
+     dessine la bordure, pour garder le fond et les teintes propres à chaque carte. */
+  .card-frame {
+    position: relative;
+    border-color: transparent;
+  }
+  .card-frame::before {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    z-index: 0;
+    padding: 1px;
+    border-radius: inherit;
+    background: var(--frame);
+    mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    mask-composite: exclude;
+    pointer-events: none;
+  }
+  .holo-frame.card-frame::before {
+    display: none;
+  }
+
+  /* Chiffres clés (montants, compteurs) : mono gras, légère lueur lilas en thème sombre. */
+  .font-display.tabular-nums {
+    font-family: var(--font-mono);
+    letter-spacing: -0.02em;
+  }
+  html:not([data-theme='light'])
+    .font-display.tabular-nums:not([class*='text-success']):not([class*='text-destructive']) {
+    text-shadow: 0 0 24px rgb(139 92 246 / 0.45);
+  }
+
   /* Liseré holographique : à poser sur une carte (garde son fond, colore la bordure). */
   .holo-frame {
     border: 2px solid transparent;

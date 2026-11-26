@@ -98,7 +98,7 @@ export default async function DashboardPage() {
           </CardHeader>
           {/* Sur un écran plein mais bas, le graphique garde une hauteur lisible et la carte défile. */}
           <CardContent className="flex flex-col gap-4 fit:min-h-0 fit:flex-1 fit:overflow-y-auto">
-            <div className="grid shrink-0 grid-cols-3 gap-2">
+            <div className="grid shrink-0 grid-cols-3 divide-x divide-border border-y border-border">
               <Stat label="Valeur" value={euros.format(v.estimatedValue)} />
               <Stat label="Investi" value={euros.format(v.totalCost)} />
               <Stat
@@ -451,11 +451,11 @@ function Stat({
   tone?: 'up' | 'down';
 }) {
   return (
-    <div className="min-w-0 rounded-xl border bg-popover px-3 py-2.5">
-      <p className="truncate text-xs font-semibold text-muted-foreground">{label}</p>
+    <div className="min-w-0 px-3 py-3 first:pl-0">
+      <p className="truncate label-mono text-muted-foreground">{label}</p>
       <p
         className={cn(
-          'mt-1 truncate font-display text-sm leading-tight font-semibold tabular-nums sm:text-base 2xl:text-lg',
+          'mt-1.5 truncate font-display text-base leading-tight font-bold tabular-nums sm:text-lg 2xl:text-xl',
           tone === 'up' && 'text-success',
           tone === 'down' && 'text-destructive',
         )}
