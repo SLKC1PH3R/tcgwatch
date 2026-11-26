@@ -97,8 +97,8 @@ export const GUIDES: Guide[] = [
             (réimpressions, extensions surproduites) ; l’état du film compte.
           </li>
           <li>
-            <b>Astuce</b> : suis un produit avec un bon prix dans « Mes produits » ; la courbe et la
-            cote du marché montrent s’il s’échange au-dessus ou au-dessous du prix conseillé.
+            <b>Astuce</b> : suivez un produit avec un bon prix dans « Mes produits » ; la courbe et
+            la cote du marché montrent s’il s’échange au-dessus ou au-dessous du prix conseillé.
           </li>
         </ul>
         <h2>Les cartes à l’unité</h2>
@@ -176,7 +176,7 @@ export const GUIDES: Guide[] = [
             avec les cartes des éditions internationales.
           </li>
           <li>
-            Une carte n’a pas la même cote selon la langue : compare toujours la cote de la bonne
+            Une carte n’a pas la même cote selon la langue : comparez toujours la cote de la bonne
             édition avant d’acheter ou de vendre.
           </li>
           <li>

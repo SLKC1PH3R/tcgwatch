@@ -39,7 +39,7 @@ export async function reportErrorAction(
     where: { userId: user.id, createdAt: { gte: new Date(Date.now() - 86_400_000) } },
   });
   if (today >= 20)
-    return { error: 'Beaucoup de signalements aujourd’hui : merci, réessaie demain.' };
+    return { error: 'Beaucoup de signalements aujourd’hui : merci, réessayez demain.' };
   await prisma.errorReport.create({ data: { ...parsed.data, userId: user.id } });
   revalidatePath('/signalements');
   return { success: 'Merci ! Le signalement sera vérifié rapidement.' };

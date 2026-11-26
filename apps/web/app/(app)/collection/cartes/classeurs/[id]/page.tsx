@@ -188,7 +188,7 @@ export default async function BinderPage({ params, searchParams }: Props) {
             {binder.cards.length === 0 ? (
               <div>
                 <CardContent className="py-10 text-center text-sm text-muted-foreground">
-                  Classeur vide : cherche des cartes ci-dessous pour le remplir.
+                  Classeur vide : cherchez des cartes ci-dessous pour le remplir.
                 </CardContent>
               </div>
             ) : filtered.length === 0 ? (
@@ -405,7 +405,7 @@ export default async function BinderPage({ params, searchParams }: Props) {
                 </form>
               </div>
               <p className="mt-2 text-xs text-muted-foreground">
-                Supprimer un classeur ne retire aucune carte de ta collection.
+                Supprimer un classeur ne retire aucune carte de votre collection.
               </p>
             </details>
           </div>

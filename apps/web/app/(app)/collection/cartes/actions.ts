@@ -142,7 +142,7 @@ export async function createBinderAction(formData: FormData) {
   if (code && !release)
     redirect(`${BASE}/classeurs?erreur=${encodeURIComponent('Extension inconnue')}`);
   if (!release && !name) {
-    redirect(`${BASE}/classeurs?erreur=${encodeURIComponent('Donne un nom au classeur')}`);
+    redirect(`${BASE}/classeurs?erreur=${encodeURIComponent('Donnez un nom au classeur')}`);
   }
   const binder = await prisma.cardBinder.create({
     data: {
@@ -194,7 +194,7 @@ export async function removeBinderCardAction(binderId: string, cardId: string) {
 // ─── Vitrines ────────────────────────────────────────────
 
 const showcaseSchema = z.object({
-  title: z.string().trim().min(1, 'Donne un titre à la vitrine').max(120),
+  title: z.string().trim().min(1, 'Donnez un titre à la vitrine').max(120),
   description: optionalText,
 });
 
@@ -287,7 +287,7 @@ export interface LotState {
 
 const lotSchema = z.object({
   id: z.string().optional(),
-  name: z.string().trim().min(1, 'Donne un nom au lot').max(80),
+  name: z.string().trim().min(1, 'Donnez un nom au lot').max(80),
   price: requiredPrice,
   purchasedAt: optionalDate.refine((d) => d !== null, 'Date d’achat requise'),
   notes: optionalText,
@@ -299,7 +299,7 @@ export async function saveCardLotAction(_prev: LotState, formData: FormData): Pr
   const parsed = lotSchema.safeParse(formToObject(formData));
   if (!parsed.success) return { error: firstIssue(parsed.error) };
   const releases = [...new Set(formData.getAll('releases').map(String))].filter(Boolean);
-  if (releases.length === 0) return { error: 'Coche au moins une extension' };
+  if (releases.length === 0) return { error: 'Cochez au moins une extension' };
   const data = {
     name: parsed.data.name,
     price: parsed.data.price,

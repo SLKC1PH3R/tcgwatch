@@ -60,7 +60,7 @@ export default async function CardPurchasesPage() {
     <FitPage>
       <PageHeader
         title="Achats et plus-value"
-        description="Ce que tes cartes t’ont coûté face à leur valeur du jour : lots (master set, display ouvert…) couvrant des extensions, et cartes achetées à l’unité. Le prix à l’unité se saisit sur la fiche de la carte."
+        description="Ce que vos cartes vous ont coûté face à leur valeur du jour : lots (master set, display ouvert…) couvrant des extensions, et cartes achetées à l’unité. Le prix à l’unité se saisit sur la fiche de la carte."
         actions={<PriceSourceToggle current={priceSource} />}
       />
       <div className="grid shrink-0 gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -100,7 +100,7 @@ export default async function CardPurchasesPage() {
           <p className="text-xs text-muted-foreground">
             {inv.covered.paid > 0
               ? `${Math.round((v(inv.covered) / inv.covered.paid) * 100)} % du prix payé`
-              : 'ajoute un lot ou un prix à l’unité'}
+              : 'ajoutez un lot ou un prix à l’unité'}
           </p>
         </div>
         <div className="rounded-2xl border bg-card px-4 py-3">
@@ -199,8 +199,8 @@ export default async function CardPurchasesPage() {
           <CardContent className={cn('px-0', fitScroll)}>
             {inv.singles.length === 0 ? (
               <p className="px-6 py-6 text-sm text-muted-foreground">
-                Aucune carte avec un prix d’achat : ouvre la fiche d’une carte achetée à l’unité et
-                indique son prix.
+                Aucune carte avec un prix d’achat : ouvrez la fiche d’une carte achetée à l’unité et
+                indiquez son prix.
               </p>
             ) : (
               <ul className="divide-y">

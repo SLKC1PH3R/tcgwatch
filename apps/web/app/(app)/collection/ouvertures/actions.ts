@@ -14,7 +14,7 @@ export interface OpeningState {
 }
 
 const openingSchema = z.object({
-  productId: z.string().min(1, 'Choisis le produit ouvert'),
+  productId: z.string().min(1, 'Choisissez le produit ouvert'),
   price: requiredPrice,
   openedAt: optionalDate.refine((d) => d !== null, 'Date d’ouverture requise'),
   notes: optionalText,

@@ -128,8 +128,8 @@ export function SellDialog({
             </datalist>
           </div>
           <p className="text-xs text-muted-foreground">
-            Frais : commission de la plateforme et port à ta charge. La plus-value réalisée = prix
-            de vente − frais − prix d’achat (port d’achat compris).
+            Frais : commission de la plateforme et port à votre charge. La plus-value réalisée =
+            prix de vente − frais − prix d’achat (port d’achat compris).
           </p>
           <FormError message={state.error} />
           <FormSuccess message={state.success} />

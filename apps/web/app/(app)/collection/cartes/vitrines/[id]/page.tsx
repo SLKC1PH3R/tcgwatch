@@ -174,7 +174,7 @@ export default async function ShowcasePage({ params, searchParams }: Props) {
                     </>
                   ) : (
                     <span className="flex-1 text-muted-foreground">
-                      Vitrine privée : coche « Lien public actif » pour la partager.
+                      Vitrine privée : cochez « Lien public actif » pour la partager.
                     </span>
                   )}
                   <form action={renewShowcaseLinkAction.bind(null, showcase.id)}>
@@ -194,7 +194,7 @@ export default async function ShowcasePage({ params, searchParams }: Props) {
             <section className="space-y-3">
               <h2 className="font-display text-base font-semibold">Ajouter des cartes</h2>
               <p className="text-sm text-muted-foreground">
-                Parcours tes classeurs d’extension ou cherche une carte par son nom.
+                Parcourez vos classeurs d’extension ou cherchez une carte par son nom.
               </p>
               <Button asChild>
                 <Link href={`${base}/ajouter`}>

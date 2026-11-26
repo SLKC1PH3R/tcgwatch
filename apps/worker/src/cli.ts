@@ -156,14 +156,14 @@ try {
       break;
     case 'telegram': {
       if (!ctx.env.TELEGRAM_BOT_TOKEN) {
-        ctx.logger.error('TELEGRAM_BOT_TOKEN absent : crée le bot avec @BotFather');
+        ctx.logger.error('TELEGRAM_BOT_TOKEN absent : créez le bot avec @BotFather');
         process.exitCode = 1;
         break;
       }
       const chats = await ctx.notifier.telegramChats();
       if (chats.length === 0) {
         ctx.logger.warn(
-          'Aucune conversation : envoie un message (/start) à ton bot dans Telegram, puis relance',
+          'Aucune conversation : envoyez un message (/start) à votre bot dans Telegram, puis relancez',
         );
       }
       for (const c of chats) {

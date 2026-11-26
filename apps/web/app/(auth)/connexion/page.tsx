@@ -6,7 +6,7 @@ import { googleEnabled } from '@/lib/google-oauth';
 import { LoginForm } from '../auth-forms';
 
 const NOTICES: Record<string, string> = {
-  google: 'La connexion Google n’a pas abouti : réessaie.',
+  google: 'La connexion Google n’a pas abouti : réessayez.',
   inscriptions: 'Les inscriptions sont fermées pour le moment.',
 };
 

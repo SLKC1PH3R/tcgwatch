@@ -200,7 +200,7 @@ export function CardScanner({ releases }: { releases: { code: string; name: stri
         return;
       }
       setAdded(
-        `${res.saved} carte${res.saved > 1 ? 's' : ''} ajoutée${res.saved > 1 ? 's' : ''} à ta collection`,
+        `${res.saved} carte${res.saved > 1 ? 's' : ''} ajoutée${res.saved > 1 ? 's' : ''} à votre collection`,
       );
       setPile([]);
       last.current = null;
@@ -244,8 +244,8 @@ export function CardScanner({ releases }: { releases: { code: string; name: stri
           ) : (
             <div className="absolute inset-0 grid place-items-center p-6 text-center text-sm text-white/80">
               {camera === 'denied'
-                ? 'Caméra indisponible ou refusée : utilise une photo à la place.'
-                : 'Place la carte dans le cadre, bien à plat, sans reflet.'}
+                ? 'Caméra indisponible ou refusée : utilisez une photo à la place.'
+                : 'Placez la carte dans le cadre, bien à plat, sans reflet.'}
             </div>
           )}
         </div>
@@ -310,9 +310,9 @@ export function CardScanner({ releases }: { releases: { code: string; name: stri
         </div>
         <p className="text-xs text-muted-foreground">
           Astuce : choisir l’extension rend la reconnaissance encore plus sûre. Pour une photo,
-          cadre la carte au centre, ou importe une image recadrée sur la carte. En rafale, passe les
-          cartes une à une devant la caméra (ou importe plusieurs photos) : chaque carte reconnue
-          avec certitude s’empile, vérifie la pile puis enregistre tout.
+          cadrez la carte au centre, ou importez une image recadrée sur la carte. En rafale, passez
+          les cartes une à une devant la caméra (ou importez plusieurs photos) : chaque carte
+          reconnue avec certitude s’empile, vérifiez la pile puis enregistrez tout.
         </p>
       </div>
 
@@ -344,8 +344,8 @@ export function CardScanner({ releases }: { releases: { code: string; name: stri
             </div>
             {pile.length === 0 ? (
               <p className="text-xs text-muted-foreground">
-                Les cartes reconnues avec certitude arrivent ici. Retire la carte du cadre avant de
-                passer la suivante ; pour un deuxième exemplaire, retire-la puis remontre-la.
+                Les cartes reconnues avec certitude arrivent ici. Retirez la carte du cadre avant de
+                passer la suivante ; pour un deuxième exemplaire, retirez-la puis remontrez-la.
               </p>
             ) : (
               <ul className="max-h-80 space-y-1.5 overflow-y-auto">
@@ -429,18 +429,19 @@ export function CardScanner({ releases }: { releases: { code: string; name: stri
         )}
         {matches === null ? (
           <p className="text-sm text-muted-foreground">
-            Les cartes reconnues s’affichent ici ; touche « Ajouter » pour la mettre dans ta
+            Les cartes reconnues s’affichent ici ; touchez « Ajouter » pour la mettre dans votre
             collection.
           </p>
         ) : matches.length === 0 ? (
           <p className="text-sm text-muted-foreground">
-            Aucune carte reconnue. Rapproche la carte, évite les reflets, ou choisis l’extension.
+            Aucune carte reconnue. Rapprochez la carte, évitez les reflets, ou choisissez
+            l’extension.
           </p>
         ) : (
           <>
             {!confident && (
               <p className="text-xs text-muted-foreground">
-                Pas de certitude : vérifie la carte avant de l’ajouter. Choisir l’extension ou
+                Pas de certitude : vérifiez la carte avant de l’ajouter. Choisir l’extension ou
                 recadrer la photo sur la carte aide beaucoup.
               </p>
             )}

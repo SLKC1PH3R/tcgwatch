@@ -32,7 +32,7 @@ export default async function BindersPage({ searchParams }: Props) {
     <FitPage>
       <PageHeader
         title="Classeurs"
-        description="Range tes cartes comme dans un vrai classeur, 9 par page : un classeur par extension (les cartes manquantes apparaissent en gris) ou des classeurs personnels avec les cartes de ton choix."
+        description="Rangez vos cartes comme dans un vrai classeur, 9 par page : un classeur par extension (les cartes manquantes apparaissent en gris) ou des classeurs personnels avec les cartes de votre choix."
       />
       <FormError message={erreur} />
 
@@ -73,7 +73,7 @@ export default async function BindersPage({ searchParams }: Props) {
             <CardHeader>
               <CardTitle>Classeur personnel</CardTitle>
               <CardDescription>
-                Tes plus belles cartes, un Pokémon, un illustrateur…
+                Vos plus belles cartes, un Pokémon, un illustrateur…
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -98,7 +98,7 @@ export default async function BindersPage({ searchParams }: Props) {
           <CardContent className={fitScroll}>
             {binders.length === 0 ? (
               <p className="py-10 text-center text-sm text-muted-foreground">
-                Aucun classeur pour l’instant : crée le premier à gauche.
+                Aucun classeur pour l’instant : créez le premier à gauche.
               </p>
             ) : (
               <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">

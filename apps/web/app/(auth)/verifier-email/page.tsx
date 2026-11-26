@@ -26,8 +26,8 @@ export default async function VerifyEmailPage({
         </CardTitle>
         <CardDescription>
           {userId
-            ? 'Merci ! Tes alertes peuvent maintenant t’être envoyées.'
-            : 'Connecte-toi : un bandeau te permettra de recevoir un nouveau lien.'}
+            ? 'Merci ! Vos alertes peuvent maintenant vous être envoyées.'
+            : 'Connectez-vous : un bandeau vous permettra de recevoir un nouveau lien.'}
         </CardDescription>
       </CardHeader>
       <CardContent>

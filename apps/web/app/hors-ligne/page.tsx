@@ -10,7 +10,7 @@ export default function OfflinePage() {
       <div className="max-w-sm space-y-3">
         <p className="font-display text-2xl font-bold">Pas de connexion</p>
         <p className="text-sm text-muted-foreground">
-          Cette page a besoin du réseau. Ta collection reste consultable hors ligne (dernière
+          Cette page a besoin du réseau. Votre collection reste consultable hors ligne (dernière
           version ouverte).
         </p>
         <div className="flex justify-center gap-3 text-sm font-semibold">

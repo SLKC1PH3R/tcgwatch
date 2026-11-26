@@ -77,7 +77,7 @@ export async function runReleaseReminders(ctx: WorkerContext): Promise<number> {
       title: single
         ? `📅 Sortie demain : ${single.name}`
         : `📅 Demain, ${list.length} produits suivis sortent`,
-      message: single ? 'Pense à vérifier les boutiques dès l’ouverture.' : reminderMessage(list),
+      message: single ? 'Pensez à vérifier les boutiques dès l’ouverture.' : reminderMessage(list),
       url: single ? `${ctx.env.APP_URL}/produits/${single.id}` : `${ctx.env.APP_URL}/calendrier`,
       linkLabel: single ? 'Voir le produit' : 'Voir le calendrier',
       priority: 'default',

@@ -83,14 +83,14 @@ export default async function MyProductsPage({ searchParams }: Props) {
     <FitPage>
       <PageHeader
         title="Mes produits"
-        description="Les produits que tu veux acheter, avec ton « bon prix » : TCGWatch compare les boutiques, la cote Cardmarket et les annonces eBay, et t’alerte dès que l’un d’eux passe dessous."
+        description="Les produits que vous voulez acheter, avec votre « bon prix » : TCGWatch compare les boutiques, la cote Cardmarket et les annonces eBay, et vous alerte dès que l’un d’eux passe dessous."
       />
       <FormError message={erreur} />
 
       <div className="grid shrink-0 gap-3 sm:grid-cols-3">
         <Tile label="Produits suivis" value={String(products.length)} />
         <Tile
-          label="Sous ton bon prix maintenant"
+          label="Sous votre bon prix maintenant"
           value={String(good.length)}
           valueClass={good.length ? 'text-success' : undefined}
           hint={good.map((p) => p.name).join(' · ') || 'aucun pour le moment'}
@@ -179,7 +179,7 @@ export default async function MyProductsPage({ searchParams }: Props) {
           <CardContent className={fitScroll}>
             {products.length === 0 ? (
               <p className="py-10 text-center text-sm text-muted-foreground">
-                Aucun produit pour l’instant : choisis-en un ci-dessus avec ton bon prix.
+                Aucun produit pour l’instant : choisissez-en un ci-dessus avec votre bon prix.
               </p>
             ) : (
               <ul className="space-y-3">
@@ -227,7 +227,7 @@ export default async function MyProductsPage({ searchParams }: Props) {
             <CardContent className={cn('space-y-4', fitScroll)}>
               {!ebay ? (
                 <p className="text-sm text-muted-foreground">
-                  Pour l’activer : crée une application gratuite sur{' '}
+                  Pour l’activer : créez une application gratuite sur{' '}
                   <a
                     href="https://developer.ebay.com"
                     target="_blank"
@@ -236,15 +236,15 @@ export default async function MyProductsPage({ searchParams }: Props) {
                   >
                     developer.ebay.com
                   </a>
-                  , puis renseigne <code>EBAY_CLIENT_ID</code> et <code>EBAY_CLIENT_SECRET</code>{' '}
+                  , puis renseignez <code>EBAY_CLIENT_ID</code> et <code>EBAY_CLIENT_SECRET</code>{' '}
                   (clés « Production ») dans les variables d’environnement du web et du worker.
                   Facultatif : <code>EBAY_PICKUP_POSTCODE</code> pour les remises en main propre
-                  autour de chez toi.
+                  autour de chez vous.
                 </p>
               ) : shownListings.length === 0 ? (
                 <p className="py-6 text-center text-sm text-muted-foreground">
                   {underOnly
-                    ? 'Aucune annonce sous ton bon prix pour l’instant.'
+                    ? 'Aucune annonce sous votre bon prix pour l’instant.'
                     : 'Aucune annonce trouvée pour l’instant.'}
                 </p>
               ) : (
@@ -257,10 +257,10 @@ export default async function MyProductsPage({ searchParams }: Props) {
               <p className="text-xs leading-relaxed text-muted-foreground">
                 Leboncoin et Vinted n’ont pas d’accès ouvert et interdisent la lecture automatique
                 de leurs annonces : TCGWatch ouvre leurs recherches préremplies (les plus récentes
-                d’abord, jusqu’à ton bon prix). Pour être prévenu en quelques minutes, ouvre le lien
-                puis « Sauvegarder la recherche » (Leboncoin) ou « Sauvegarder » (Vinted) avec les
-                notifications activées. La cote Cardmarket vient du guide des prix quotidien (« à
-                partir de », toutes langues).
+                d’abord, jusqu’à votre bon prix). Pour être prévenu en quelques minutes, ouvrez le
+                lien puis « Sauvegarder la recherche » (Leboncoin) ou « Sauvegarder » (Vinted) avec
+                les notifications activées. La cote Cardmarket vient du guide des prix quotidien («
+                à partir de », toutes langues).
               </p>
             </CardContent>
           </Card>
@@ -295,7 +295,7 @@ function ProductRow({ p }: { p: MyProduct }) {
       </div>
 
       <dl className="mt-3 grid grid-cols-2 gap-2 text-sm xl:grid-cols-4">
-        <Stat label="Ton bon prix">
+        <Stat label="Votre bon prix">
           <span className="font-display text-lg font-bold text-primary">
             {formatPrice(p.target)}
           </span>

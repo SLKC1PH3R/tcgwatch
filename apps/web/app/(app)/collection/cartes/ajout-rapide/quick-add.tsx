@@ -326,7 +326,7 @@ export function QuickAdd({
         <div className={fitScroll}>
           {pendingList.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              Touche une carte pour l’ajouter ; elle apparaît ici jusqu’à l’enregistrement.
+              Touchez une carte pour l’ajouter ; elle apparaît ici jusqu’à l’enregistrement.
             </p>
           ) : (
             <ul className="divide-y">

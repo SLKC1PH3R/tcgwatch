@@ -48,7 +48,7 @@ export default async function MissingCardsPage({ searchParams }: Props) {
       <FitPage>
         <PageHeader
           title="Ce qu’il me manque"
-          description="Ajoute d’abord des cartes d’une extension : ses manquantes et le coût pour la compléter apparaîtront ici."
+          description="Ajoutez d’abord des cartes d’une extension : ses manquantes et le coût pour la compléter apparaîtront ici."
         />
       </FitPage>
     );

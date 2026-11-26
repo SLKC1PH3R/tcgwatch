@@ -35,10 +35,10 @@ export async function sendVerificationEmail(user: { id: string; email: string })
   const token = await issue(user.id, 'VERIFY_EMAIL');
   return sendMail({
     to: user.email,
-    subject: 'Confirme ton adresse e-mail',
+    subject: 'Confirmez votre adresse e-mail',
     lines: [
       'Bienvenue sur TCGWatch !',
-      'Confirme ton adresse pour recevoir tes alertes et pouvoir récupérer ton compte.',
+      'Confirmez votre adresse pour recevoir vos alertes et pouvoir récupérer votre compte.',
     ],
     action: {
       label: 'Confirmer mon adresse',
@@ -51,9 +51,9 @@ export async function sendPasswordResetEmail(user: { id: string; email: string }
   const token = await issue(user.id, 'RESET_PASSWORD');
   return sendMail({
     to: user.email,
-    subject: 'Réinitialiser ton mot de passe',
+    subject: 'Réinitialiser votre mot de passe',
     lines: [
-      'Tu as demandé à changer ton mot de passe TCGWatch.',
+      'Vous avez demandé à changer votre mot de passe TCGWatch.',
       'Le lien ci-dessous est valable une heure.',
     ],
     action: {

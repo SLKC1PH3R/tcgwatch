@@ -69,7 +69,7 @@ export default async function AddShowcaseCardsPage({ params, searchParams }: Pro
     <FitPage>
       <PageHeader
         title={`Ajouter à « ${showcase.title} »`}
-        description={`${showcase.cards.length} carte${showcase.cards.length > 1 ? 's' : ''} dans la vitrine. Ouvre un de tes classeurs ou cherche une carte par son nom.`}
+        description={`${showcase.cards.length} carte${showcase.cards.length > 1 ? 's' : ''} dans la vitrine. Ouvrez un de vos classeurs ou cherchez une carte par son nom.`}
         actions={
           <Button asChild variant="outline">
             <Link href={`/collection/cartes/vitrines/${showcase.id}`}>
@@ -169,7 +169,7 @@ export default async function AddShowcaseCardsPage({ params, searchParams }: Pro
               ? `${binder.name} · ${cards.length} carte${cards.length > 1 ? 's' : ''}${q ? ` pour « ${q} »` : ''}`
               : q
                 ? `${cards.length} carte${cards.length > 1 ? 's' : ''} pour « ${q} »`
-                : 'Choisis un classeur à gauche, ou cherche une carte dans toutes les extensions.'}
+                : 'Choisissez un classeur à gauche, ou cherchez une carte dans toutes les extensions.'}
           </p>
           <div className={fitScroll}>
             {(binder || q) && cards.length === 0 ? (

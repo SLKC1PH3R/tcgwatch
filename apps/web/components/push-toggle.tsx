@@ -76,7 +76,7 @@ export function PushToggle({ publicKey }: { publicKey: string }) {
   if (state === 'unsupported') {
     return (
       <p className="text-xs text-muted-foreground">
-        Ce navigateur ne gère pas les notifications. Sur iPhone : ajoute d’abord TCGWatch à l’écran
+        Ce navigateur ne gère pas les notifications. Sur iPhone : ajoutez d’abord TCGWatch à l’écran
         d’accueil (Partager › Sur l’écran d’accueil).
       </p>
     );
@@ -84,7 +84,7 @@ export function PushToggle({ publicKey }: { publicKey: string }) {
   if (state === 'denied') {
     return (
       <p className="text-xs text-muted-foreground">
-        Notifications bloquées pour ce site : autorise-les dans les réglages du navigateur.
+        Notifications bloquées pour ce site : autorisez-les dans les réglages du navigateur.
       </p>
     );
   }

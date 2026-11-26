@@ -19,7 +19,7 @@ export default async function ScannerPage() {
         description={
           pct < 100
             ? `Reconnaissance en cours de préparation : ${pct} % des cartes sont déjà reconnaissables.`
-            : 'Montre une carte à la caméra : elle est reconnue et ajoutée à ta collection en un geste.'
+            : 'Montrez une carte à la caméra : elle est reconnue et ajoutée à votre collection en un geste.'
         }
       />
       <CardScanner releases={releases.map((r) => ({ code: r.tcgdexId!, name: r.nameFr }))} />

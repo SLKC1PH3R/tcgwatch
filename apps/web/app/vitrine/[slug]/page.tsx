@@ -72,7 +72,7 @@ export default async function PublicShowcasePage({ params }: Props) {
       )}
       <footer className="mt-12 text-xs text-muted-foreground">
         {s.wanted
-          ? 'Liste de recherche partagée depuis TCGWatch : tu en as une ? Contacte la personne qui t’a envoyé ce lien.'
+          ? 'Liste de recherche partagée depuis TCGWatch : vous en avez une ? Contactez la personne qui vous a envoyé ce lien.'
           : 'Vitrine partagée depuis TCGWatch'}{' '}
         · cote Cardmarket (tendance) du jour
       </footer>

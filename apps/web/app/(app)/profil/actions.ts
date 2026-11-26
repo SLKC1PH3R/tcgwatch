@@ -57,7 +57,7 @@ export async function saveProfileAction(formData: FormData) {
   const p = parsed.data!;
   const publish = data.profilePublic === 'on';
   if (publish && !p.profileSlug)
-    back(`erreur=${encodeURIComponent('Choisis une adresse pour ta page')}`);
+    back(`erreur=${encodeURIComponent('Choisissez une adresse pour votre page')}`);
   if (RESERVED_SLUGS.has(p.profileSlug)) {
     back(`erreur=${encodeURIComponent('Cette adresse est réservée')}`);
   }

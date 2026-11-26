@@ -255,7 +255,7 @@ export default async function CollectionPage({ searchParams }: Props) {
           ) : rows.length === 0 ? (
             <p className="py-10 text-center text-sm text-muted-foreground">
               {category
-                ? `Aucun produit « ${category.label} » dans ta collection.`
+                ? `Aucun produit « ${category.label} » dans votre collection.`
                 : 'Votre collection est vide.'}
             </p>
           ) : (
@@ -447,7 +447,7 @@ function SoldTable({ rows }: { rows: SoldRow[] }) {
   if (rows.length === 0) {
     return (
       <p className="py-10 text-center text-sm text-muted-foreground">
-        Aucune revente enregistrée. Utilise le bouton « Vendre » d’une ligne de ta collection.
+        Aucune revente enregistrée. Utilisez le bouton « Vendre » d’une ligne de votre collection.
       </p>
     );
   }

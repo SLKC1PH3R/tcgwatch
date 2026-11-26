@@ -81,7 +81,7 @@ export default async function AccountPage() {
             <div className="space-y-1">
               <CardTitle>Appareils notifiés</CardTitle>
               <CardDescription>
-                Navigateurs qui reçoivent tes alertes. Active-les depuis la page{' '}
+                Navigateurs qui reçoivent vos alertes. Activez-les depuis la page{' '}
                 <Link href="/alertes" className="text-primary hover:underline">
                   Alertes
                 </Link>
@@ -126,7 +126,7 @@ export default async function AccountPage() {
             <div className="space-y-1">
               <CardTitle>Mes données</CardTitle>
               <CardDescription>
-                Tes données t’appartiennent : récupère-les, ou supprime tout. Voir la{' '}
+                Vos données vous appartiennent : récupérez-les, ou supprimez tout. Voir la{' '}
                 <Link href="/confidentialite" className="text-primary hover:underline">
                   politique de confidentialité
                 </Link>

@@ -47,7 +47,7 @@ export function AddPurchaseDialog({
                 Ajouter un achat
               </h2>
               <p className="text-sm text-muted-foreground">
-                Choisis un produit du catalogue (importé automatiquement).
+                Choisissez un produit du catalogue (importé automatiquement).
               </p>
             </div>
             <Button

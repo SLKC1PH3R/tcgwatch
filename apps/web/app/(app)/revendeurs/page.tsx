@@ -322,7 +322,7 @@ export default async function RetailersPage({ searchParams }: Props) {
                     Frais de port
                   </h3>
                   <span className="text-[11px] text-muted-foreground">
-                    {selected.shippingManual ? 'saisis par toi' : 'annuaire'}
+                    {selected.shippingManual ? 'saisis par vous' : 'annuaire'}
                   </span>
                 </div>
                 <p className="text-sm font-semibold">{shippingLabel(selected)}</p>

@@ -28,7 +28,7 @@ export default async function OpeningPage({ params }: Props) {
     <FitPage>
       <PageHeader
         title={opening.product.name}
-        description={`Ouvert le ${formatDate(opening.openedAt)}, payé ${formatPrice(opening.price)}${opening.notes ? ` · ${opening.notes}` : ''}. Touche les cartes sorties du produit, puis enregistre.`}
+        description={`Ouvert le ${formatDate(opening.openedAt)}, payé ${formatPrice(opening.price)}${opening.notes ? ` · ${opening.notes}` : ''}. Touchez les cartes sorties du produit, puis enregistrez.`}
         actions={
           <>
             <Button asChild variant="outline">

@@ -145,9 +145,9 @@ export default async function CardsSearchPage({ searchParams }: Props) {
           <CardContent className={cn('space-y-6', fitScroll)}>
             {!q && (
               <p className="py-10 text-center text-sm text-muted-foreground">
-                Tape le nom d’un Pokémon à gauche, ou{' '}
+                Tapez le nom d’un Pokémon à gauche, ou{' '}
                 <Link href="/series" className="text-primary hover:underline">
-                  parcours l’encyclopédie
+                  parcourez l’encyclopédie
                 </Link>
                 .
               </p>

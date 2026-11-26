@@ -17,7 +17,7 @@ export function renderMail(m: Mail): { html: string; text: string } {
   const button = m.action
     ? `<p style="margin:28px 0"><a href="${escape(m.action.url)}" style="background:#ffd43b;color:#14151f;padding:12px 20px;border-radius:999px;font-weight:700;text-decoration:none;display:inline-block">${escape(m.action.label)}</a></p><p style="color:#7d8098;font-size:13px">Ou copie ce lien : ${escape(m.action.url)}</p>`
     : '';
-  const html = `<!doctype html><html lang="fr"><body style="margin:0;background:#f5f6fb;font-family:Arial,Helvetica,sans-serif;color:#14151f"><div style="max-width:520px;margin:0 auto;padding:32px 24px"><p style="font-weight:800;font-size:18px;margin:0 0 24px">TCG WATCH</p>${m.lines.map((l) => `<p style="font-size:15px;line-height:1.5">${escape(l)}</p>`).join('')}${button}<p style="color:#7d8098;font-size:12px;margin-top:32px">Tu reçois ce message suite à une action sur TCGWatch. Si ce n’est pas toi, ignore-le.</p></div></body></html>`;
+  const html = `<!doctype html><html lang="fr"><body style="margin:0;background:#f5f6fb;font-family:Arial,Helvetica,sans-serif;color:#14151f"><div style="max-width:520px;margin:0 auto;padding:32px 24px"><p style="font-weight:800;font-size:18px;margin:0 0 24px">TCG WATCH</p>${m.lines.map((l) => `<p style="font-size:15px;line-height:1.5">${escape(l)}</p>`).join('')}${button}<p style="color:#7d8098;font-size:12px;margin-top:32px">Vous recevez ce message suite à une action sur TCGWatch. Si ce n’est pas vous, ignorez-le.</p></div></body></html>`;
   const text = [...m.lines, ...(m.action ? ['', `${m.action.label} : ${m.action.url}`] : [])].join(
     '\n',
   );

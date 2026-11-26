@@ -93,7 +93,7 @@ export function CollectionImporter() {
       }
       setMessage({
         ok: true,
-        text: `${res.saved} exemplaire${res.saved > 1 ? 's' : ''} ajouté${res.saved > 1 ? 's' : ''} à ta collection.`,
+        text: `${res.saved} exemplaire${res.saved > 1 ? 's' : ''} ajouté${res.saved > 1 ? 's' : ''} à votre collection.`,
       });
       setRows(null);
       setFileName(null);

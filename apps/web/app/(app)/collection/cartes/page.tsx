@@ -42,7 +42,7 @@ export default async function MyCardsPage() {
     <FitPage>
       <PageHeader
         title="Mes cartes"
-        description="Ta collection de cartes : valeur à la cote Cardmarket du jour, avancement de chaque extension et derniers ajouts."
+        description="Votre collection de cartes : valeur à la cote Cardmarket du jour, avancement de chaque extension et derniers ajouts."
         actions={
           <>
             <Button asChild variant="outline">
@@ -108,7 +108,7 @@ export default async function MyCardsPage() {
               );
             })()
           ) : (
-            <p className="text-xs text-muted-foreground">ajoute tes lots et achats à l’unité</p>
+            <p className="text-xs text-muted-foreground">ajoutez vos lots et achats à l’unité</p>
           )}
         </Link>
         <Tile
@@ -124,7 +124,7 @@ export default async function MyCardsPage() {
             <Sparkles className="size-8 text-primary" />
             <p className="max-w-md text-sm text-muted-foreground">
               Aucune carte pour l’instant. L’ajout rapide affiche toutes les cartes d’une extension
-              : touche celles que tu as, c’est enregistré en une fois.
+              : touchez celles que vous avez, c’est enregistré en une fois.
             </p>
             <Button asChild>
               <Link href="/collection/cartes/ajout-rapide">Commencer par une extension</Link>

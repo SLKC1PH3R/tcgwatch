@@ -17,13 +17,14 @@ export default function TermsPage() {
       <h2>2. Compte</h2>
       <ul>
         <li>
-          Un compte est personnel ; tu es responsable de la confidentialité de ton mot de passe.
+          Un compte est personnel ; vous êtes responsable de la confidentialité de votre mot de
+          passe.
         </li>
         <li>
           Les informations fournies doivent être exactes ; l’adresse e-mail doit être la tienne.
         </li>
         <li>
-          Tu peux exporter tes données ou supprimer ton compte à tout moment depuis la page{' '}
+          Vous pouvez exporter vos données ou supprimer votre compte à tout moment depuis la page{' '}
           <Link href="/compte">Mon compte</Link>.
         </li>
       </ul>
@@ -37,7 +38,7 @@ export default function TermsPage() {
       <h2>4. Alertes</h2>
       <p>
         Les alertes (navigateur, e-mail) sont envoyées au mieux, sans garantie de délai ni de
-        livraison. Tu peux les régler ou les couper à tout moment.
+        livraison. Vous pouvez les régler ou les couper à tout moment.
       </p>
       <h2>5. Usage acceptable</h2>
       <ul>

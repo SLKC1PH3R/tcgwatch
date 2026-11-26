@@ -92,7 +92,7 @@ export async function deleteAccountAction(
       .trim()
       .toLowerCase() !== user.email
   ) {
-    return { error: 'Recopie exactement ton adresse e-mail pour confirmer.' };
+    return { error: 'Recopiez exactement votre adresse e-mail pour confirmer.' };
   }
   if (user.role === 'ADMIN') {
     const admins = await prisma.user.count({ where: { role: 'ADMIN' } });

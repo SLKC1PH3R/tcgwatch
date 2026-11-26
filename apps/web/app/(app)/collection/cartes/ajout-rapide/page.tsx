@@ -32,7 +32,7 @@ export default async function QuickAddPage({ searchParams }: Props) {
     <FitPage>
       <PageHeader
         title="Ajout rapide"
-        description="Choisis une extension, touche les cartes que tu possèdes (un toucher = un exemplaire), puis enregistre. En « Master Set », chaque reverse a sa propre case, juste après la carte classique."
+        description="Choisissez une extension, touchez les cartes que vous possédez (un toucher = un exemplaire), puis enregistrez. En « Master Set », chaque reverse a sa propre case, juste après la carte classique."
       />
       <div className={cn(fitGrid, 'lg:grid-cols-[15rem_minmax(0,1fr)]')}>
         <Card className={cn(fitCard, 'px-3')}>

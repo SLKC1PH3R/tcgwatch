@@ -104,7 +104,7 @@ export async function runMarketListings(ctx: WorkerContext): Promise<void> {
           dedupeKey: `MARKET_DEAL:ebay:${l.externalId}`,
           productId: p.id,
           price: total,
-          title: `🛒 eBay sous ton bon prix : ${p.name}`,
+          title: `🛒 eBay sous votre bon prix : ${p.name}`,
           message: `${formatPrice(l.price)}${
             l.localPickup
               ? ' · remise en main propre possible'
@@ -168,7 +168,7 @@ export async function checkCardmarketDeals(ctx: WorkerContext, date: Date): Prom
       dedupeKey: `MARKET_DEAL:cardmarket:${p.id}:${date.toISOString().slice(0, 10)}`,
       productId: p.id,
       price: low,
-      title: `🛒 Cardmarket sous ton bon prix : ${p.name}`,
+      title: `🛒 Cardmarket sous votre bon prix : ${p.name}`,
       message: `Offres à partir de ${formatPrice(low)} (toutes langues), tendance ${formatPrice(
         toNumber(today.price),
       )} · bon prix ${formatPrice(target)}.`,

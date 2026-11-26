@@ -44,7 +44,7 @@ export default async function OpeningsPage() {
     <FitPage>
       <PageHeader
         title="Ouvertures"
-        description="Note les cartes sorties d’un display, d’un ETB ou d’un booster : tu vois ce qu’il a rapporté face à son prix, et la moyenne de chaque produit sur toutes les ouvertures du site."
+        description="Notez les cartes sorties d’un display, d’un ETB ou d’un booster : vous voyez ce qu’il a rapporté face à son prix, et la moyenne de chaque produit sur toutes les ouvertures du site."
         actions={<PriceSourceToggle current={priceSource} />}
       />
       <div className="grid shrink-0 gap-3 sm:grid-cols-3">
@@ -87,7 +87,7 @@ export default async function OpeningsPage() {
           <CardContent className={cn('px-0', fitScroll)}>
             {openings.length === 0 ? (
               <p className="px-6 py-8 text-sm text-muted-foreground">
-                Aucune ouverture pour l’instant : choisis le produit à droite, puis touche les
+                Aucune ouverture pour l’instant : choisissez le produit à droite, puis touchez les
                 cartes qui en sont sorties.
               </p>
             ) : (

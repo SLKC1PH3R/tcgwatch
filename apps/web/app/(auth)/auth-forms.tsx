@@ -126,7 +126,7 @@ export function RegisterForm({ firstUser, google }: { firstUser: boolean; google
         <CardDescription>
           {firstUser
             ? 'Premier lancement : ce compte sera le propriétaire de l’instance.'
-            : 'Gratuit : suis tes produits, ta collection et reçois tes alertes.'}
+            : 'Gratuit : suivez vos produits, votre collection et recevez vos alertes.'}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -174,7 +174,7 @@ export function RegisterForm({ firstUser, google }: { firstUser: boolean; google
             {pending ? 'Création…' : 'Créer le compte'}
           </Button>
           <p className="text-center text-xs text-muted-foreground">
-            En créant un compte, tu acceptes les{' '}
+            En créant un compte, vous acceptez les{' '}
             <Link href="/cgu" className="underline">
               conditions d’utilisation
             </Link>{' '}
@@ -203,7 +203,7 @@ export function ForgotPasswordForm() {
       <CardHeader className="flex-col">
         <CardTitle className="text-2xl">Mot de passe oublié</CardTitle>
         <CardDescription>
-          Indique ton adresse : tu recevras un lien pour en choisir un nouveau.
+          Indiquez votre adresse : vous recevrez un lien pour en choisir un nouveau.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -234,7 +234,7 @@ export function ResetPasswordForm({ token }: { token: string }) {
     <Card>
       <CardHeader className="flex-col">
         <CardTitle className="text-2xl">Nouveau mot de passe</CardTitle>
-        <CardDescription>Tes autres sessions seront déconnectées.</CardDescription>
+        <CardDescription>Vos autres sessions seront déconnectées.</CardDescription>
       </CardHeader>
       <CardContent>
         <form action={action} className="space-y-4">

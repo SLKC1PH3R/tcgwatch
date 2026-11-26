@@ -130,7 +130,7 @@ export const NAV: NavEntry[] = [
             href: '/alertes',
             label: 'Alertes',
             icon: Bell,
-            hint: 'Tout ce qui t’a été envoyé, et les réglages',
+            hint: 'Tout ce qui vous a été envoyé, et les réglages',
             active: (p) => p.startsWith('/alertes'),
           },
         ],

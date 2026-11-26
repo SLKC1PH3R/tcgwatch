@@ -273,8 +273,8 @@ export default async function CollectorPage({ params }: Props) {
 
       <footer className="text-xs text-muted-foreground">
         Page de collectionneur partagée depuis TCGWatch
-        {p.showPrices && ' · cote Cardmarket (tendance) du jour'}. Pour un échange, contacte la
-        personne qui t’a envoyé ce lien.
+        {p.showPrices && ' · cote Cardmarket (tendance) du jour'}. Pour un échange, contactez la
+        personne qui vous a envoyé ce lien.
       </footer>
     </main>
   );

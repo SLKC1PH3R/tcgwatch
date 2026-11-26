@@ -35,7 +35,7 @@ export default async function ShowcasesPage({ searchParams }: Props) {
     <FitPage>
       <PageHeader
         title="Vitrines"
-        description="Compose une sélection de cartes (tes plus belles, tes dernières trouvailles…) et partage-la par un lien : la page publique ne montre que la vitrine, rien d’autre de ton TCGWatch."
+        description="Composez une sélection de cartes (vos plus belles, vos dernières trouvailles…) et partagez-la par un lien : la page publique ne montre que la vitrine, rien d’autre de votre TCGWatch."
       />
       <FormError message={erreur} />
 
@@ -64,7 +64,7 @@ export default async function ShowcasesPage({ searchParams }: Props) {
                   <span>
                     Liste de recherche
                     <span className="block text-xs text-muted-foreground">
-                      Les cartes que tu cherches, à partager avec vendeurs et amis.
+                      Les cartes que vous cherchez, à partager avec vendeurs et amis.
                     </span>
                   </span>
                 </label>
@@ -77,7 +77,7 @@ export default async function ShowcasesPage({ searchParams }: Props) {
             <CardHeader>
               <CardTitle>Ma page de collectionneur</CardTitle>
               <CardDescription>
-                Tes vitrines publiques y sont regroupées avec tes classeurs et tes doubles.
+                Vos vitrines publiques y sont regroupées avec vos classeurs et vos doubles.
               </CardDescription>
             </CardHeader>
             <CardContent className="flex flex-wrap gap-2">
@@ -107,7 +107,7 @@ export default async function ShowcasesPage({ searchParams }: Props) {
           <CardContent className={fitScroll}>
             {showcases.length === 0 ? (
               <p className="py-10 text-center text-sm text-muted-foreground">
-                Aucune vitrine pour l’instant : crée la première à gauche.
+                Aucune vitrine pour l’instant : créez la première à gauche.
               </p>
             ) : (
               <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">

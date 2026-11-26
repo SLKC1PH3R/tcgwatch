@@ -11,7 +11,7 @@ export function VerifyBanner({ email }: { email: string }) {
     <div className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border border-warning/40 bg-warning/10 px-4 py-2 text-sm">
       <MailWarning className="size-4 shrink-0 text-warning" />
       <span className="min-w-0 flex-1">
-        Confirme ton adresse <b>{email}</b> avec le lien reçu par e-mail.
+        Confirmez votre adresse <b>{email}</b> avec le lien reçu par e-mail.
         {state.success && <span className="ml-2 text-success">{state.success}</span>}
         {state.error && <span className="ml-2 text-destructive">{state.error}</span>}
       </span>

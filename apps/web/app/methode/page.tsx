@@ -88,7 +88,7 @@ export default async function MethodPage() {
       <h2>Alertes</h2>
       <p>
         Une alerte part dès qu’un relevé constate le changement (retour en stock, ouverture des
-        précommandes, prix sous ton bon prix, plus bas historique). Une même alerte n’est pas
+        précommandes, prix sous votre bon prix, plus bas historique). Une même alerte n’est pas
         renvoyée avant 6 heures.
       </p>
 

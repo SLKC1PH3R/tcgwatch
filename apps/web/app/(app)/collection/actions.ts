@@ -102,7 +102,7 @@ export async function sellCollectionItemAction(
   const item = await prisma.collectionItem.findFirst({ where: { id: d.id, userId: user.id } });
   if (!item || item.soldAt) return { error: 'Ligne introuvable ou déjà vendue.' };
   if (d.quantity > item.quantity) {
-    return { error: `Tu n’en as que ${item.quantity} sur cette ligne.` };
+    return { error: `Vous n’en avez que ${item.quantity} sur cette ligne.` };
   }
   if (d.soldAt! < item.purchaseDate) return { error: 'La vente ne peut pas précéder l’achat.' };
 

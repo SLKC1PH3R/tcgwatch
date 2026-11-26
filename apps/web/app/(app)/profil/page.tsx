@@ -55,7 +55,7 @@ export default async function ProfilePage({ searchParams }: Props) {
     <FitPage>
       <PageHeader
         title="Mon profil"
-        description="Personnalise ta page de collectionneur : avatar, couleur, présentation, et ce que les visiteurs peuvent voir."
+        description="Personnalisez votre page de collectionneur : avatar, couleur, présentation, et ce que les visiteurs peuvent voir."
         actions={
           live ? (
             <Button asChild variant="outline">
@@ -104,7 +104,7 @@ export default async function ProfilePage({ searchParams }: Props) {
               </span>
             )}
             {!profile.profileFavorite && !profile.profileLocation && (
-              <span>{profile.profileBio ?? 'Ajoute une présentation ci-dessous.'}</span>
+              <span>{profile.profileBio ?? 'Ajoutez une présentation ci-dessous.'}</span>
             )}
           </p>
         </div>
@@ -126,7 +126,7 @@ export default async function ProfilePage({ searchParams }: Props) {
         <Card className={fitCard}>
           <CardHeader>
             <CardTitle>Identité</CardTitle>
-            <CardDescription>Ton e-mail n’apparaît jamais sur la page.</CardDescription>
+            <CardDescription>Votre e-mail n’apparaît jamais sur la page.</CardDescription>
           </CardHeader>
           <CardContent className={cn('space-y-3', fitScroll)}>
             <div className="space-y-1.5">
@@ -182,7 +182,7 @@ export default async function ProfilePage({ searchParams }: Props) {
                 placeholder="Discord : sacha#0001, ou https://…"
               />
               <p className="text-xs text-muted-foreground">
-                Visible par tous : un pseudo ou un lien, jamais ton adresse e-mail perso de
+                Visible par tous : un pseudo ou un lien, jamais votre adresse e-mail perso de
                 préférence.
               </p>
             </div>
@@ -192,7 +192,7 @@ export default async function ProfilePage({ searchParams }: Props) {
         <Card className={fitCard}>
           <CardHeader>
             <CardTitle>Apparence</CardTitle>
-            <CardDescription>Une couleur et une de tes cartes comme avatar.</CardDescription>
+            <CardDescription>Une couleur et une de vos cartes comme avatar.</CardDescription>
           </CardHeader>
           <CardContent className={cn('space-y-4', fitScroll)}>
             <fieldset>
@@ -220,7 +220,7 @@ export default async function ProfilePage({ searchParams }: Props) {
               <legend className="mb-2 text-sm font-medium">Avatar</legend>
               {avatars.length === 0 ? (
                 <p className="text-sm text-muted-foreground">
-                  Ajoute des cartes à ta collection pour en choisir une comme avatar.
+                  Ajoutez des cartes à votre collection pour en choisir une comme avatar.
                 </p>
               ) : (
                 <div className="grid grid-cols-4 gap-2 sm:grid-cols-6 lg:grid-cols-4 xl:grid-cols-6">
@@ -310,7 +310,8 @@ export default async function ProfilePage({ searchParams }: Props) {
                 ))}
               </NativeSelect>
               <p className="text-xs text-muted-foreground">
-                Affichée en grand en haut de ta page. Seules les vitrines publiques sont possibles.
+                Affichée en grand en haut de votre page. Seules les vitrines publiques sont
+                possibles.
               </p>
             </div>
             <fieldset className="space-y-2">

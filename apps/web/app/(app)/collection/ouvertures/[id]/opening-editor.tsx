@@ -136,7 +136,7 @@ export function OpeningEditor({
       <div className="min-h-0 flex-1 overflow-y-auto">
         {shown.length === 0 ? (
           <p className="py-10 text-center text-sm text-muted-foreground">
-            Aucune carte tirée pour l’instant : affiche « Toutes » et touche les cartes sorties.
+            Aucune carte tirée pour l’instant : affichez « Toutes » et touchez les cartes sorties.
           </p>
         ) : (
           <ul className="grid grid-cols-3 gap-3 sm:grid-cols-5 lg:grid-cols-7 xl:grid-cols-8">

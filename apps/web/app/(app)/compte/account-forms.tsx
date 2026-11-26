@@ -76,7 +76,7 @@ export function DeleteAccountForm({ email }: { email: string }) {
     <form action={action} className="space-y-3">
       <div className="space-y-1.5">
         <Label htmlFor="confirm-delete">
-          Pour confirmer, recopie <b>{email}</b>
+          Pour confirmer, recopiez <b>{email}</b>
         </Label>
         <Input id="confirm-delete" name="confirm" autoComplete="off" required />
       </div>
