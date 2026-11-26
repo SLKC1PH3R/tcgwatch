@@ -2,6 +2,7 @@ import { PoliteFetcher, type BrowserRenderer } from '@tcgwatch/adapters';
 import { PlaywrightRenderer } from '@tcgwatch/adapters/browser';
 import { getEnv, type Env } from '@tcgwatch/shared/env';
 import { createLogger, type Logger } from '@tcgwatch/shared/logger';
+import { recordWorkerProblem } from './error-log';
 import { Notifier } from './notify';
 import { PushSender } from './push';
 
@@ -26,7 +27,7 @@ export interface WorkerContext {
 
 export function createContext(): WorkerContext {
   const env = getEnv();
-  const logger = createLogger('worker');
+  const logger = createLogger('worker', recordWorkerProblem);
   const browser = env.PLAYWRIGHT_ENABLED ? new PlaywrightRenderer() : undefined;
   const fetcher = new PoliteFetcher({
     userAgent: env.SCRAPER_USER_AGENT,

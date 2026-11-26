@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { unstable_cache } from 'next/cache';
 import { redirect } from 'next/navigation';
 import QRCode from 'qrcode';
 import { prisma } from '@tcgwatch/db';
@@ -91,16 +92,17 @@ const Arrow = () => (
   </svg>
 );
 
-/** Page d'accueil publique : identité « scanner », avec les vraies cartes et boutiques du site. */
-export default async function LandingPage() {
-  if (await getCurrentUser()) redirect('/');
-  const [retailers, products, cardCount, releases, open, lastCheck, top, restocks, qr] =
-    await Promise.all([
+/**
+ * Chiffres et cartes de la page d'accueil : mis en cache 10 minutes (données simples,
+ * sérialisables), la page s'affiche sans attendre la base.
+ */
+const getLandingData = unstable_cache(
+  async () => {
+    const [retailers, products, cardCount, releases, lastCheck, top, restocks] = await Promise.all([
       prisma.retailer.count({ where: { enabled: true, listings: { some: {} } } }),
       prisma.product.count({ where: { listings: { some: {} } } }),
       prisma.card.count(),
       prisma.release.count({ where: { cards: { some: {} } } }),
-      isRegistrationOpen(),
       prisma.listing.aggregate({ _max: { lastCheckedAt: true } }),
       prisma.card.findMany({
         where: { imageUrl: { not: null }, priceTrend: { not: null }, category: 'Pokémon' },
@@ -128,6 +130,42 @@ export default async function LandingPage() {
           listing: { select: { retailer: { select: { name: true } } } },
         },
       }),
+    ]);
+    return {
+      retailers,
+      products,
+      cardCount,
+      releases,
+      lastCheck: lastCheck._max.lastCheckedAt?.toISOString() ?? null,
+      top: top.map((c) => ({
+        id: c.id,
+        name: c.name,
+        localId: c.localId,
+        imageUrl: c.imageUrl,
+        rarity: c.rarity,
+        price: toNumber(c.priceTrend)!,
+        releaseName: c.release.nameFr,
+        total: c.release.cardCountOfficial,
+      })),
+      restocks: restocks.map((r) => ({
+        at: r.createdAt.toISOString(),
+        price: toNumber(r.price),
+        name: r.product?.name ?? 'Produit',
+        shop: r.listing?.retailer.name ?? '',
+      })),
+    };
+  },
+  ['landing-data'],
+  { revalidate: 600 },
+);
+
+/** Page d'accueil publique : identité « scanner », avec les vraies cartes et boutiques du site. */
+export default async function LandingPage() {
+  if (await getCurrentUser()) redirect('/');
+  const [{ retailers, products, cardCount, releases, lastCheck, top, restocks }, open, qr] =
+    await Promise.all([
+      getLandingData(),
+      isRegistrationOpen(),
       QRCode.toString(`${getEnv().APP_URL.replace(/\/$/, '')}/installer`, {
         type: 'svg',
         margin: 1,
@@ -137,7 +175,7 @@ export default async function LandingPage() {
 
   const fr = new Intl.NumberFormat('fr-FR');
   const signUp = open ? '/inscription' : '/connexion';
-  const checkedAt = lastCheck._max.lastCheckedAt;
+  const checkedAt = lastCheck ? new Date(lastCheck) : null;
 
   const scanCards: ScanCard[] = top.length
     ? top.map((c) => ({
@@ -145,13 +183,10 @@ export default async function LandingPage() {
         image: tcgdexAsset(c.imageUrl ?? undefined, '/high.webp') ?? LOCAL_CARDS[0]!,
         data: [
           ['NOM', c.name],
-          ['EXT', c.release.nameFr],
-          [
-            'N°',
-            c.release.cardCountOfficial ? `${c.localId}/${c.release.cardCountOfficial}` : c.localId,
-          ],
+          ['EXT', c.releaseName],
+          ['N°', c.total ? `${c.localId}/${c.total}` : c.localId],
           ['RARETÉ', c.rarity ?? '—'],
-          ['COTE', formatPrice(toNumber(c.priceTrend)!)],
+          ['COTE', formatPrice(c.price)],
         ],
       }))
     : LOCAL_CARDS.map((image, i) => ({
@@ -166,14 +201,14 @@ export default async function LandingPage() {
 
   const ledger = restocks.length
     ? restocks.map((r) => ({
-        time: r.createdAt.toLocaleTimeString('fr-FR', {
+        time: new Date(r.at).toLocaleTimeString('fr-FR', {
           hour: '2-digit',
           minute: '2-digit',
           timeZone: 'Europe/Paris',
         }),
-        name: r.product?.name ?? 'Produit',
-        shop: r.listing?.retailer.name ?? '',
-        price: toNumber(r.price),
+        name: r.name,
+        shop: r.shop,
+        price: r.price,
       }))
     : [];
   // Alertes de la démonstration : les vrais derniers restocks, complétés par des exemples.

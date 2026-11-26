@@ -46,9 +46,14 @@ export default async function SourcesPage() {
         title="Sources de données"
         description="Dernier passage réussi de chaque tâche du worker, erreurs des dernières 24 h, quota eBay du jour et extensions encore incomplètes."
         actions={
-          <Button asChild variant="outline">
-            <Link href="/revendeurs/etat">État des relevés</Link>
-          </Button>
+          <>
+            <Button asChild variant="outline">
+              <Link href="/sources/erreurs">Erreurs du worker</Link>
+            </Button>
+            <Button asChild variant="outline">
+              <Link href="/revendeurs/etat">État des relevés</Link>
+            </Button>
+          </>
         }
       />
       <div className="grid shrink-0 gap-3 sm:grid-cols-3">

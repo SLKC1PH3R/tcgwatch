@@ -266,7 +266,7 @@ async function recordFailure(ctx: WorkerContext, listing: ListingWithRelations, 
   const log = ctx.logger.child({ listingId: listing.id, url: listing.url });
 
   if (err instanceof AdapterError && err.code === 'ROBOTS') {
-    log.warn('Listing interdit par robots.txt : mis en pause');
+    log.warn({ retailer: listing.retailer.name }, 'Listing interdit par robots.txt : mis en pause');
     await prisma.listing.update({
       where: { id: listing.id },
       data: { state: 'BLOCKED_BY_ROBOTS', lastError: message, lastCheckedAt: now },
@@ -276,7 +276,12 @@ async function recordFailure(ctx: WorkerContext, listing: ListingWithRelations, 
 
   const errors = listing.consecutiveErrors + 1;
   log.warn(
-    { err: message, code: err instanceof AdapterError ? err.code : undefined, errors },
+    {
+      err: message,
+      code: err instanceof AdapterError ? err.code : undefined,
+      errors,
+      retailer: listing.retailer.name,
+    },
     'Échec du relevé',
   );
   await prisma.listing.update({

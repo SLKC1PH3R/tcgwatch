@@ -93,6 +93,9 @@ async function main() {
     await prisma.jobRun.deleteMany({
       where: { startedAt: { lt: new Date(Date.now() - 30 * 86_400_000) } },
     });
+    await prisma.workerError.deleteMany({
+      where: { lastAt: { lt: new Date(Date.now() - 30 * 86_400_000) } },
+    });
     logger.info(
       { removed, ...purged },
       'Relevés anciens regroupés dans le résumé quotidien, alertes et sessions périmées supprimées',

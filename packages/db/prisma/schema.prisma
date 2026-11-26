@@ -856,6 +856,27 @@ model JobRun {
   @@index([job, startedAt])
 }
 
+/// Erreurs et avertissements du worker, regroupés (même source, message et détail) : page
+/// d'administration « Erreurs du worker ». Gardés 30 jours.
+model WorkerError {
+  id      String   @id @default(cuid())
+  /// Empreinte source + message + détail (regroupement).
+  key     String   @unique
+  /// boutiques, tcgdex, ebay, cardmarket, pokecardex, notifications, worker
+  source  String
+  level   String
+  message String
+  /// Message de l'erreur d'origine (HTTP 503…).
+  detail  String?
+  /// Objet concerné (boutique, extension, carte, produit…).
+  subject String?
+  count   Int      @default(1)
+  firstAt DateTime @default(now())
+  lastAt  DateTime @default(now())
+
+  @@index([lastAt])
+}
+
 /// Appels aux API à quota (eBay : 5 000 recherches par jour), comptés par jour.
 model ApiUsage {
   source String
