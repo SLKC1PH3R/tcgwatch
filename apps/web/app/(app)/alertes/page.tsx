@@ -16,9 +16,9 @@ import { PageHeader } from '@/components/page-header';
 import { Thumb } from '@/components/thumb';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ALERT_STYLE, ALERT_TYPES, PRODUCT_ALERT_TYPES, ago, toClock } from '@/lib/alerts';
-import { fitCard, fitColumn, fitGrid, fitScroll } from '@/lib/fit';
+import { fitCard, fitGrid, fitScroll } from '@/lib/fit';
 import { getEnv } from '@tcgwatch/shared/env';
 import { PushToggle } from '@/components/push-toggle';
 import { requireUser } from '@/lib/auth';
@@ -32,6 +32,7 @@ import {
   setAlertSeenAction,
   setProductAlertMuteAction,
 } from './actions';
+import { SettingsStack } from './settings-stack';
 
 export const metadata: Metadata = { title: 'Alertes' };
 
@@ -329,237 +330,233 @@ export default async function AlertsPage({ searchParams }: Props) {
         </Card>
 
         {/* Réglages */}
-        <div className={fitColumn}>
-          <Card className={cn(fitCard, 'fit:max-h-[58%]')}>
-            <CardHeader>
-              <div className="space-y-1">
-                <CardTitle className="flex items-center gap-2">
-                  <MoonStar className="size-4" /> Quand recevoir
-                </CardTitle>
-                <CardDescription>
-                  La nuit, recevoir les alertes sans son, ou rien du tout et un récapitulatif au
-                  réveil (heure de Paris).
-                </CardDescription>
-              </div>
-            </CardHeader>
-            <CardContent className={cn('space-y-4', fitScroll)}>
-              {vapidKey && (
-                <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border p-3">
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold">Notifications du navigateur</p>
-                    <p className="text-xs text-muted-foreground">
-                      Alertes sur cet appareil, même site fermé.
-                    </p>
+        <SettingsStack
+          top={{
+            title: (
+              <>
+                <MoonStar className="size-4" /> Quand recevoir
+              </>
+            ),
+            description:
+              'La nuit, recevoir les alertes sans son, ou rien du tout et un récapitulatif au réveil (heure de Paris).',
+            bodyClassName: 'space-y-4',
+            body: (
+              <>
+                {vapidKey && (
+                  <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border p-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold">Notifications du navigateur</p>
+                      <p className="text-xs text-muted-foreground">
+                        Alertes sur cet appareil, même site fermé.
+                      </p>
+                    </div>
+                    <PushToggle publicKey={vapidKey} />
                   </div>
-                  <PushToggle publicKey={vapidKey} />
-                </div>
-              )}
-              <form action={saveQuietHoursAction} className="space-y-3">
-                <label className="flex items-center gap-2 text-sm">
-                  <input type="checkbox" name="actives" value="1" defaultChecked={quietOn} />
-                  Activer
-                </label>
-                <div className="flex flex-wrap items-center gap-2 text-sm">
-                  De
-                  <input
-                    type="time"
-                    name="debut"
-                    defaultValue={toClock(settings?.quietStart) || '22:00'}
-                    className="h-9 rounded-md border border-input bg-transparent px-2"
-                    aria-label="Début"
-                  />
-                  à
-                  <input
-                    type="time"
-                    name="fin"
-                    defaultValue={toClock(settings?.quietEnd) || '08:00'}
-                    className="h-9 rounded-md border border-input bg-transparent px-2"
-                    aria-label="Fin"
-                  />
-                </div>
-                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
-                  <label className="flex items-center gap-2">
-                    <input
-                      type="radio"
-                      name="mode"
-                      value="silent"
-                      defaultChecked={settings?.quietMode !== 'hold'}
-                    />
-                    Sans son
+                )}
+                <form action={saveQuietHoursAction} className="space-y-3">
+                  <label className="flex items-center gap-2 text-sm">
+                    <input type="checkbox" name="actives" value="1" defaultChecked={quietOn} />
+                    Activer
                   </label>
-                  <label className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2 text-sm">
+                    De
                     <input
-                      type="radio"
-                      name="mode"
-                      value="hold"
-                      defaultChecked={settings?.quietMode === 'hold'}
+                      type="time"
+                      name="debut"
+                      defaultValue={toClock(settings?.quietStart) || '22:00'}
+                      className="h-9 rounded-md border border-input bg-transparent px-2"
+                      aria-label="Début"
                     />
-                    Rien, récapitulatif au réveil
-                  </label>
-                  <Button type="submit" size="sm" className="ml-auto rounded-full">
-                    Enregistrer
-                  </Button>
-                </div>
-              </form>
-              <form action={saveDigestAction} className="space-y-2 border-t pt-4">
-                <p className="flex items-center gap-2 text-sm font-semibold">
-                  <Sun className="size-4" /> Résumé quotidien
-                </p>
-                <label className="flex items-center gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    name="resume"
-                    value="1"
-                    defaultChecked={settings?.digest ?? false}
-                  />
-                  Recevoir chaque jour les alertes des dernières 24 h, à
-                  <select
-                    name="heure"
-                    defaultValue={settings?.digestHour ?? 8}
-                    aria-label="Heure du résumé"
-                    className="h-8 rounded-md border border-input bg-transparent px-1.5"
-                  >
-                    {Array.from({ length: 24 }, (_, h) => (
-                      <option key={h} value={h}>
-                        {String(h).padStart(2, '0')} h
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label className="flex items-start gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    name="seulement"
-                    value="1"
-                    defaultChecked={settings?.digestOnly ?? false}
-                    className="mt-1"
-                  />
-                  <span>
-                    Résumé seulement
-                    <span className="block text-xs text-muted-foreground">
-                      Les alertes ne sont plus envoyées une à une.
-                    </span>
-                  </span>
-                </label>
-                <Button type="submit" size="sm" variant="outline" className="rounded-full">
-                  Enregistrer
-                </Button>
-              </form>
-              <form action={saveCardRiseAction} className="space-y-2 border-t pt-4">
-                <p className="flex items-center gap-2 text-sm font-semibold">
-                  <TrendingUp className="size-4" /> Hausse de mes cartes
-                </p>
-                <div className="flex flex-wrap items-center gap-2 text-sm">
-                  Prévenir au-delà de
-                  <input
-                    name="seuil"
-                    inputMode="numeric"
-                    placeholder="20"
-                    defaultValue={settings?.cardRisePercent ?? ''}
-                    aria-label="Seuil de hausse en pourcentage"
-                    className="h-8 w-16 rounded-md border border-input bg-transparent px-2"
-                  />
-                  % en 30 jours
-                  <Button
-                    type="submit"
-                    size="sm"
-                    variant="outline"
-                    className="ml-auto rounded-full"
-                  >
-                    Enregistrer
-                  </Button>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Tendance Cardmarket des cartes possédées valant au moins 2 €. Laissez vide pour ne
-                  pas être prévenu. Le prix cible des cartes recherchées se règle dans vos listes de
-                  recherche.
-                </p>
-              </form>
-            </CardContent>
-          </Card>
-
-          <Card className={fitCard}>
-            <CardHeader className="shrink-0">
-              <div className="space-y-1">
-                <CardTitle>Ce qui est envoyé</CardTitle>
-                <CardDescription>
-                  Un type décoché reste visible ici, mais ne part plus sur votre téléphone.
-                </CardDescription>
-              </div>
-            </CardHeader>
-            <CardContent className={cn('space-y-5', fitScroll)}>
-              <form action={saveAlertTypesAction} className="space-y-2">
-                {ALERT_TYPES.map((t) => (
-                  <label key={t} className="flex items-start gap-2.5 text-sm">
+                    à
+                    <input
+                      type="time"
+                      name="fin"
+                      defaultValue={toClock(settings?.quietEnd) || '08:00'}
+                      className="h-9 rounded-md border border-input bg-transparent px-2"
+                      aria-label="Fin"
+                    />
+                  </div>
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="radio"
+                        name="mode"
+                        value="silent"
+                        defaultChecked={settings?.quietMode !== 'hold'}
+                      />
+                      Sans son
+                    </label>
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="radio"
+                        name="mode"
+                        value="hold"
+                        defaultChecked={settings?.quietMode === 'hold'}
+                      />
+                      Rien, récapitulatif au réveil
+                    </label>
+                    <Button type="submit" size="sm" className="ml-auto rounded-full">
+                      Enregistrer
+                    </Button>
+                  </div>
+                </form>
+                <form action={saveDigestAction} className="space-y-2 border-t pt-4">
+                  <p className="flex items-center gap-2 text-sm font-semibold">
+                    <Sun className="size-4" /> Résumé quotidien
+                  </p>
+                  <label className="flex items-center gap-2 text-sm">
                     <input
                       type="checkbox"
-                      name="type"
-                      value={t}
-                      defaultChecked={!mutedTypes.has(t)}
+                      name="resume"
+                      value="1"
+                      defaultChecked={settings?.digest ?? false}
+                    />
+                    Recevoir chaque jour les alertes des dernières 24 h, à
+                    <select
+                      name="heure"
+                      defaultValue={settings?.digestHour ?? 8}
+                      aria-label="Heure du résumé"
+                      className="h-8 rounded-md border border-input bg-transparent px-1.5"
+                    >
+                      {Array.from({ length: 24 }, (_, h) => (
+                        <option key={h} value={h}>
+                          {String(h).padStart(2, '0')} h
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="flex items-start gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      name="seulement"
+                      value="1"
+                      defaultChecked={settings?.digestOnly ?? false}
                       className="mt-1"
                     />
-                    <span className="min-w-0">
-                      <span className={cn('font-semibold', ALERT_STYLE[t].className)}>
-                        {ALERT_STYLE[t].label}
-                      </span>
+                    <span>
+                      Résumé seulement
                       <span className="block text-xs text-muted-foreground">
-                        {ALERT_STYLE[t].hint}
+                        Les alertes ne sont plus envoyées une à une.
                       </span>
                     </span>
                   </label>
-                ))}
-                <Button type="submit" size="sm" variant="outline" className="rounded-full">
-                  Enregistrer
-                </Button>
-              </form>
-
-              <section className="space-y-2">
-                <h3 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-                  Produits en sourdine · {mutedProducts.length}
-                </h3>
-                {mutedProducts.length === 0 ? (
-                  <p className="text-xs text-muted-foreground">
-                    Aucun. Coupez un type pour un produit depuis une alerte ou sa fiche.
+                  <Button type="submit" size="sm" variant="outline" className="rounded-full">
+                    Enregistrer
+                  </Button>
+                </form>
+                <form action={saveCardRiseAction} className="space-y-2 border-t pt-4">
+                  <p className="flex items-center gap-2 text-sm font-semibold">
+                    <TrendingUp className="size-4" /> Hausse de mes cartes
                   </p>
-                ) : (
-                  <ul className="divide-y">
-                    {mutedProducts.map((p) => (
-                      <li key={p.id} className="flex gap-2.5 py-2">
-                        <Thumb src={p.imageUrl} className="size-9" />
-                        <div className="min-w-0 flex-1 space-y-1">
-                          <Link
-                            href={`/produits/${p.id}`}
-                            className="line-clamp-2 text-sm font-medium hover:underline"
-                          >
-                            {p.name}
-                          </Link>
-                          <div className="flex flex-wrap gap-1">
-                            {p.mutedAlerts
-                              .filter((t) => PRODUCT_ALERT_TYPES.includes(t))
-                              .map((t) => (
-                                <form
-                                  key={t}
-                                  action={setProductAlertMuteAction.bind(null, p.id, t, false)}
-                                >
-                                  <button
-                                    type="submit"
-                                    title="Réactiver"
-                                    className="inline-flex h-6 items-center gap-1 rounded-full border px-2 text-[11px] font-semibold text-muted-foreground hover:bg-accent"
+                  <div className="flex flex-wrap items-center gap-2 text-sm">
+                    Prévenir au-delà de
+                    <input
+                      name="seuil"
+                      inputMode="numeric"
+                      placeholder="20"
+                      defaultValue={settings?.cardRisePercent ?? ''}
+                      aria-label="Seuil de hausse en pourcentage"
+                      className="h-8 w-16 rounded-md border border-input bg-transparent px-2"
+                    />
+                    % en 30 jours
+                    <Button
+                      type="submit"
+                      size="sm"
+                      variant="outline"
+                      className="ml-auto rounded-full"
+                    >
+                      Enregistrer
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Tendance Cardmarket des cartes possédées valant au moins 2 €. Laissez vide pour
+                    ne pas être prévenu. Le prix cible des cartes recherchées se règle dans vos
+                    listes de recherche.
+                  </p>
+                </form>
+              </>
+            ),
+          }}
+          bottom={{
+            title: 'Ce qui est envoyé',
+            description:
+              'Un type décoché reste visible ici, mais ne part plus sur votre téléphone.',
+            bodyClassName: 'space-y-5',
+            body: (
+              <>
+                <form action={saveAlertTypesAction} className="space-y-2">
+                  {ALERT_TYPES.map((t) => (
+                    <label key={t} className="flex items-start gap-2.5 text-sm">
+                      <input
+                        type="checkbox"
+                        name="type"
+                        value={t}
+                        defaultChecked={!mutedTypes.has(t)}
+                        className="mt-1"
+                      />
+                      <span className="min-w-0">
+                        <span className={cn('font-semibold', ALERT_STYLE[t].className)}>
+                          {ALERT_STYLE[t].label}
+                        </span>
+                        <span className="block text-xs text-muted-foreground">
+                          {ALERT_STYLE[t].hint}
+                        </span>
+                      </span>
+                    </label>
+                  ))}
+                  <Button type="submit" size="sm" variant="outline" className="rounded-full">
+                    Enregistrer
+                  </Button>
+                </form>
+
+                <section className="space-y-2">
+                  <h3 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                    Produits en sourdine · {mutedProducts.length}
+                  </h3>
+                  {mutedProducts.length === 0 ? (
+                    <p className="text-xs text-muted-foreground">
+                      Aucun. Coupez un type pour un produit depuis une alerte ou sa fiche.
+                    </p>
+                  ) : (
+                    <ul className="divide-y">
+                      {mutedProducts.map((p) => (
+                        <li key={p.id} className="flex gap-2.5 py-2">
+                          <Thumb src={p.imageUrl} className="size-9" />
+                          <div className="min-w-0 flex-1 space-y-1">
+                            <Link
+                              href={`/produits/${p.id}`}
+                              className="line-clamp-2 text-sm font-medium hover:underline"
+                            >
+                              {p.name}
+                            </Link>
+                            <div className="flex flex-wrap gap-1">
+                              {p.mutedAlerts
+                                .filter((t) => PRODUCT_ALERT_TYPES.includes(t))
+                                .map((t) => (
+                                  <form
+                                    key={t}
+                                    action={setProductAlertMuteAction.bind(null, p.id, t, false)}
                                   >
-                                    {ALERT_STYLE[t].label} ×
-                                  </button>
-                                </form>
-                              ))}
+                                    <button
+                                      type="submit"
+                                      title="Réactiver"
+                                      className="inline-flex h-6 items-center gap-1 rounded-full border px-2 text-[11px] font-semibold text-muted-foreground hover:bg-accent"
+                                    >
+                                      {ALERT_STYLE[t].label} ×
+                                    </button>
+                                  </form>
+                                ))}
+                            </div>
                           </div>
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </section>
-            </CardContent>
-          </Card>
-        </div>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </section>
+              </>
+            ),
+          }}
+        />
       </div>
     </FitPage>
   );
