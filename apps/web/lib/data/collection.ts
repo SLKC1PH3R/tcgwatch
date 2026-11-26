@@ -3,7 +3,7 @@ import { KEPT_DAILY, prisma } from '@tcgwatch/db';
 import { valueCollection } from '@tcgwatch/market';
 import { todayUtc, toNumber } from '@tcgwatch/shared';
 import type { PriceSource } from '@/lib/price-source';
-import { getCardValueHistory } from './card-investment';
+import { getCardValueHistory, type CardValuePoint } from './card-investment';
 import { bestOffer, getProducts } from './products';
 
 /** Dernier prix marché connu par produit (toutes sources confondues). */
@@ -270,6 +270,7 @@ export async function getCollectionHistory(
   }
 
   const points: CollectionPoint[] = [];
+  let lastCards: CardValuePoint | undefined;
   for (let t = start; t <= today.getTime(); t += 86_400_000) {
     const k = key(new Date(t));
     for (const id of ids) {
@@ -288,7 +289,9 @@ export async function getCollectionHistory(
       value += (lastMarket.get(i.productId) ?? lastRetail.get(i.productId) ?? paid) * i.quantity;
     }
     // Cartes : cotes de chaque jour et investi (lots, achats à l'unité).
-    const c = cardsByDay.get(k);
+    // Jour sans point (fenêtre décalée) : le dernier point connu, jamais un creux à zéro.
+    const c = cardsByDay.get(k) ?? lastCards;
+    lastCards = c;
     if (c) {
       invested += c.invested;
       value += source === 'ebay' ? c.frOrCm : c.cm;

@@ -1,7 +1,7 @@
 import 'server-only';
 import { prisma } from '@tcgwatch/db';
 import { tcgdexAsset } from '@tcgwatch/market';
-import { toNumber } from '@tcgwatch/shared';
+import { todayUtc, toNumber } from '@tcgwatch/shared';
 
 const round = (n: number) => Math.round(n * 100) / 100;
 
@@ -170,7 +170,9 @@ export async function getCardValueHistory(
     if (t !== null) trendBy.set(d.cardId, (trendBy.get(d.cardId) ?? new Map()).set(key(d.date), t));
     if (f !== null) frBy.set(d.cardId, (frBy.get(d.cardId) ?? new Map()).set(key(d.date), f));
   }
-  const today = new Date(`${new Date().toISOString().slice(0, 10)}T00:00:00Z`);
+  // Jour de Paris, comme l'historique de Ma collection : sinon, entre minuit et 1 h (2 h l'été),
+  // le dernier jour manque et la courbe retombe à zéro.
+  const today = todayUtc();
   const acquired = (o: (typeof owned)[number]) => (o.purchasedAt ?? o.createdAt).getTime();
   const first = Math.min(...owned.map(acquired), ...lots.map((l) => l.purchasedAt.getTime()));
   const start = Math.max(
