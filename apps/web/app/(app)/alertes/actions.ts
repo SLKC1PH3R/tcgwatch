@@ -28,17 +28,53 @@ export async function markAllSeenAction(type?: AlertType) {
   refresh();
 }
 
-/** Heures silencieuses : alertes envoyées sans son entre deux heures (heure de Paris). */
+/**
+ * Heures silencieuses (heure de Paris) : alertes envoyées sans son, ou retenues et regroupées
+ * en un récapitulatif à la fin de la plage.
+ */
 export async function saveQuietHoursAction(formData: FormData) {
   const user = await requireUser();
   const on = formData.get('actives') === '1';
   const start = fromClock(String(formData.get('debut') ?? ''));
   const end = fromClock(String(formData.get('fin') ?? ''));
   const quiet = on && start !== null && end !== null && start !== end;
+  const quietMode = formData.get('mode') === 'hold' ? 'hold' : 'silent';
+  const data = { quietStart: quiet ? start : null, quietEnd: quiet ? end : null, quietMode };
   await prisma.alertSettings.upsert({
     where: { userId: user.id },
-    create: { userId: user.id, quietStart: quiet ? start : null, quietEnd: quiet ? end : null },
-    update: { quietStart: quiet ? start : null, quietEnd: quiet ? end : null },
+    create: { userId: user.id, ...data },
+    update: data,
+  });
+  refresh();
+}
+
+/** Résumé quotidien : alertes des dernières 24 h à l'heure choisie, et mode « résumé seulement ». */
+export async function saveDigestAction(formData: FormData) {
+  const user = await requireUser();
+  const hour = Number(formData.get('heure'));
+  const digestOnly = formData.get('seulement') === '1';
+  const data = {
+    digest: formData.get('resume') === '1' || digestOnly,
+    digestOnly,
+    digestHour: Number.isInteger(hour) && hour >= 0 && hour < 24 ? hour : 8,
+  };
+  await prisma.alertSettings.upsert({
+    where: { userId: user.id },
+    create: { userId: user.id, ...data },
+    update: data,
+  });
+  refresh();
+}
+
+/** Hausse des cartes possédées : seuil en % sur 30 jours (vide ou 0 : désactivée). */
+export async function saveCardRiseAction(formData: FormData) {
+  const user = await requireUser();
+  const n = Math.round(Number(String(formData.get('seuil') ?? '').replace(',', '.')));
+  const cardRisePercent = Number.isFinite(n) && n > 0 ? Math.min(n, 500) : null;
+  await prisma.alertSettings.upsert({
+    where: { userId: user.id },
+    create: { userId: user.id, cardRisePercent },
+    update: { cardRisePercent },
   });
   refresh();
 }

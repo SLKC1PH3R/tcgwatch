@@ -369,6 +369,7 @@ export async function getShowcase(where: { id: string; userId: string } | { slug
       cards: {
         orderBy: { position: 'asc' },
         select: {
+          targetPrice: true,
           card: {
             select: {
               ...cardFields,
@@ -382,8 +383,13 @@ export async function getShowcase(where: { id: string; userId: string } | { slug
   if (!s) return null;
   return {
     ...s,
-    cards: s.cards.map((c) =>
-      toCollectionCard({ ...c.card, owned: c.card.owned.filter((o) => o.userId === s.userId) }),
-    ),
+    cards: s.cards.map((c) => ({
+      ...toCollectionCard({
+        ...c.card,
+        owned: c.card.owned.filter((o) => o.userId === s.userId),
+      }),
+      // Prix cible : visible du propriétaire seulement (jamais sur la page publique).
+      targetPrice: 'userId' in where ? toNumber(c.targetPrice) : null,
+    })),
   };
 }

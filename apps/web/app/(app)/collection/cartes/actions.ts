@@ -529,3 +529,20 @@ export async function cancelCardSaleAction(id: string): Promise<void> {
   revalidatePath(BASE, 'layout');
   revalidatePath('/collection/bilan');
 }
+
+/** Prix cible d'une carte d'une liste de recherche (vide : pas d'alerte). */
+export async function setWantedTargetAction(
+  showcaseId: string,
+  cardId: string,
+  formData: FormData,
+): Promise<void> {
+  const user = await requireUser();
+  const parsed = optionalPrice.safeParse(String(formData.get('target') ?? ''));
+  const base = `${BASE}/vitrines/${showcaseId}`;
+  if (!parsed.success) redirect(`${base}?erreur=${encodeURIComponent(firstIssue(parsed.error))}`);
+  await prisma.showcaseCard.updateMany({
+    where: { showcaseId, cardId, showcase: { userId: user.id, wanted: true } },
+    data: { targetPrice: parsed.data },
+  });
+  revalidatePath(base);
+}

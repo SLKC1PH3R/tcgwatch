@@ -15,7 +15,7 @@ export const ALERT_STYLE: Record<AlertType, { label: string; hint: string; class
   },
   PRICE_TARGET: {
     label: 'Prix cible',
-    hint: 'Le prix passe sous ton bon prix',
+    hint: 'Le prix passe sous votre bon prix',
     className: 'text-primary',
   },
   NEW_LOW: {
@@ -25,7 +25,7 @@ export const ALERT_STYLE: Record<AlertType, { label: string; hint: string; class
   },
   MARKET_DEAL: {
     label: 'Bon prix',
-    hint: 'Annonce eBay ou cote sous ton bon prix',
+    hint: 'Annonce eBay ou cote sous votre bon prix',
     className: 'text-success',
   },
   MARKET_MOVE: {
@@ -37,6 +37,16 @@ export const ALERT_STYLE: Record<AlertType, { label: string; hint: string; class
     label: 'Carte',
     hint: 'Cote d’une carte suivie au-delà de son seuil',
     className: 'text-chart-2',
+  },
+  WANTED_PRICE: {
+    label: 'Carte recherchée',
+    hint: 'Une carte de votre liste de recherche passe sous son prix cible',
+    className: 'text-success',
+  },
+  CARD_RISE: {
+    label: 'Hausse d’une carte',
+    hint: 'Une carte possédée prend plus que votre seuil en 30 jours',
+    className: 'text-warning',
   },
   RELEASE_DATE: {
     label: 'Date de sortie',

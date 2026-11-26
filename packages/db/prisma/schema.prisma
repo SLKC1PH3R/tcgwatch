@@ -63,6 +63,8 @@ enum AlertType {
   MARKET_MOVE /// variation du prix marché sur 7 jours au-delà du seuil
   CARD_PRICE /// cote d'une carte suivie passée sous / au-dessus de son seuil
   MARKET_DEAL /// annonce de particulier (eBay) ou cote Cardmarket sous le « bon prix »
+  WANTED_PRICE /// carte de la liste de recherche sous son prix cible (eBay FR ou Cardmarket)
+  CARD_RISE /// carte possédée en hausse au-delà du seuil sur 30 jours
 }
 
 enum RetailerKind {
@@ -443,15 +445,26 @@ model ListingDaily {
 
 /// Réglages des alertes (une seule ligne, id « default »).
 model AlertSettings {
-  id         String      @id @default(cuid())
-  userId     String      @unique
-  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id              String      @id @default(cuid())
+  userId          String      @unique
+  user            User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   /// Heures silencieuses, en minutes depuis minuit (heure de Paris) ; null : désactivées.
-  quietStart Int?
-  quietEnd   Int?
+  quietStart      Int?
+  quietEnd        Int?
+  /// Pendant les heures silencieuses : « silent » (envoi sans son) ou « hold » (rien la nuit,
+  /// un récapitulatif à la fin de la plage).
+  quietMode       String      @default("silent")
   /// Types d'alertes journalisés mais jamais envoyés.
-  mutedTypes AlertType[] @default([])
-  updatedAt  DateTime    @updatedAt
+  mutedTypes      AlertType[] @default([])
+  /// Résumé quotidien des alertes des dernières 24 h, à l'heure choisie (heure de Paris).
+  digest          Boolean     @default(false)
+  digestHour      Int         @default(8)
+  /// Résumé seulement : les alertes ne sont plus envoyées une à une.
+  digestOnly      Boolean     @default(false)
+  digestSentAt    DateTime?
+  /// Hausse des cartes possédées : alerte au-delà de ce pourcentage sur 30 jours (null : non).
+  cardRisePercent Int?
+  updatedAt       DateTime    @updatedAt
 }
 
 model AlertEvent {
@@ -481,6 +494,8 @@ model AlertEvent {
   silent       Boolean    @default(false)
   /// Journalisée mais pas envoyée : type coupé (partout ou pour ce produit).
   muted        Boolean    @default(false)
+  /// Retenue pendant les heures silencieuses ou par le mode « résumé seulement ».
+  held         Boolean    @default(false)
   createdAt    DateTime   @default(now())
 
   @@index([userId, acknowledged, createdAt])
@@ -783,12 +798,14 @@ model Showcase {
 }
 
 model ShowcaseCard {
-  id         String   @id @default(cuid())
-  showcaseId String
-  showcase   Showcase @relation(fields: [showcaseId], references: [id], onDelete: Cascade)
-  cardId     String
-  card       Card     @relation(fields: [cardId], references: [id], onDelete: Cascade)
-  position   Int      @default(0)
+  id          String   @id @default(cuid())
+  showcaseId  String
+  showcase    Showcase @relation(fields: [showcaseId], references: [id], onDelete: Cascade)
+  cardId      String
+  card        Card     @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  position    Int      @default(0)
+  /// Liste de recherche : alerte quand la carte passe sous ce prix (eBay FR, sinon Cardmarket).
+  targetPrice Decimal? @db.Decimal(10, 2)
 
   @@unique([showcaseId, cardId])
   @@index([showcaseId, position])

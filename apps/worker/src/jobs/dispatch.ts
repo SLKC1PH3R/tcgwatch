@@ -89,7 +89,11 @@ export async function dispatchAlert(ctx: WorkerContext, alert: AlertToDispatch):
     const settings = await prisma.alertSettings.findUnique({ where: { userId: r.userId } });
     const muted =
       (settings?.mutedTypes ?? []).includes(alert.type) || r.productMuted.includes(alert.type);
-    const silent = !muted && inQuietHours(new Date(), settings?.quietStart, settings?.quietEnd);
+    const quiet = inQuietHours(new Date(), settings?.quietStart, settings?.quietEnd);
+    // Retenue : mode « résumé seulement », ou nuit en mode « rien la nuit ».
+    const held =
+      !muted && (Boolean(settings?.digestOnly) || (quiet && settings?.quietMode === 'hold'));
+    const silent = !muted && !held && quiet;
     const event = await prisma.alertEvent.create({
       data: {
         userId: r.userId,
@@ -104,12 +108,13 @@ export async function dispatchAlert(ctx: WorkerContext, alert: AlertToDispatch):
         dedupeKey: alert.dedupeKey,
         muted,
         silent,
+        held,
         // Les alertes informatives (dates) ne restent pas « actives ».
         acknowledged: alert.type === 'RELEASE_DATE',
       },
     });
     emitted = true;
-    if (muted) continue;
+    if (muted || held) continue;
 
     details ??= alert.productId ? await priceDetails(alert.productId) : [];
     const notification = { ...alert, details, silent };

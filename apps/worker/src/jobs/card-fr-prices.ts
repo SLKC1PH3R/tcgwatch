@@ -71,7 +71,22 @@ export async function runCardFrPrices(
           take: limit - mine.length,
         })
       : [];
-  const cards = [...mine, ...missing];
+  // Cartes de listes de recherche avec un prix cible, avant les manquantes des extensions.
+  const wanted =
+    mine.length < limit
+      ? await prisma.card.findMany({
+          where: {
+            ...stale,
+            owned: { none: { quantity: { gt: 0 } } },
+            showcaseEntries: { some: { targetPrice: { not: null }, showcase: { wanted: true } } },
+          },
+          select,
+          orderBy: { frPriceAt: { sort: 'asc', nulls: 'first' } },
+          take: limit - mine.length,
+        })
+      : [];
+  const seen = new Set([...mine, ...wanted].map((c) => c.id));
+  const cards = [...mine, ...wanted, ...missing.filter((c) => !seen.has(c.id))].slice(0, limit);
   let priced = 0;
   if (verbose) ctx.logger.info({ cards: cards.length }, 'Prix français : cartes à relever');
   for (const [i, c] of cards.entries()) {

@@ -16,6 +16,8 @@ import { runCardHashes } from './jobs/card-hashes';
 import { runReleaseReminders } from './jobs/release-reminders';
 import { runSecondhandPrices } from './jobs/secondhand';
 import { runCardFrPrices } from './jobs/card-fr-prices';
+import { runCardWatch } from './jobs/card-watch';
+import { runNotificationQueue } from './jobs/notification-queue';
 import { syncRetailers } from './jobs/sync-retailers';
 import { recordApiCalls, startJobRun } from './usage';
 
@@ -75,7 +77,10 @@ async function main() {
     await importCards(ctx);
     await linkProductExtensions(ctx);
   });
-  const marketJob = exclusive(ctx, 'market', () => runMarketJob(ctx));
+  const marketJob = exclusive(ctx, 'market', async () => {
+    await runMarketJob(ctx);
+    await runCardWatch(ctx);
+  });
   const pokecardexJob = exclusive(ctx, 'pokecardex', async () => {
     await importPokecardex(ctx);
     await linkProductExtensions(ctx);
@@ -98,6 +103,8 @@ async function main() {
     await runReleaseReminders(ctx);
   });
 
+  const notifyQueueJob = exclusive(ctx, 'notify-queue', () => runNotificationQueue(ctx));
+
   const cardHashJob = exclusive(ctx, 'card-hashes', async () => {
     await runCardHashes(ctx);
   });
@@ -108,6 +115,7 @@ async function main() {
     cron.schedule(env.MARKET_CRON, marketJob, { timezone, name: 'market' }),
     cron.schedule(env.HISTORY_CRON, historyJob, { timezone, name: 'history' }),
     cron.schedule(env.CARD_HASH_CRON, cardHashJob, { timezone, name: 'card-hashes' }),
+    cron.schedule(env.NOTIFY_QUEUE_CRON, notifyQueueJob, { timezone, name: 'notify-queue' }),
     cron.schedule(env.RELEASE_REMINDER_CRON, releaseReminderJob, {
       timezone,
       name: 'release-reminders',
@@ -126,6 +134,7 @@ async function main() {
       await runMarketListings(ctx);
       await runSecondhandPrices(ctx);
       await runCardFrPrices(ctx);
+      await runCardWatch(ctx);
     });
     tasks.push(cron.schedule(env.EBAY_CRON, ebayJob, { timezone, name: 'ebay' }));
   }

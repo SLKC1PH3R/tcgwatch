@@ -18,6 +18,7 @@ import {
   deleteShowcaseAction,
   removeShowcaseCardAction,
   renewShowcaseLinkAction,
+  setWantedTargetAction,
   updateShowcaseAction,
 } from '../../actions';
 import { fitCard, fitGrid, fitScroll } from '@/lib/fit';
@@ -59,7 +60,7 @@ export default async function ShowcasePage({ params, searchParams }: Props) {
           <div className={fitScroll}>
             {showcase.cards.length === 0 && (
               <div className="flex flex-col items-center gap-3 py-10 text-center text-sm text-muted-foreground">
-                <p>Vitrine vide : ajoute des cartes depuis tes classeurs.</p>
+                <p>Vitrine vide : ajoutez des cartes depuis vos classeurs.</p>
                 <Button asChild>
                   <Link href={`${base}/ajouter`}>
                     <BookOpen /> Ajouter des cartes
@@ -71,6 +72,27 @@ export default async function ShowcasePage({ params, searchParams }: Props) {
               <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-5 2xl:grid-cols-6">
                 {showcase.cards.map((c) => (
                   <CollectionCardTile key={c.id} card={c}>
+                    {showcase.wanted && (
+                      <form
+                        action={setWantedTargetAction.bind(null, showcase.id, c.id)}
+                        className="flex items-center gap-1"
+                        title="Alerte quand la carte passe sous ce prix (eBay FR, sinon Cardmarket)"
+                      >
+                        <Input
+                          name="target"
+                          inputMode="decimal"
+                          placeholder="Alerte sous… €"
+                          aria-label={`Prix cible de ${c.name}`}
+                          defaultValue={
+                            c.targetPrice !== null ? String(c.targetPrice).replace('.', ',') : ''
+                          }
+                          className="h-7 min-w-0 flex-1 px-2 text-xs"
+                        />
+                        <Button type="submit" size="sm" variant="outline" className="h-7 px-2">
+                          OK
+                        </Button>
+                      </form>
+                    )}
                     <form action={removeShowcaseCardAction.bind(null, showcase.id, c.id)}>
                       <Button
                         type="submit"

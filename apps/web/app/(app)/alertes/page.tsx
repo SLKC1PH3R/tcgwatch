@@ -1,4 +1,13 @@
-import { BellOff, Check, ExternalLink, MoonStar, Undo2 } from 'lucide-react';
+import {
+  BellOff,
+  Check,
+  ExternalLink,
+  Hourglass,
+  MoonStar,
+  Sun,
+  TrendingUp,
+  Undo2,
+} from 'lucide-react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { prisma, type Prisma } from '@tcgwatch/db';
@@ -17,6 +26,8 @@ import { cn } from '@/lib/utils';
 import {
   markAllSeenAction,
   saveAlertTypesAction,
+  saveCardRiseAction,
+  saveDigestAction,
   saveQuietHoursAction,
   setAlertSeenAction,
   setProductAlertMuteAction,
@@ -55,6 +66,7 @@ export default async function AlertsPage({ searchParams }: Props) {
         acknowledged: true,
         silent: true,
         muted: true,
+        held: true,
         sentNtfy: true,
         sentTelegram: true,
         sentPush: true,
@@ -107,7 +119,7 @@ export default async function AlertsPage({ searchParams }: Props) {
     <FitPage>
       <PageHeader
         title="Alertes"
-        description="Tout ce que TCGWatch t’a envoyé sur ntfy et Telegram, avec ce que tu as déjà vu. Les réglages décident de ce qui part, et quand."
+        description="Tout ce que TCGWatch vous a envoyé, avec ce que vous avez déjà vu. Les réglages décident de ce qui part, et quand."
       />
 
       <div
@@ -224,7 +236,13 @@ export default async function AlertsPage({ searchParams }: Props) {
                               <MoonStar /> Envoyée sans son
                             </Badge>
                           )}
+                          {a.held && (
+                            <Badge variant="secondary">
+                              <Hourglass /> En attente du récapitulatif
+                            </Badge>
+                          )}
                           {!a.muted &&
+                            !a.held &&
                             !a.sentNtfy &&
                             !a.sentTelegram &&
                             !a.sentPush &&
@@ -237,6 +255,10 @@ export default async function AlertsPage({ searchParams }: Props) {
                             <Link href={`/produits/${a.product.id}`} className="hover:underline">
                               {a.title}
                             </Link>
+                          ) : a.url ? (
+                            <a href={a.url} className="hover:underline">
+                              {a.title}
+                            </a>
                           ) : (
                             a.title
                           )}
@@ -312,10 +334,11 @@ export default async function AlertsPage({ searchParams }: Props) {
             <CardHeader>
               <div className="space-y-1">
                 <CardTitle className="flex items-center gap-2">
-                  <MoonStar className="size-4" /> Heures silencieuses
+                  <MoonStar className="size-4" /> Quand recevoir
                 </CardTitle>
                 <CardDescription>
-                  Les alertes arrivent quand même, mais sans son ni vibration (heure de Paris).
+                  La nuit, recevoir les alertes sans son, ou rien du tout et un récapitulatif au
+                  réveil (heure de Paris).
                 </CardDescription>
               </div>
             </CardHeader>
@@ -353,10 +376,104 @@ export default async function AlertsPage({ searchParams }: Props) {
                     className="h-9 rounded-md border border-input bg-transparent px-2"
                     aria-label="Fin"
                   />
+                </div>
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="radio"
+                      name="mode"
+                      value="silent"
+                      defaultChecked={settings?.quietMode !== 'hold'}
+                    />
+                    Sans son
+                  </label>
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="radio"
+                      name="mode"
+                      value="hold"
+                      defaultChecked={settings?.quietMode === 'hold'}
+                    />
+                    Rien, récapitulatif au réveil
+                  </label>
                   <Button type="submit" size="sm" className="ml-auto rounded-full">
                     Enregistrer
                   </Button>
                 </div>
+              </form>
+              <form action={saveDigestAction} className="space-y-2 border-t pt-4">
+                <p className="flex items-center gap-2 text-sm font-semibold">
+                  <Sun className="size-4" /> Résumé quotidien
+                </p>
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    name="resume"
+                    value="1"
+                    defaultChecked={settings?.digest ?? false}
+                  />
+                  Recevoir chaque jour les alertes des dernières 24 h, à
+                  <select
+                    name="heure"
+                    defaultValue={settings?.digestHour ?? 8}
+                    aria-label="Heure du résumé"
+                    className="h-8 rounded-md border border-input bg-transparent px-1.5"
+                  >
+                    {Array.from({ length: 24 }, (_, h) => (
+                      <option key={h} value={h}>
+                        {String(h).padStart(2, '0')} h
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="flex items-start gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    name="seulement"
+                    value="1"
+                    defaultChecked={settings?.digestOnly ?? false}
+                    className="mt-1"
+                  />
+                  <span>
+                    Résumé seulement
+                    <span className="block text-xs text-muted-foreground">
+                      Les alertes ne sont plus envoyées une à une.
+                    </span>
+                  </span>
+                </label>
+                <Button type="submit" size="sm" variant="outline" className="rounded-full">
+                  Enregistrer
+                </Button>
+              </form>
+              <form action={saveCardRiseAction} className="space-y-2 border-t pt-4">
+                <p className="flex items-center gap-2 text-sm font-semibold">
+                  <TrendingUp className="size-4" /> Hausse de mes cartes
+                </p>
+                <div className="flex flex-wrap items-center gap-2 text-sm">
+                  Prévenir au-delà de
+                  <input
+                    name="seuil"
+                    inputMode="numeric"
+                    placeholder="20"
+                    defaultValue={settings?.cardRisePercent ?? ''}
+                    aria-label="Seuil de hausse en pourcentage"
+                    className="h-8 w-16 rounded-md border border-input bg-transparent px-2"
+                  />
+                  % en 30 jours
+                  <Button
+                    type="submit"
+                    size="sm"
+                    variant="outline"
+                    className="ml-auto rounded-full"
+                  >
+                    Enregistrer
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Tendance Cardmarket des cartes possédées valant au moins 2 €. Laissez vide pour ne
+                  pas être prévenu. Le prix cible des cartes recherchées se règle dans vos listes de
+                  recherche.
+                </p>
               </form>
             </CardContent>
           </Card>
@@ -366,7 +483,7 @@ export default async function AlertsPage({ searchParams }: Props) {
               <div className="space-y-1">
                 <CardTitle>Ce qui est envoyé</CardTitle>
                 <CardDescription>
-                  Un type décoché reste visible ici, mais ne part plus sur ton téléphone.
+                  Un type décoché reste visible ici, mais ne part plus sur votre téléphone.
                 </CardDescription>
               </div>
             </CardHeader>
@@ -402,7 +519,7 @@ export default async function AlertsPage({ searchParams }: Props) {
                 </h3>
                 {mutedProducts.length === 0 ? (
                   <p className="text-xs text-muted-foreground">
-                    Aucun. Coupe un type pour un produit depuis une alerte ou sa fiche.
+                    Aucun. Coupez un type pour un produit depuis une alerte ou sa fiche.
                   </p>
                 ) : (
                   <ul className="divide-y">
