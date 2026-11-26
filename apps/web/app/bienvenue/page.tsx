@@ -1,605 +1,710 @@
-import {
-  CalendarDays,
-  FileUp,
-  ScanLine,
-  ShieldCheck,
-  Sparkles,
-  Store,
-  Zap,
-  type LucideIcon,
-} from 'lucide-react';
+import '@fontsource-variable/inter';
+import '@fontsource-variable/inter-tight';
+import '@fontsource-variable/jetbrains-mono';
 import type { Metadata } from 'next';
-import Image from 'next/image';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import QRCode from 'qrcode';
 import { prisma } from '@tcgwatch/db';
+import { tcgdexAsset } from '@tcgwatch/market';
+import { formatPrice, toNumber } from '@tcgwatch/shared';
 import { getEnv } from '@tcgwatch/shared/env';
-import { BrandLogo } from '@/components/brand-logo';
-import { InstallAppButton } from '@/components/install-app';
-import { SiteFooter } from '@/components/site-footer';
-import { Button } from '@/components/ui/button';
 import { getCurrentUser, isRegistrationOpen } from '@/lib/auth';
-import { LandingTour, type TourPanel } from './landing-tour';
+import { ago } from '@/lib/time';
+import { cn } from '@/lib/utils';
+import s from './landing.module.css';
+import { AlertSwitches, ScannerBand, type ScanCard } from './scanner-band';
 
 export const metadata: Metadata = {
   title: 'TCGWatch — stocks, prix et alertes Pokémon JCC en France',
   description:
-    'Restocks des ETB, displays et coffrets Pokémon chez les boutiques françaises, prix comparés port compris, cote du marché, collection de cartes et de scellé, alertes sur ton téléphone. Gratuit.',
+    'Restocks des ETB, displays et coffrets Pokémon chez les boutiques françaises, prix comparés port compris, cote du marché, scanner et collection de cartes, alertes sur ton téléphone. Gratuit.',
 };
 
-const NOTIFICATIONS = [
-  { title: 'Retour en stock', text: 'Coffret Dresseur d’Élite · prix port compris' },
-  { title: 'Précommande ouverte', text: 'Display 36 boosters de la prochaine extension' },
-  { title: 'Sous ton prix cible', text: 'Tripack · moins cher que ton seuil' },
-];
+/** Cartes de secours quand l'encyclopédie n'a pas encore de cote. */
+const LOCAL_CARDS = ['b', 'g', 'r'].map((c) => `/cards/30e-anniversaire-${c}.webp`);
 
-/** Ce qui a changé récemment : à tenir à jour à chaque nouveauté visible. */
-const NEWS: { tag: string; title: string; text: string }[] = [
+const STEPS = [
   {
-    tag: 'Profil',
-    title: 'Page de collectionneur',
-    text: 'Classeurs, vitrines, doubles et recherches sur une page à ton image, à partager par un lien.',
-  },
-  {
-    tag: 'Mobile',
-    title: 'L’appli sur ton téléphone',
-    text: 'Installée en deux gestes depuis le site, sans store, avec notifications et onglets en bas d’écran.',
-  },
-  {
-    tag: 'Restocks',
-    title: 'Habitudes de réassort',
-    text: 'Le jour, l’heure et le rythme habituels des retours en stock de chaque boutique.',
-  },
-  {
-    tag: 'Cartes',
-    title: 'Prix eBay en français',
-    text: 'La valeur de tes cartes au prix des ventes françaises, à côté de la cote Cardmarket.',
-  },
-  {
-    tag: 'Collection',
-    title: 'Import CSV et Master Set',
-    text: 'Reprends ta collection d’un autre outil et complète tes sets, reverses comprises.',
-  },
-  {
-    tag: 'Scellé',
-    title: 'Bilan des reventes',
-    text: 'Les plus-values de l’année, frais et prix d’achat compris, en CSV ou en PDF.',
-  },
-];
-
-const ADD_WAYS: { icon: LucideIcon; title: string; text: string }[] = [
-  {
-    icon: ScanLine,
     title: 'Scanner',
-    text: 'Vise une carte avec l’appareil photo, ou importe des photos en rafale.',
+    text: 'Vise une carte avec l’appareil photo, ou importe tes photos en rafale : TCGWatch la reconnaît.',
   },
   {
-    icon: Zap,
-    title: 'Ajout rapide',
-    text: 'Toute une extension à l’écran : un toucher par carte, normale ou reverse.',
+    title: 'Coter',
+    text: 'Cote Cardmarket du jour ou prix des ventes eBay en français, au choix.',
   },
   {
-    icon: FileUp,
-    title: 'Import d’un fichier',
-    text: 'Ton export Pokécardex, Dragon Shield ou ton propre tableur.',
+    title: 'Classer',
+    text: 'Elle rejoint le classeur de son extension, en Full Set ou en Master Set.',
+  },
+  {
+    title: 'Partager',
+    text: 'Vitrines, doubles à l’échange et page de collectionneur à ton image.',
   },
 ];
 
-const CARDS = ['b', 'g', 'r'].map((c) => `/cards/30e-anniversaire-${c}.webp`);
+const FAQ = [
+  {
+    q: 'TCGWatch est-il vraiment gratuit ?',
+    a: 'Oui : pas d’abonnement, pas de publicité, pas de revente de données. Le site est tenu par un collectionneur, pour les collectionneurs.',
+  },
+  {
+    q: 'Quelles boutiques sont surveillées ?',
+    a: 'Des boutiques françaises spécialisées et des grandes enseignes, relevées environ toutes les heures. Les sites douteux sont écartés, et chaque prix est comparé frais de port compris.',
+  },
+  {
+    q: 'Comment suis-je prévenu d’un restock ?',
+    a: 'Par notification sur ton téléphone (en installant l’appli depuis le site), par ntfy ou par Telegram. Tu choisis les produits suivis, les types d’alerte et un prix cible si tu veux.',
+  },
+  {
+    q: 'D’où viennent les cotes des cartes ?',
+    a: 'De la cote Cardmarket (tendance du jour) et, pour les cartes que tu possèdes, de la médiane des annonces eBay en français. Tu peux afficher l’une ou l’autre partout dans le site.',
+  },
+  {
+    q: 'Le scanner reconnaît-il toutes les cartes ?',
+    a: 'Il compare ta photo aux illustrations de l’encyclopédie, toutes extensions françaises comprises, y compris les promos. En cas de doute, il te propose les cartes les plus proches.',
+  },
+  {
+    q: 'Puis-je importer ma collection existante ?',
+    a: 'Oui : un export Pokécardex, Dragon Shield ou ton propre tableur en CSV. Un aperçu ligne par ligne te montre ce qui a été reconnu avant l’import.',
+  },
+  {
+    q: 'Faut-il passer par un store pour l’appli ?',
+    a: 'Non : sur iPhone comme sur Android, l’appli s’ajoute à l’écran d’accueil depuis le site, en deux gestes. Elle se met à jour toute seule.',
+  },
+  {
+    q: 'Et mes données ?',
+    a: 'Elles restent les tiennes : export complet à tout moment, suppression du compte en un clic, et ta page de collectionneur n’est publique que si tu l’actives.',
+  },
+];
 
-function Pill({ children }: { children: React.ReactNode }) {
-  return (
-    <span className="inline-flex items-center rounded-full bg-success/15 px-2.5 py-0.5 text-xs font-bold text-success">
-      {children}
-    </span>
-  );
-}
+const Arrow = () => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden
+  >
+    <path d="M5 12h14M13 6l6 6-6 6" />
+  </svg>
+);
 
-/** Page d'un classeur : cartes possédées et emplacements vides, barres Full Set et Master Set. */
-function BinderMock() {
-  const slots = [0, 1, null, 2, null, 0, 1, 2, null];
-  return (
-    <div className="space-y-4 rounded-3xl border bg-card p-5 shadow-[0_30px_80px_-40px_rgba(139,124,255,0.6)]">
-      <div className="flex items-baseline justify-between gap-3">
-        <p className="font-semibold">30ᵉ Anniversaire</p>
-        <p className="text-xs text-muted-foreground">page 1 / 12</p>
-      </div>
-      <div className="grid grid-cols-3 gap-2.5">
-        {slots.map((s, i) =>
-          s === null ? (
-            <span
-              key={i}
-              className="aspect-[63/88] rounded-lg border-2 border-dashed border-border bg-muted/40"
-            />
-          ) : (
-            <Image
-              key={i}
-              src={CARDS[s]!}
-              alt=""
-              width={216}
-              height={300}
-              className="aspect-[63/88] w-full rounded-lg object-cover"
-            />
-          ),
-        )}
-      </div>
-      {[
-        { label: 'Full Set', value: 78, color: 'bg-primary' },
-        { label: 'Master Set, reverses comprises', value: 52, color: 'bg-[#4dabf7]' },
-      ].map((b) => (
-        <div key={b.label} className="space-y-1.5">
-          <div className="flex justify-between text-xs text-muted-foreground">
-            <span>{b.label}</span>
-            <span className="tabular-nums">{b.value} %</span>
-          </div>
-          <div className="h-2 rounded-full bg-muted">
-            <div className={`h-2 rounded-full ${b.color}`} style={{ width: `${b.value}%` }} />
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-/** Courbe de valeur de la collection face au montant investi. */
-function ValueMock() {
-  return (
-    <div className="space-y-3 rounded-3xl border bg-card p-5 shadow-[0_30px_80px_-40px_rgba(139,124,255,0.6)]">
-      <div className="flex items-baseline justify-between gap-3">
-        <p className="font-semibold">Valeur de la collection</p>
-        <p className="text-sm font-bold text-success">plus-value latente</p>
-      </div>
-      <svg viewBox="0 0 320 150" className="h-auto w-full">
-        <polyline points="0,140 320,140" fill="none" className="stroke-border" strokeWidth="1" />
-        <polyline
-          points="0,128 60,128 60,112 180,112 180,100 320,100"
-          fill="none"
-          className="stroke-muted-foreground"
-          strokeWidth="2.5"
-          strokeDasharray="7 7"
-        />
-        <polyline
-          points="0,126 40,122 80,110 120,104 160,86 200,80 240,58 280,50 320,30"
-          fill="none"
-          className="stroke-primary"
-          strokeWidth="4"
-          strokeLinejoin="round"
-          strokeLinecap="round"
-        />
-      </svg>
-      <div className="flex gap-4 text-xs text-muted-foreground">
-        <span className="inline-flex items-center gap-1.5">
-          <span className="h-1 w-4 rounded-full bg-primary" /> Valeur, Cardmarket ou eBay FR
-        </span>
-        <span className="inline-flex items-center gap-1.5">
-          <span className="h-0.5 w-4 border-t-2 border-dashed border-muted-foreground" /> Investi
-        </span>
-      </div>
-      <div className="flex gap-2 pt-1">
-        {CARDS.map((src) => (
-          <Image
-            key={src}
-            src={src}
-            alt=""
-            width={216}
-            height={300}
-            className="aspect-[63/88] w-1/3 rounded-lg object-cover"
-          />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function OffersMock() {
-  return (
-    <div className="divide-y rounded-2xl border bg-background/60 px-5">
-      {[
-        { shop: 'Boutique A', price: '54,90 €', best: true },
-        { shop: 'Boutique B', price: '57,40 €' },
-        { shop: 'Boutique C', price: '59,90 €' },
-        { shop: 'Boutique D', price: 'rupture', muted: true },
-      ].map((o) => (
-        <div key={o.shop} className="flex justify-between py-3 text-sm">
-          <span>{o.shop}</span>
-          <span
-            className={
-              o.best ? 'font-bold text-success' : o.muted ? 'text-muted-foreground' : undefined
-            }
-          >
-            {o.price}
-          </span>
-        </div>
-      ))}
-      <p className="py-3 text-xs text-muted-foreground">Prix livrés chez toi, port compris</p>
-    </div>
-  );
-}
-
-function MarketMock() {
-  return (
-    <div className="space-y-3 rounded-2xl border bg-background/60 p-5">
-      <p className="text-sm font-semibold">Indice du marché scellé</p>
-      <svg viewBox="0 0 300 110" className="h-auto w-full">
-        <polyline
-          points="0,90 40,84 80,88 120,70 160,72 200,52 240,48 300,26"
-          fill="none"
-          className="stroke-primary"
-          strokeWidth="4"
-          strokeLinejoin="round"
-          strokeLinecap="round"
-        />
-      </svg>
-      <div className="flex gap-2 text-xs">
-        <span className="rounded-full bg-success/15 px-2 py-0.5 font-semibold text-success">
-          Hausses
-        </span>
-        <span className="rounded-full bg-muted px-2 py-0.5 font-semibold text-muted-foreground">
-          Baisses
-        </span>
-        <span className="rounded-full bg-muted px-2 py-0.5 font-semibold text-muted-foreground">
-          Bons plans
-        </span>
-      </div>
-    </div>
-  );
-}
-
-function ProfileMock() {
-  return (
-    <div className="flex items-center gap-4 rounded-2xl border bg-[linear-gradient(120deg,rgb(151_117_250/0.25),transparent_70%)] p-5">
-      <Image
-        src={CARDS[1]!}
-        alt=""
-        width={216}
-        height={300}
-        className="size-20 shrink-0 rounded-2xl border-2 border-[#9775fa] object-cover object-top"
-      />
-      <div className="min-w-0 space-y-1">
-        <p className="font-display text-xl font-bold">Ta page</p>
-        <p className="text-sm text-muted-foreground">
-          Classeurs complétés · vitrines · doubles à l’échange
-        </p>
-        <p className="text-sm text-muted-foreground">Plus-value latente et réalisée</p>
-      </div>
-    </div>
-  );
-}
-
-/** Page d'accueil publique : restocks, visite du site, collection, nouveautés et appli. */
+/** Page d'accueil publique : identité « scanner », avec les vraies cartes et boutiques du site. */
 export default async function LandingPage() {
   if (await getCurrentUser()) redirect('/');
-  const [retailers, products, cards, open, qr] = await Promise.all([
-    prisma.retailer.count({ where: { enabled: true, listings: { some: {} } } }),
-    prisma.product.count({ where: { listings: { some: {} } } }),
-    prisma.card.count(),
-    isRegistrationOpen(),
-    QRCode.toString(`${getEnv().APP_URL.replace(/\/$/, '')}/installer`, {
-      type: 'svg',
-      margin: 1,
-      errorCorrectionLevel: 'M',
-    }),
-  ]);
-  const fr = new Intl.NumberFormat('fr-FR');
-  const stats = [
-    { value: fr.format(retailers), label: 'boutiques françaises suivies' },
-    { value: fr.format(products), label: 'produits scellés comparés' },
-    { value: fr.format(cards), label: 'cartes dans l’encyclopédie' },
-  ];
-  const signUp = open ? '/inscription' : '/connexion';
+  const [retailers, products, cardCount, releases, open, lastCheck, top, shops, restocks, qr] =
+    await Promise.all([
+      prisma.retailer.count({ where: { enabled: true, listings: { some: {} } } }),
+      prisma.product.count({ where: { listings: { some: {} } } }),
+      prisma.card.count(),
+      prisma.release.count({ where: { cards: { some: {} } } }),
+      isRegistrationOpen(),
+      prisma.listing.aggregate({ _max: { lastCheckedAt: true } }),
+      prisma.card.findMany({
+        where: { imageUrl: { not: null }, priceTrend: { not: null }, category: 'Pokémon' },
+        orderBy: { priceTrend: 'desc' },
+        take: 10,
+        select: {
+          id: true,
+          name: true,
+          localId: true,
+          imageUrl: true,
+          rarity: true,
+          priceTrend: true,
+          release: { select: { nameFr: true, cardCountOfficial: true } },
+        },
+      }),
+      prisma.retailer.findMany({
+        where: { enabled: true, listings: { some: {} } },
+        orderBy: { listings: { _count: 'desc' } },
+        take: 7,
+        select: { name: true },
+      }),
+      prisma.alertEvent.findMany({
+        where: { type: 'BACK_IN_STOCK', listingId: { not: null } },
+        distinct: ['dedupeKey'],
+        orderBy: { createdAt: 'desc' },
+        take: 5,
+        select: {
+          createdAt: true,
+          price: true,
+          product: { select: { name: true } },
+          listing: { select: { retailer: { select: { name: true } } } },
+        },
+      }),
+      QRCode.toString(`${getEnv().APP_URL.replace(/\/$/, '')}/installer`, {
+        type: 'svg',
+        margin: 1,
+        errorCorrectionLevel: 'M',
+      }),
+    ]);
 
-  const tour: TourPanel[] = [
-    {
-      key: 'scelle',
-      label: 'Scellé',
-      title: 'Les restocks, avant tout le monde',
-      text: 'Les boutiques françaises relevées toutes les heures, et une alerte dès qu’un produit que tu suis revient.',
-      points: [
-        'Alertes sur téléphone, ntfy ou Telegram',
-        'Prix comparés port compris, sites douteux écartés',
-        'Calendrier des sorties et des précommandes',
-        'Habitudes de réassort de chaque boutique',
-      ],
-      visual: <OffersMock />,
-    },
-    {
-      key: 'cartes',
-      label: 'Cartes',
-      title: 'Ta collection, carte par carte',
-      text: 'Des classeurs par extension, en Full Set ou en Master Set, et la valeur de chaque carte.',
-      points: [
-        'Scanner, ajout rapide ou import CSV',
-        'Ce qu’il manque pour finir un set, et ce que ça coûte',
-        'Cote Cardmarket ou prix eBay en français',
-        'Vitrines à partager par un lien',
-      ],
-      visual: <BinderMock />,
-    },
-    {
-      key: 'marche',
-      label: 'Marché',
-      title: 'La cote du marché, sans tableur',
-      text: 'Le prix des produits scellés et des cartes phares, et la tendance générale du marché.',
-      points: [
-        'Historique des prix de chaque produit',
-        'Indice du marché, hausses et baisses',
-        'Bons plans repérés automatiquement',
-        'Encyclopédie des séries et extensions',
-      ],
-      visual: <MarketMock />,
-    },
-    {
-      key: 'profil',
-      label: 'Mon profil',
-      title: 'Ton investissement, au clair',
-      text: 'Ce que tu as payé, ce que ça vaut, ce que tes reventes ont rapporté, et une page publique à ton image.',
-      points: [
-        'Plus-value latente et réalisée',
-        'Lots d’achat et demi-displays regroupés',
-        'Bilan des reventes en CSV ou PDF',
-        'Page de collectionneur personnalisable',
-      ],
-      visual: <ProfileMock />,
-    },
+  const fr = new Intl.NumberFormat('fr-FR');
+  const signUp = open ? '/inscription' : '/connexion';
+  const checkedAt = lastCheck._max.lastCheckedAt;
+
+  const scanCards: ScanCard[] = top.length
+    ? top.map((c) => ({
+        id: c.id,
+        image: tcgdexAsset(c.imageUrl ?? undefined, '/high.webp') ?? LOCAL_CARDS[0]!,
+        data: [
+          ['NOM', c.name],
+          ['EXT', c.release.nameFr],
+          [
+            'N°',
+            c.release.cardCountOfficial ? `${c.localId}/${c.release.cardCountOfficial}` : c.localId,
+          ],
+          ['RARETÉ', c.rarity ?? '—'],
+          ['COTE', formatPrice(toNumber(c.priceTrend)!)],
+        ],
+      }))
+    : LOCAL_CARDS.map((image, i) => ({
+        id: `local-${i}`,
+        image,
+        data: [
+          ['NOM', 'Carte'],
+          ['EXT', '30ᵉ Anniversaire'],
+        ],
+      }));
+  const [heroA, heroB] = [scanCards[1] ?? scanCards[0]!, scanCards[0]!];
+
+  const ledger = restocks.length
+    ? restocks.map((r) => ({
+        time: r.createdAt.toLocaleTimeString('fr-FR', {
+          hour: '2-digit',
+          minute: '2-digit',
+          timeZone: 'Europe/Paris',
+        }),
+        name: r.product?.name ?? 'Produit',
+        shop: r.listing?.retailer.name ?? '',
+        price: toNumber(r.price),
+      }))
+    : [];
+  const orbitPos = [
+    [50, 8],
+    [88, 26],
+    [92, 70],
+    [62, 94],
+    [18, 88],
+    [6, 50],
+    [20, 14],
   ];
 
   return (
-    <div className="flex min-h-dvh flex-col">
-      <header className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-4 px-4 py-5 md:px-8">
-        <BrandLogo />
-        <nav className="flex flex-wrap items-center gap-1">
-          <Button asChild variant="ghost" className="hidden md:inline-flex">
-            <a href="#visite">Fonctionnalités</a>
-          </Button>
-          <Button asChild variant="ghost" className="hidden md:inline-flex">
-            <a href="#nouveautes">Nouveautés</a>
-          </Button>
-          <Button asChild variant="ghost">
-            <Link href="/connexion">Se connecter</Link>
-          </Button>
-          {open && (
-            <Button asChild className="rounded-full">
-              <Link href="/inscription">Créer un compte</Link>
-            </Button>
-          )}
-        </nav>
-      </header>
+    <div className={s.page}>
+      {/* ---------- Héros ---------- */}
+      <section className={s.hero} id="haut">
+        <div className={s.heroGrid} aria-hidden />
+        <div className={s.dust} aria-hidden />
 
-      <main className="flex-1">
-        {/* Accroche : les restocks. */}
-        <section className="mx-auto grid max-w-6xl items-center gap-12 px-4 py-10 md:px-8 md:py-16 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
-          <div className="space-y-6">
-            <div className="flex flex-wrap gap-2">
-              <p className="inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold text-muted-foreground">
-                <ShieldCheck className="size-3.5 text-success" /> Gratuit · sans pub · fait en
-                France
-              </p>
-              <a
-                href="#nouveautes"
-                className="inline-flex items-center gap-2 rounded-full border py-1 pr-3 pl-1 text-xs font-semibold text-muted-foreground hover:text-foreground"
-              >
-                <Pill>Nouveau</Pill> Page de collectionneur, appli mobile
+        <nav className={s.nav} aria-label="Navigation principale">
+          <Link href="/bienvenue" className={s.brand}>
+            <i />
+            TCGWATCH
+          </Link>
+          <div className={s.navLinks}>
+            <a href="#scanner">Scanner</a>
+            <a href="#outils">Outils</a>
+            <a href="#faq">FAQ</a>
+            <Link href="/installer">Appli</Link>
+          </div>
+          <div className={s.navRight}>
+            <Link href="/connexion" className={s.navLogin}>
+              Connexion
+            </Link>
+            {open && (
+              <Link href="/inscription" className={s.navCta}>
+                Créer un compte
+              </Link>
+            )}
+          </div>
+        </nav>
+
+        <div className={s.heroMain}>
+          <div>
+            <p className={cn(s.eyebrow, s.rise)} style={{ '--d': '.1s' } as React.CSSProperties}>
+              <i />
+              {checkedAt
+                ? `Boutiques relevées ${ago(checkedAt)}`
+                : 'Boutiques relevées chaque heure'}
+            </p>
+            <h1
+              className={cn(s.headline, s.grad, s.lilac, s.h1, s.rise)}
+              style={{ '--d': '.2s' } as React.CSSProperties}
+            >
+              <span>Ne rate</span> <span className={cn(s.grad, s.ember)}>plus aucun</span>{' '}
+              <span>restock</span>
+            </h1>
+            <p
+              className={cn(s.lede, s.rise)}
+              style={{ marginTop: 28, maxWidth: 560, '--d': '.35s' } as React.CSSProperties}
+            >
+              TCGWatch surveille les boutiques françaises, <strong>t’alerte à la minute</strong>{' '}
+              quand un ETB, un display ou un coffret revient, et <strong>scanne tes cartes</strong>{' '}
+              pour tenir ta collection et sa cote à jour. Gratuit, sans pub.
+            </p>
+            <div
+              className={cn(s.heroActions, s.rise)}
+              style={{ '--d': '.5s' } as React.CSSProperties}
+            >
+              <Link href={signUp} className={cn(s.btn, s.btnPrimary)}>
+                {open ? 'Commencer' : 'Se connecter'} <Arrow />
+              </Link>
+              <a href="#scanner" className={cn(s.btn, s.btnGhost)}>
+                Voir le scanner
               </a>
             </div>
-            <h1 className="font-display text-4xl leading-[1.04] font-bold tracking-tight md:text-6xl">
-              Le{' '}
-              <span className="bg-[linear-gradient(90deg,#ffd43b,#ff6b9a,#8b7cff,#4fd1ff)] bg-clip-text text-transparent">
-                restock
-              </span>{' '}
-              arrive. Tu es déjà prévenu.
-            </h1>
-            <p className="max-w-xl text-lg text-muted-foreground">
-              TCGWatch relève les boutiques françaises toutes les heures et te prévient dès qu’un
-              ETB, un display ou un coffret revient, au meilleur prix port compris. Et il tient ta
-              collection de cartes et de scellé à jour.
+          </div>
+
+          <div className={s.scene} aria-hidden>
+            <div className={s.sceneInner}>
+              <svg className={s.ring} viewBox="0 0 880 640" preserveAspectRatio="none">
+                <defs>
+                  <linearGradient id="tw-ring" x1="0" y1="0" x2="1" y2="0">
+                    <stop offset="0" stopColor="#5b6cff" stopOpacity="0.95" />
+                    <stop offset="0.45" stopColor="#c4b5fd" stopOpacity="0.9" />
+                    <stop offset="0.7" stopColor="#ffd43b" stopOpacity="0.5" />
+                    <stop offset="1" stopColor="#a78bfa" stopOpacity="0.95" />
+                  </linearGradient>
+                  <filter id="tw-glow" x="-20%" y="-60%" width="140%" height="220%">
+                    <feGaussianBlur stdDeviation="6" />
+                  </filter>
+                </defs>
+                <g transform="rotate(-13 450 360)">
+                  <ellipse
+                    cx="450"
+                    cy="380"
+                    rx="400"
+                    ry="120"
+                    fill="none"
+                    stroke="url(#tw-ring)"
+                    strokeWidth="7"
+                    filter="url(#tw-glow)"
+                    opacity="0.7"
+                  />
+                  <ellipse
+                    cx="450"
+                    cy="380"
+                    rx="400"
+                    ry="120"
+                    fill="none"
+                    stroke="url(#tw-ring)"
+                    strokeWidth="1.6"
+                  />
+                  <ellipse
+                    cx="450"
+                    cy="380"
+                    rx="372"
+                    ry="102"
+                    fill="none"
+                    stroke="rgba(196,181,253,0.2)"
+                    strokeDasharray="2 7"
+                  />
+                  <ellipse
+                    className={s.ringRun}
+                    cx="450"
+                    cy="380"
+                    rx="400"
+                    ry="120"
+                    fill="none"
+                    stroke="#fff"
+                    strokeWidth="2.2"
+                    strokeLinecap="round"
+                    pathLength={1000}
+                    strokeDasharray="70 930"
+                  />
+                </g>
+              </svg>
+              <div className={cn(s.heroCard, s.cardA)}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={heroA.image} alt="" referrerPolicy="no-referrer" />
+              </div>
+              <div className={cn(s.heroCard, s.cardB)}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={heroB.image} alt="" referrerPolicy="no-referrer" />
+              </div>
+              <div className={s.beam} />
+              <pre className={cn(s.glass, s.panelJson)}>
+                {'{\n  '}
+                <span className={s.k}>&quot;alerte&quot;</span>
+                {': "retour_en_stock",\n  '}
+                <span className={s.k}>&quot;produit&quot;</span>
+                {`: "${(ledger[0]?.name ?? 'Coffret Dresseur d’Élite').slice(0, 26)}",\n  `}
+                <span className={s.k}>&quot;boutique&quot;</span>
+                {`: "${ledger[0]?.shop ?? 'Boutique'}",\n  `}
+                <span className={s.k}>&quot;prix_livré&quot;</span>
+                {`: "${ledger[0]?.price ? formatPrice(ledger[0].price) : '—'}"\n}`}
+              </pre>
+              <div className={cn(s.glass, s.panelCheck)}>
+                <ul>
+                  <li className={s.done}>
+                    <i />
+                    Boutique relevée
+                  </li>
+                  <li className={s.done}>
+                    <i />
+                    Retour en stock
+                  </li>
+                  <li className={s.done}>
+                    <i />
+                    Prix port compris
+                  </li>
+                  <li className={s.active}>
+                    <i />
+                    Alerte envoyée
+                  </li>
+                  <li>
+                    <i />
+                    Ajouté à la collection
+                  </li>
+                </ul>
+              </div>
+              <div className={s.pipeline}>
+                <span className={s.on}>Relever</span>
+                <em>→</em>
+                <span className={s.on}>Comparer</span>
+                <em>→</em>
+                <span className={s.on}>Alerter</span>
+                <em>→</em>
+                <span>Collectionner</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className={s.stats}>
+          {[
+            [fr.format(retailers), 'boutiques françaises suivies'],
+            [fr.format(products), 'produits scellés comparés'],
+            [fr.format(cardCount), 'cartes reconnues par le scanner'],
+            ['1 h', 'entre deux relevés'],
+          ].map(([value, label]) => (
+            <div key={label} className={s.stat}>
+              <b>{value}</b>
+              <span>{label}</span>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ---------- Scanner ---------- */}
+      <section className={s.scanner} id="scanner" aria-labelledby="scanner-titre">
+        <div className={s.scannerHead}>
+          <div>
+            <p className={s.label} style={{ marginBottom: 20 }}>
+              <b>02</b> — Le scanner
             </p>
-            <div className="flex flex-wrap gap-3">
-              <Button asChild size="lg" className="rounded-full">
-                <Link href={signUp}>Commencer gratuitement</Link>
-              </Button>
-              <Button asChild size="lg" variant="outline" className="rounded-full">
-                <a href="#visite">Faire le tour</a>
-              </Button>
-            </div>
-            <dl className="grid max-w-xl grid-cols-3 gap-4 pt-2">
-              {stats.map((s) => (
-                <div key={s.label}>
-                  <dt className="sr-only">{s.label}</dt>
-                  <dd className="font-display text-2xl font-bold tabular-nums md:text-3xl">
-                    {s.value}
-                  </dd>
-                  <dd className="text-xs text-muted-foreground">{s.label}</dd>
-                </div>
-              ))}
-            </dl>
+            <h2 id="scanner-titre" className={cn(s.headline, s.grad, s.indigo, s.h2)}>
+              Chaque carte qui passe la ligne est reconnue, cotée et rangée dans ton classeur.
+            </h2>
           </div>
-
-          <div className="mx-auto w-full max-w-80" aria-hidden>
-            <div className="space-y-2.5 rounded-[2.75rem] border-[10px] border-[#1d2032] bg-[linear-gradient(180deg,#1a1c2e,#0f1020)] px-3.5 pt-12 pb-7 text-[#f1f2f8] shadow-[0_40px_90px_-30px_rgba(255,212,59,0.35)]">
-              <p className="pb-3 text-center font-display text-5xl font-semibold">9:41</p>
-              {NOTIFICATIONS.map((n) => (
-                <div key={n.title} className="flex gap-2.5 rounded-2xl bg-white/10 px-3.5 py-3">
-                  <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-[#ffd43b] text-[10px] font-extrabold text-[#0c0d16]">
-                    TW
-                  </span>
-                  <div className="min-w-0">
-                    <p className="text-[13px] font-bold">{n.title}</p>
-                    <p className="text-xs text-[#c4c8da]">{n.text}</p>
-                  </div>
-                </div>
-              ))}
+          <div>
+            <p className={s.lede}>
+              Photo par photo ou en rafale : le scanner compare ta carte aux illustrations de toute
+              l’encyclopédie et l’ajoute à ta collection, variante comprise.
+            </p>
+            <div className={s.miniStats}>
+              <div>
+                <b>{fr.format(cardCount)}</b>
+                <span>cartes</span>
+              </div>
+              <div>
+                <b>{fr.format(releases)}</b>
+                <span>extensions</span>
+              </div>
+              <div>
+                <b>2</b>
+                <span>cotes : Cardmarket, eBay FR</span>
+              </div>
             </div>
           </div>
-        </section>
+        </div>
+        <ScannerBand cards={scanCards} />
+        <ol className={s.steps}>
+          {STEPS.map((step, i) => (
+            <li key={step.title}>
+              <b>{String(i + 1).padStart(2, '0')}</b>
+              {step.title}
+              <span>{step.text}</span>
+            </li>
+          ))}
+        </ol>
+      </section>
 
-        {/* Visite par onglets. */}
-        <section id="visite" className="mx-auto max-w-6xl scroll-mt-6 px-4 py-12 md:px-8">
-          <h2 className="mb-2 text-center font-display text-2xl font-bold md:text-4xl">
-            Le scellé, les cartes et le marché, au même endroit
-          </h2>
-          <p className="mb-8 text-center text-muted-foreground">
-            Quatre espaces, un seul compte gratuit.
+      {/* ---------- Outils ---------- */}
+      <section className={s.sec} id="outils" aria-labelledby="outils-titre">
+        <div className={s.secHead}>
+          <div>
+            <span className={s.label}>
+              <b>03</b> — Tout suivre
+            </span>
+            <h2 id="outils-titre" className={cn(s.headline, s.grad, s.indigo, s.h2)}>
+              Le scellé, les cartes,
+              <br />
+              le marché.
+            </h2>
+          </div>
+          <p className={s.lede}>
+            Un seul compte pour guetter les restocks, comparer les prix livrés, suivre la cote et
+            savoir ce que vaut vraiment ta collection.
           </p>
-          <LandingTour panels={tour} />
-        </section>
+        </div>
 
-        {/* Savoir quand guetter. */}
-        <section className="mx-auto max-w-6xl px-4 py-12 md:px-8">
-          <h2 className="mb-6 font-display text-2xl font-bold md:text-3xl">
-            Savoir quand guetter, et où acheter
-          </h2>
-          <div className="grid gap-4 md:grid-cols-3">
-            <article className="space-y-3 rounded-3xl border bg-card p-6">
-              <Pill>Nouveau</Pill>
-              <h3 className="font-display text-xl font-bold">Les habitudes des boutiques</h3>
-              <p className="text-sm text-muted-foreground">
-                Six mois de relevés pour savoir quand guetter : jour, heure et rythme des réassorts.
-              </p>
-              <div className="space-y-2 rounded-2xl bg-background/60 p-4" aria-hidden>
-                <div className="flex h-14 items-end gap-1.5">
-                  {[30, 100, 45, 20, 35, 10, 8].map((h, i) => (
-                    <span
-                      key={i}
-                      className={`flex-1 rounded-sm ${i === 1 ? 'bg-success' : 'bg-success/30'}`}
-                      style={{ height: `${h}%` }}
-                    />
+        <div className={s.bento}>
+          <article className={cn(s.tile, s.span4)}>
+            <div className={s.tileIn}>
+              <div className={s.tileHead}>
+                <span>Retours en stock</span>
+                <span className={s.live}>
+                  <i />
+                  En direct
+                </span>
+              </div>
+              <h3>Les derniers restocks, relevés pour toi.</h3>
+              <p>Chaque boutique relevée toutes les heures, le prix livré à côté.</p>
+              <div className={s.viz}>
+                <div className={s.ledger}>
+                  <div className={s.ledgerRow}>
+                    <span>Heure</span>
+                    <span>Produit</span>
+                    <span>Boutique</span>
+                    <span className={s.ok}>Prix</span>
+                  </div>
+                  {(ledger.length
+                    ? ledger
+                    : [
+                        {
+                          time: '—',
+                          name: 'Les prochains restocks s’afficheront ici',
+                          shop: '',
+                          price: null,
+                        },
+                      ]
+                  ).map((r, i) => (
+                    <div key={i} className={s.ledgerRow}>
+                      <span className={s.dim}>{r.time}</span>
+                      <span>{r.name}</span>
+                      <span className={s.dim}>{r.shop}</span>
+                      <span className={s.ok}>{r.price !== null ? formatPrice(r.price) : ''}</span>
+                    </div>
                   ))}
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  « surtout le mardi, entre 8 h et 11 h »
-                </p>
               </div>
-            </article>
-            <article className="space-y-3 rounded-3xl border bg-card p-6">
-              <Store className="size-5 text-primary" />
-              <h3 className="font-display text-xl font-bold">Le vrai prix, port compris</h3>
-              <p className="text-sm text-muted-foreground">
-                Toutes les offres côte à côte, livrées chez toi, avec l’écart au prix public. Les
-                sites douteux sont écartés.
-              </p>
-            </article>
-            <article className="space-y-3 rounded-3xl border bg-card p-6">
-              <CalendarDays className="size-5 text-primary" />
-              <h3 className="font-display text-xl font-bold">Le calendrier des sorties</h3>
-              <p className="text-sm text-muted-foreground">
-                Chaque extension et ses produits, avec la date française et l’ouverture des
-                précommandes.
-              </p>
-            </article>
-          </div>
-        </section>
+            </div>
+          </article>
 
-        {/* La collection de cartes. */}
-        <section className="mx-auto grid max-w-6xl items-center gap-10 px-4 py-12 md:px-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.8fr)]">
-          <div className="space-y-6">
-            <h2 className="font-display text-3xl font-bold md:text-4xl">
-              Ta collection, rangée comme dans un vrai classeur
+          <article className={cn(s.tile, s.span2)}>
+            <div className={s.tileIn}>
+              <div className={s.tileHead}>
+                <span>Alertes</span>
+                <span>Essaie-les</span>
+              </div>
+              <h3>Tu choisis quand être prévenu.</h3>
+              <div className={s.viz}>
+                <AlertSwitches
+                  items={[
+                    { title: 'Retour en stock', hint: 'produits que tu suis', on: true },
+                    { title: 'Précommande ouverte', hint: 'dès l’ouverture', on: true },
+                    { title: 'Prix sous ton seuil', hint: 'port compris', on: true },
+                    { title: 'Nouvelle sortie', hint: 'au calendrier', on: false },
+                  ]}
+                />
+              </div>
+            </div>
+          </article>
+
+          <article className={cn(s.tile, s.span2)}>
+            <div className={s.tileIn}>
+              <div className={s.tileHead}>
+                <span>Boutiques</span>
+                <span>{fr.format(retailers)} suivies</span>
+              </div>
+              <h3>Toutes les boutiques, un seul prix livré.</h3>
+              <div className={cn(s.viz, s.orbit)} aria-hidden>
+                <svg viewBox="0 0 100 100" preserveAspectRatio="none">
+                  <ellipse
+                    cx="50"
+                    cy="50"
+                    rx="40"
+                    ry="38"
+                    fill="none"
+                    stroke="rgba(196,181,253,0.45)"
+                    strokeWidth="1"
+                    vectorEffect="non-scaling-stroke"
+                  />
+                  <ellipse
+                    cx="50"
+                    cy="50"
+                    rx="26"
+                    ry="24"
+                    fill="none"
+                    stroke="rgba(196,181,253,0.2)"
+                    strokeDasharray="2 5"
+                    vectorEffect="non-scaling-stroke"
+                  />
+                </svg>
+                <span className={s.orbitCore}>TCGWATCH</span>
+                {shops.map((shop, i) => (
+                  <span
+                    key={shop.name}
+                    className={s.node}
+                    style={{ left: `${orbitPos[i]![0]}%`, top: `${orbitPos[i]![1]}%` }}
+                  >
+                    {shop.name}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </article>
+
+          <article className={cn(s.tile, s.span2)}>
+            <div className={s.tileIn}>
+              <div className={s.tileHead}>
+                <span>Habitudes de réassort</span>
+                <span>6 mois</span>
+              </div>
+              <h3>Sache quand guetter.</h3>
+              <p>Le jour, l’heure et le rythme habituels de chaque boutique.</p>
+              <div className={cn(s.viz, s.days)} aria-hidden>
+                {['lu', 'ma', 'me', 'je', 've', 'sa', 'di'].map((d, i) => (
+                  <div key={d} className={i === 1 ? s.top : undefined}>
+                    <i style={{ height: `${[30, 100, 45, 22, 38, 12, 8][i]}%` }} />
+                    {d}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </article>
+
+          <article className={cn(s.tile, s.span2)}>
+            <div className={s.tileIn}>
+              <div className={s.tileHead}>
+                <span>Plus-value</span>
+                <span>Scellé et cartes</span>
+              </div>
+              <b className={cn(s.headline, s.grad, s.ember, s.big)}>Au clair</b>
+              <p>Ce que tu as payé, ce que ça vaut, ce que tes reventes ont rapporté.</p>
+              <div className={cn(s.viz, s.bars)} aria-hidden>
+                <div className={s.bar} style={{ '--w': '58%' } as React.CSSProperties}>
+                  <span>Investi</span>
+                  <i />
+                </div>
+                <div className={cn(s.bar, s.now)} style={{ '--w': '100%' } as React.CSSProperties}>
+                  <span>Valeur</span>
+                  <i />
+                </div>
+              </div>
+            </div>
+          </article>
+
+          <article className={cn(s.tile, s.span2)}>
+            <div className={s.tileIn}>
+              <div className={s.tileHead}>
+                <span>Profil</span>
+                <span>À partager</span>
+              </div>
+              <h3>Ta page de collectionneur.</h3>
+              <p>Classeurs terminés, vitrines, doubles à l’échange et recherches.</p>
+              <div className={s.viz}>
+                <div className={s.profileCard}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={heroA.image} alt="" referrerPolicy="no-referrer" />
+                  <div>
+                    <b>Ton pseudo</b>
+                    <span>Avatar, couleur et présentation à ton goût</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      {/* ---------- FAQ ---------- */}
+      <section className={s.sec} id="faq" aria-labelledby="faq-titre">
+        <div className={s.faqGrid}>
+          <div>
+            <span className={s.label} style={{ display: 'block', marginBottom: 20 }}>
+              <b>04</b> — FAQ
+            </span>
+            <h2 id="faq-titre" className={cn(s.headline, s.grad, s.lilac, s.h2)}>
+              Tes questions,
+              <br />
+              nos réponses.
             </h2>
-            <p className="text-lg text-muted-foreground">
-              Coche tes cartes, vois ce qu’il manque pour finir un set, et suis la valeur de ta
-              collection dans le temps, à la cote Cardmarket ou au prix français.
+            <p className={s.lede} style={{ marginTop: 24 }}>
+              Ce que demandent les collectionneurs avant de confier leurs alertes à TCGWatch.
             </p>
-            <ul className="grid gap-3 sm:grid-cols-3">
-              {ADD_WAYS.map((w) => (
-                <li key={w.title} className="space-y-1.5 rounded-2xl border bg-card p-4">
-                  <w.icon className="size-5 text-primary" />
-                  <p className="font-semibold">{w.title}</p>
-                  <p className="text-xs text-muted-foreground">{w.text}</p>
-                </li>
-              ))}
-            </ul>
           </div>
-          <div className="mx-auto w-full max-w-sm" aria-hidden>
-            <ValueMock />
-          </div>
-        </section>
-
-        {/* Page de collectionneur. */}
-        <section className="mx-auto max-w-6xl px-4 py-12 md:px-8">
-          <div className="grid items-center gap-8 rounded-3xl border bg-card p-6 md:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] md:p-10">
-            <div className="space-y-3">
-              <Pill>Nouveau</Pill>
-              <h2 className="font-display text-2xl font-bold md:text-3xl">
-                Ta page de collectionneur
-              </h2>
-              <p className="text-muted-foreground md:text-lg">
-                Un lien à partager : tes classeurs terminés, tes vitrines, tes doubles à l’échange
-                et les cartes que tu cherches. Avatar, couleur et présentation à ton goût.
-              </p>
-            </div>
-            <div aria-hidden>
-              <ProfileMock />
-            </div>
-          </div>
-        </section>
-
-        {/* Nouveautés. */}
-        <section id="nouveautes" className="mx-auto max-w-6xl scroll-mt-6 px-4 py-12 md:px-8">
-          <h2 className="flex items-center gap-2 font-display text-2xl font-bold md:text-3xl">
-            <Sparkles className="size-6 text-primary" /> Quoi de neuf
-          </h2>
-          <p className="mt-1 mb-6 text-muted-foreground">
-            TCGWatch évolue chaque semaine. Les dernières nouveautés :
-          </p>
-          <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {NEWS.map((n) => (
-              <li key={n.title} className="space-y-1.5 rounded-2xl border bg-card p-5">
-                <p className="text-xs font-semibold text-muted-foreground">{n.tag}</p>
-                <h3 className="font-semibold">{n.title}</h3>
-                <p className="text-sm text-muted-foreground">{n.text}</p>
-              </li>
+          <div>
+            {FAQ.map((item, i) => (
+              <details key={item.q} className={s.faqItem} open={i === 0}>
+                <summary>
+                  <small>{String(i + 1).padStart(2, '0')}</small>
+                  {item.q}
+                </summary>
+                <p>{item.a}</p>
+              </details>
             ))}
-          </ul>
-        </section>
-
-        {/* Appli mobile. */}
-        <section className="mx-auto max-w-6xl px-4 py-12 md:px-8">
-          <div className="holo-frame grid items-center gap-8 rounded-3xl bg-card p-6 md:grid-cols-[minmax(0,1fr)_auto] md:p-10">
-            <div className="space-y-3">
-              <h2 className="font-display text-2xl font-bold md:text-3xl">
-                Une appli, sans passer par un store
-              </h2>
-              <p className="text-muted-foreground md:text-lg">
-                Ajoute TCGWatch à l’écran d’accueil de ton iPhone ou Android : icône, plein écran,
-                notifications. Gratuit, et à jour tout seul.
-              </p>
-              <div className="flex flex-wrap gap-3 pt-1">
-                <InstallAppButton size="lg" variant="default" className="rounded-full" />
-                <Button asChild size="lg" variant="outline" className="rounded-full">
-                  <Link href="/installer">Comment faire</Link>
-                </Button>
-              </div>
-            </div>
-            <figure className="mx-auto hidden w-40 space-y-2 text-center md:block">
-              <div
-                className="rounded-2xl bg-white p-2.5 [&>svg]:h-auto [&>svg]:w-full"
-                // QR code généré côté serveur à partir de l'adresse du site.
-                dangerouslySetInnerHTML={{ __html: qr }}
-              />
-              <figcaption className="text-xs text-muted-foreground">
-                À viser avec ton téléphone
-              </figcaption>
-            </figure>
           </div>
-        </section>
+        </div>
+      </section>
 
-        {/* Appel final. */}
-        <section className="mx-auto flex max-w-6xl flex-col items-center gap-4 px-4 py-16 text-center md:px-8">
-          <h2 className="font-display text-3xl font-bold md:text-4xl">
-            Prêt pour le prochain drop ?
+      {/* ---------- Appel final ---------- */}
+      <section className={s.cta} aria-labelledby="cta-titre">
+        <span className={cn(s.hud, s.hudTl)} aria-hidden />
+        <span className={cn(s.hud, s.hudTr)} aria-hidden />
+        <span className={cn(s.hud, s.hudBl)} aria-hidden />
+        <span className={cn(s.hud, s.hudBr)} aria-hidden />
+        <div>
+          <span className={s.label} style={{ display: 'block', marginBottom: 20 }}>
+            <b>05</b> — Prochain drop
+          </span>
+          <h2 id="cta-titre" className={cn(s.headline, s.grad, s.lilac, s.ctaH2)}>
+            Laisse TCGWatch <span className={cn(s.grad, s.ember)}>guetter pour toi.</span>
           </h2>
-          <p className="max-w-xl text-muted-foreground">
-            Crée ton compte en 30 secondes, ajoute les produits que tu vises et tes cartes, et
-            laisse TCGWatch guetter pour toi.
+          <p className={s.lede} style={{ marginTop: 22, maxWidth: 520 }}>
+            Crée ton compte en 30 secondes, suis les produits que tu vises, scanne tes premières
+            cartes.
           </p>
-          <Button asChild size="lg" className="rounded-full">
-            <Link href={signUp}>{open ? 'Créer mon compte gratuit' : 'Se connecter'}</Link>
-          </Button>
-        </section>
-      </main>
+          <div style={{ marginTop: 36 }}>
+            <Link href={signUp} className={s.glowBtn}>
+              <span>
+                {open ? 'Créer mon compte' : 'Se connecter'} <Arrow />
+              </span>
+            </Link>
+          </div>
+        </div>
+        <div className={s.ctaSide}>
+          <p className={s.label}>L’appli, sans store</p>
+          <div
+            className={s.qr}
+            // QR code généré côté serveur à partir de l'adresse du site.
+            dangerouslySetInnerHTML={{ __html: qr }}
+          />
+          <Link href="/installer" className={cn(s.btn, s.btnGhost)}>
+            Installer l’appli
+          </Link>
+        </div>
+      </section>
 
-      <SiteFooter />
+      <p className={cn(s.wordmark, s.headline, s.grad, s.indigo)} aria-hidden>
+        TCGWatch
+      </p>
+      <footer className={s.footer}>
+        <p>TCGWatch n’est pas affilié à The Pokémon Company, Nintendo ou aux boutiques citées.</p>
+        <nav aria-label="Liens du site">
+          <Link href="/installer">Installer l’appli</Link>
+          <Link href="/methode">Méthode</Link>
+          <Link href="/guides">Guides</Link>
+          <Link href="/mentions-legales">Mentions légales</Link>
+          <Link href="/cgu">CGU</Link>
+          <Link href="/confidentialite">Confidentialité</Link>
+        </nav>
+      </footer>
     </div>
   );
 }
