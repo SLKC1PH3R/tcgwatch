@@ -8,58 +8,74 @@
 @custom-variant fit (@media (min-width: 64rem) and (min-height: 42rem));
 
 :root {
-  /* Direction « Holo Rare » : nuit profonde, accent jaune, reflets holographiques. */
+  /* Direction « Scanner » (celle de la page d'accueil) : nuit violette, accent lilas, chaleur
+     orangée pour les valeurs en hausse et les mises en avant. */
   --radius: 1rem;
-  --background: #0c0d16;
-  --foreground: #ecedf5;
-  --card: #14151f;
-  --card-foreground: #ecedf5;
-  --popover: #171826;
-  --popover-foreground: #ecedf5;
-  --primary: #ffd43b;
-  --primary-foreground: #0c0d16;
-  --secondary: #1e1f2e;
-  --secondary-foreground: #ecedf5;
-  --muted: #1b1c2c;
-  --muted-foreground: #b4b6c8;
-  --accent: #22243a;
-  --accent-foreground: #ecedf5;
-  --destructive: #ff6b9a;
-  --success: #6ee7a0;
-  --warning: #ffd43b;
-  --info: #7fb8ff;
-  --border: #262838;
-  --input: #3a3d55;
-  --ring: #ffd43b;
-  --chart-1: #ffd43b;
-  --chart-2: #8b7cff;
-  --chart-3: #4fd1ff;
-  --chart-4: #6ee7a0;
-  --chart-5: #ff6b9a;
+  --background: #050508;
+  --foreground: #ece9ff;
+  --card: #0e0c19;
+  --card-foreground: #ece9ff;
+  --popover: #110f1e;
+  --popover-foreground: #ece9ff;
+  --primary: #c4b5fd;
+  --primary-foreground: #0b0a14;
+  --secondary: #17142a;
+  --secondary-foreground: #ece9ff;
+  --muted: #141127;
+  --muted-foreground: #aaa4c8;
+  --accent: #1d1936;
+  --accent-foreground: #ece9ff;
+  --destructive: #ff7aa2;
+  --success: #86efac;
+  --warning: #ffc670;
+  --info: #93c5fd;
+  --border: #221d3d;
+  --input: #3a3363;
+  --ring: #c4b5fd;
+  --chart-1: #c4b5fd;
+  --chart-2: #f4a261;
+  --chart-3: #93c5fd;
+  --chart-4: #86efac;
+  --chart-5: #f783ac;
   --holo: conic-gradient(
     from 200deg at 65% 35%,
-    #ffd43b,
-    #ff6b9a,
-    #8b7cff,
-    #4fd1ff,
-    #6ee7a0,
-    #ffd43b
+    #c4b5fd,
+    #8b5cf6,
+    #6363f0,
+    #f2733d,
+    #ffc670,
+    #c4b5fd
   );
-  --scrollbar-track: rgb(255 255 255 / 0.04);
+  /* Dégradés de titres (lettrage éclairé). */
+  --grad-title: radial-gradient(
+    circle at 30% 20%,
+    #fbf7ff 0%,
+    #d9c9ff 35%,
+    #8f6bf5 75%,
+    #3b2a80 120%
+  );
+  --grad-ember: radial-gradient(
+    circle at 30% 20%,
+    #fff4d6 0%,
+    #ffc670 35%,
+    #f2733d 75%,
+    #8a2a1a 120%
+  );
+  --scrollbar-track: rgb(196 181 253 / 0.05);
   color-scheme: dark;
 }
 
-/* Thème clair « Holo Rare de jour » : mêmes repères, couleurs assombries pour rester lisibles
-   sur fond blanc (jaune ambré pour les liens et valeurs, accents plus profonds). */
+/* Thème clair « Scanner de jour » : mêmes repères, accent violet assombri pour rester lisible sur
+   fond blanc. */
 :root[data-theme='light'] {
-  --background: #f5f6fb;
+  --background: #f6f5fb;
   --foreground: #14151f;
   --card: #ffffff;
   --card-foreground: #14151f;
   --popover: #ffffff;
   --popover-foreground: #14151f;
-  --primary: #e0a400;
-  --primary-foreground: #14151f;
+  --primary: #5b3fd0;
+  --primary-foreground: #ffffff;
   --secondary: #eceef5;
   --secondary-foreground: #14151f;
   --muted: #eef0f6;
@@ -72,25 +88,27 @@
   --info: #2563eb;
   --border: #dfe1ea;
   --input: #c9ccdb;
-  --ring: #e0a400;
-  --chart-1: #d39b00;
-  --chart-2: #6b5cf0;
+  --ring: #5b3fd0;
+  --chart-1: #5b3fd0;
+  --chart-2: #d9622b;
   --chart-3: #0b98c9;
   --chart-4: #16a34a;
   --chart-5: #e0457b;
   --scrollbar-track: rgb(20 21 31 / 0.06);
+  --grad-title: linear-gradient(120deg, #2a1d6e, #5b3fd0 60%, #7c5cf0);
+  --grad-ember: linear-gradient(120deg, #a33a12, #d9622b 60%, #e8893f);
   color-scheme: light;
 }
 @media (prefers-color-scheme: light) {
   :root[data-theme='system'] {
-    --background: #f5f6fb;
+    --background: #f6f5fb;
     --foreground: #14151f;
     --card: #ffffff;
     --card-foreground: #14151f;
     --popover: #ffffff;
     --popover-foreground: #14151f;
-    --primary: #e0a400;
-    --primary-foreground: #14151f;
+    --primary: #5b3fd0;
+    --primary-foreground: #ffffff;
     --secondary: #eceef5;
     --secondary-foreground: #14151f;
     --muted: #eef0f6;
@@ -103,22 +121,24 @@
     --info: #2563eb;
     --border: #dfe1ea;
     --input: #c9ccdb;
-    --ring: #e0a400;
-    --chart-1: #d39b00;
-    --chart-2: #6b5cf0;
+    --ring: #5b3fd0;
+    --chart-1: #5b3fd0;
+    --chart-2: #d9622b;
     --chart-3: #0b98c9;
     --chart-4: #16a34a;
     --chart-5: #e0457b;
     --scrollbar-track: rgb(20 21 31 / 0.06);
+    --grad-title: linear-gradient(120deg, #2a1d6e, #5b3fd0 60%, #7c5cf0);
+    --grad-ember: linear-gradient(120deg, #a33a12, #d9622b 60%, #e8893f);
     color-scheme: light;
   }
 }
 
 @theme inline {
   /* Polices embarquées via @fontsource (aucun téléchargement au build : image Docker hors-ligne). */
-  --font-sans: 'Manrope Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
-  --font-display: 'Unbounded Variable', 'Manrope Variable', ui-sans-serif, system-ui, sans-serif;
-  --font-mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  --font-sans: 'Inter Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-display: 'Inter Tight Variable', 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono Variable', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -158,6 +178,15 @@
   body {
     @apply bg-background text-foreground antialiased;
   }
+  /* Halo violet discret en haut de page, comme sur la page d'accueil (thème sombre). */
+  html:not([data-theme='light']) body {
+    background-image: radial-gradient(
+      ellipse 60% 40% at 85% -10%,
+      rgb(124 58 237 / 0.16),
+      transparent 70%
+    );
+    background-attachment: fixed;
+  }
 
   /* Barres de défilement « Holo multicolore » : rail transparent, sans flèches, curseur fin au
      dégradé de la carte Ma collection. Les pseudo-éléments servent Chrome, Edge et Safari ; Firefox,
@@ -172,11 +201,11 @@
     margin: 4px;
   }
   ::-webkit-scrollbar-thumb {
-    background: linear-gradient(180deg, #ffd43b, #ff6b9a, #8b7cff, #4fd1ff, #6ee7a0);
+    background: linear-gradient(180deg, #c4b5fd, #8b5cf6, #f2733d);
     border-radius: 9999px;
   }
   ::-webkit-scrollbar-thumb:horizontal {
-    background: linear-gradient(90deg, #ffd43b, #ff6b9a, #8b7cff, #4fd1ff, #6ee7a0);
+    background: linear-gradient(90deg, #c4b5fd, #8b5cf6, #f2733d);
   }
   ::-webkit-scrollbar-button {
     display: none;
@@ -189,7 +218,7 @@
   @supports not selector(::-webkit-scrollbar) {
     * {
       scrollbar-width: thin;
-      scrollbar-color: rgb(139 124 255 / 0.7) transparent;
+      scrollbar-color: rgb(167 139 250 / 0.7) transparent;
     }
   }
 }
@@ -258,10 +287,40 @@
   }
 }
 
-/* Logo « TCG WATCH » : Archivo élargi (125 %), embarqué via @fontsource. */
+/* Logo « TCGWATCH » : Inter Tight très espacé, comme la page d'accueil. */
 @utility font-wordmark {
-  font-family: 'Archivo Variable', 'Unbounded Variable', ui-sans-serif, system-ui, sans-serif;
-  font-stretch: 125%;
+  font-family: 'Inter Tight Variable', 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: 0.16em;
+}
+
+/* Titres éclairés par un dégradé (lilas, ou orangé pour une mise en avant). */
+@utility text-grad {
+  color: var(--foreground);
+  @supports (background-clip: text) or (-webkit-background-clip: text) {
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+    -webkit-background-clip: text;
+    background-clip: text;
+    background-image: var(--grad-title);
+  }
+}
+@utility text-grad-ember {
+  color: var(--warning);
+  @supports (background-clip: text) or (-webkit-background-clip: text) {
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+    -webkit-background-clip: text;
+    background-clip: text;
+    background-image: var(--grad-ember);
+  }
+}
+
+/* Petite étiquette en capitales mono (« 01 — ACCUEIL »). */
+@utility label-mono {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
 }
 
 /* Texte des pages publiques (légal, méthode, guides). */

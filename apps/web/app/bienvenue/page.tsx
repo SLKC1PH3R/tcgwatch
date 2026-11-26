@@ -1,6 +1,3 @@
-import '@fontsource-variable/inter';
-import '@fontsource-variable/inter-tight';
-import '@fontsource-variable/jetbrains-mono';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';

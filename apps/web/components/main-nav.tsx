@@ -8,7 +8,7 @@ import { NAV, isLinkActive, type NavEntry, type NavGroup } from '@/lib/navigatio
 import { cn } from '@/lib/utils';
 
 const pill =
-  'flex h-9 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-sm font-semibold text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring';
+  'flex h-9 shrink-0 items-center gap-1.5 rounded-full px-3.5 font-mono text-[11.5px] font-medium tracking-[0.12em] text-muted-foreground uppercase transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring';
 const pillActive = 'bg-foreground text-background hover:bg-foreground hover:text-background';
 
 /** Menu principal (ordinateur) : liens directs et sous-menus déroulants. */

@@ -1,8 +1,8 @@
 import type { Metadata, Viewport } from 'next';
 import { cookies } from 'next/headers';
-import '@fontsource-variable/manrope';
-import '@fontsource-variable/unbounded';
-import '@fontsource-variable/archivo/wdth.css';
+import '@fontsource-variable/inter';
+import '@fontsource-variable/inter-tight';
+import '@fontsource-variable/jetbrains-mono';
 import './globals.css';
 import { ServiceWorkerRegister } from '@/components/sw-register';
 import { parseTheme } from '@/lib/theme';
@@ -15,7 +15,7 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: [
-    { media: '(prefers-color-scheme: dark)', color: '#0c0d16' },
+    { media: '(prefers-color-scheme: dark)', color: '#050508' },
     { media: '(prefers-color-scheme: light)', color: '#f5f6fb' },
   ],
 };

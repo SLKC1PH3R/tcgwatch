@@ -44,7 +44,7 @@ export function BrandMark({ className }: { className?: string }) {
   );
 }
 
-/** Logo complet : emblème + « TCG WATCH » en capitales larges. */
+/** Logo complet : point lumineux + « TCGWATCH » espacé, comme sur la page d'accueil. */
 export function BrandLogo({
   size = 'md',
   compact = false,
@@ -57,20 +57,22 @@ export function BrandLogo({
 }) {
   return (
     <span
-      className={cn(
-        'inline-flex items-center',
-        size === 'lg' ? 'gap-3' : compact ? 'gap-2 sm:gap-2.5' : 'gap-2.5',
-        className,
-      )}
+      className={cn('inline-flex items-center', size === 'lg' ? 'gap-3' : 'gap-2.5', className)}
     >
-      <BrandMark className={size === 'lg' ? 'size-11' : compact ? 'size-7 sm:size-8' : 'size-8'} />
+      <span
+        aria-hidden
+        className={cn(
+          'shrink-0 rounded-full bg-[#ffd43b] shadow-[0_0_14px_#ffd43b]',
+          size === 'lg' ? 'size-3' : 'size-2.5',
+        )}
+      />
       <span
         className={cn(
-          'font-wordmark leading-none font-black tracking-[0.04em] whitespace-nowrap text-foreground',
-          size === 'lg' ? 'text-2xl' : compact ? 'text-base sm:text-lg' : 'text-lg',
+          'font-wordmark leading-none font-extrabold whitespace-nowrap text-foreground',
+          size === 'lg' ? 'text-2xl' : compact ? 'text-sm sm:text-base' : 'text-base',
         )}
       >
-        TCG WATCH
+        TCGWATCH
       </span>
     </span>
   );
