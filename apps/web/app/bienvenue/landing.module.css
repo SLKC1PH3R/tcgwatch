@@ -1050,7 +1050,7 @@
   flex-direction: column;
   justify-content: flex-end;
   gap: 8px;
-  height: 140px;
+  height: 176px;
   overflow: hidden;
   padding: 10px 12px 12px;
 }
@@ -1444,7 +1444,10 @@
     padding: 7px 14px;
   }
   .switches li {
-    padding: 5px 0;
+    padding: 6px 0;
+  }
+  .switches small {
+    display: none;
   }
   .days {
     height: 72px;

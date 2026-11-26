@@ -517,6 +517,19 @@ export default async function LandingPage() {
           <article className={cn(s.tile, s.span2)}>
             <div className={s.tileIn}>
               <div className={s.tileHead}>
+                <span>Telegram</span>
+                <span>{fr.format(retailers)} boutiques</span>
+              </div>
+              <h3>Alertes instantanées</h3>
+              <div className={s.viz}>
+                <TelegramDemo alerts={demoAlerts} />
+              </div>
+            </div>
+          </article>
+
+          <article className={cn(s.tile, s.span2)}>
+            <div className={s.tileIn}>
+              <div className={s.tileHead}>
                 <span>Alertes</span>
                 <span>Démonstration</span>
               </div>
@@ -530,19 +543,6 @@ export default async function LandingPage() {
                     { title: 'Nouvelle sortie', hint: 'au calendrier', on: false },
                   ]}
                 />
-              </div>
-            </div>
-          </article>
-
-          <article className={cn(s.tile, s.span2)}>
-            <div className={s.tileIn}>
-              <div className={s.tileHead}>
-                <span>Telegram</span>
-                <span>{fr.format(retailers)} boutiques</span>
-              </div>
-              <h3>Alertes instantanées</h3>
-              <div className={s.viz}>
-                <TelegramDemo alerts={demoAlerts} />
               </div>
             </div>
           </article>
