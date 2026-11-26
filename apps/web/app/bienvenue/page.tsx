@@ -15,6 +15,7 @@ import { cn } from '@/lib/utils';
 import s from './landing.module.css';
 import { AlertSwitches, ScannerBand, type ScanCard } from './scanner-band';
 import { SectionPager } from './section-pager';
+import { TelegramDemo, type DemoAlert } from './telegram-demo';
 
 export const metadata: Metadata = {
   title: 'TCGWatch — stocks, prix et alertes Pokémon JCC en France',
@@ -96,7 +97,7 @@ const Arrow = () => (
 /** Page d'accueil publique : identité « scanner », avec les vraies cartes et boutiques du site. */
 export default async function LandingPage() {
   if (await getCurrentUser()) redirect('/');
-  const [retailers, products, cardCount, releases, open, lastCheck, top, shops, restocks, qr] =
+  const [retailers, products, cardCount, releases, open, lastCheck, top, restocks, qr] =
     await Promise.all([
       prisma.retailer.count({ where: { enabled: true, listings: { some: {} } } }),
       prisma.product.count({ where: { listings: { some: {} } } }),
@@ -117,12 +118,6 @@ export default async function LandingPage() {
           priceTrend: true,
           release: { select: { nameFr: true, cardCountOfficial: true } },
         },
-      }),
-      prisma.retailer.findMany({
-        where: { enabled: true, listings: { some: {} } },
-        orderBy: { listings: { _count: 'desc' } },
-        take: 7,
-        select: { name: true },
       }),
       prisma.alertEvent.findMany({
         where: { type: 'BACK_IN_STOCK', listingId: { not: null } },
@@ -184,14 +179,24 @@ export default async function LandingPage() {
         price: toNumber(r.price),
       }))
     : [];
-  const orbitPos = [
-    [50, 8],
-    [88, 26],
-    [92, 70],
-    [62, 94],
-    [18, 88],
-    [6, 50],
-    [20, 14],
+  // Alertes de la démonstration : les vrais derniers restocks, complétés par des exemples.
+  const demoAlerts: DemoAlert[] = [
+    ...ledger
+      .filter((r) => r.price !== null)
+      .slice(0, 3)
+      .map((r) => ({
+        kind: 'stock' as const,
+        product: r.name,
+        shop: r.shop,
+        price: `${formatPrice(r.price!)} livré`,
+      })),
+    { kind: 'preorder', product: 'Display 36 boosters', shop: 'Boutique', price: 'précommande' },
+    {
+      kind: 'price',
+      product: 'Coffret Dresseur d’Élite',
+      shop: 'Boutique',
+      price: 'sous votre seuil',
+    },
   ];
 
   return (
@@ -532,43 +537,12 @@ export default async function LandingPage() {
           <article className={cn(s.tile, s.span2)}>
             <div className={s.tileIn}>
               <div className={s.tileHead}>
-                <span>Boutiques</span>
-                <span>{fr.format(retailers)} suivies</span>
+                <span>Telegram</span>
+                <span>{fr.format(retailers)} boutiques</span>
               </div>
-              <h3>Prix livrés comparés</h3>
-              <div className={cn(s.viz, s.orbit)} aria-hidden>
-                <svg viewBox="0 0 100 100" preserveAspectRatio="none">
-                  <ellipse
-                    cx="50"
-                    cy="50"
-                    rx="40"
-                    ry="38"
-                    fill="none"
-                    stroke="rgba(196,181,253,0.45)"
-                    strokeWidth="1"
-                    vectorEffect="non-scaling-stroke"
-                  />
-                  <ellipse
-                    cx="50"
-                    cy="50"
-                    rx="26"
-                    ry="24"
-                    fill="none"
-                    stroke="rgba(196,181,253,0.2)"
-                    strokeDasharray="2 5"
-                    vectorEffect="non-scaling-stroke"
-                  />
-                </svg>
-                <span className={s.orbitCore}>TCGWATCH</span>
-                {shops.map((shop, i) => (
-                  <span
-                    key={shop.name}
-                    className={s.node}
-                    style={{ left: `${orbitPos[i]![0]}%`, top: `${orbitPos[i]![1]}%` }}
-                  >
-                    {shop.name}
-                  </span>
-                ))}
+              <h3>Alertes instantanées</h3>
+              <div className={s.viz}>
+                <TelegramDemo alerts={demoAlerts} />
               </div>
             </div>
           </article>
