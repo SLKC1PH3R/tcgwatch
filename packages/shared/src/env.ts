@@ -66,6 +66,8 @@ const schema = z.object({
   RELEASE_REMINDER_CRON: z.string().default('0 18 * * *'),
   /** Alertes retenues la nuit et résumés quotidiens. */
   NOTIFY_QUEUE_CRON: z.string().default('*/10 * * * *'),
+  /** Lecture des messages du bot Telegram (liaison des comptes, /stop). */
+  TELEGRAM_BOT_CRON: z.string().default('* * * * *'),
   /** Empreintes des images de cartes pour le scanner (par lots, jusqu'à rattraper le catalogue). */
   CARD_HASH_CRON: z.string().default('20 * * * *'),
   /** Jours de relevés détaillés gardés (au-delà : une ligne par fiche et par jour). */

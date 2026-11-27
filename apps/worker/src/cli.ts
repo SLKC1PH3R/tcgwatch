@@ -31,6 +31,7 @@ import { importTcgdex } from './jobs/import-tcgdex';
 import { linkProductExtensions } from './jobs/link-extensions';
 import { runCardWatch } from './jobs/card-watch';
 import { runNotificationQueue } from './jobs/notification-queue';
+import { runTelegramBot } from './jobs/telegram-bot';
 import { applyCardPrices, resolveCardmarketIds, snapshotMarketIndex } from './jobs/card-prices';
 import { runMarketJob, saveQuotes } from './jobs/market';
 import { linkSealedProducts } from './jobs/sealed-links';
@@ -154,6 +155,9 @@ try {
     case 'notify-queue':
       await runNotificationQueue(ctx);
       break;
+    case 'telegram-bot':
+      ctx.logger.info({ handled: await runTelegramBot(ctx) }, 'Messages du bot traités');
+      break;
     case 'telegram': {
       if (!ctx.env.TELEGRAM_BOT_TOKEN) {
         ctx.logger.error('TELEGRAM_BOT_TOKEN absent : créez le bot avec @BotFather');
@@ -186,7 +190,7 @@ try {
     default:
       ctx.logger.error(
         { command },
-        'Commande inconnue (listings | all-now | tcgdex | cards | link | pokecardex | discover | market | card-prices | sealed-prices | card-images | ebay | retailers | card-watch | notify-queue | telegram | notify-test)',
+        'Commande inconnue (listings | all-now | tcgdex | cards | link | pokecardex | discover | market | card-prices | sealed-prices | card-images | ebay | retailers | card-watch | notify-queue | telegram-bot | telegram | notify-test)',
       );
       process.exitCode = 1;
   }

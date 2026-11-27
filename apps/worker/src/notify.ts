@@ -66,9 +66,53 @@ export class Notifier {
     return Boolean(this.config.telegramBotToken && this.config.telegramChatId);
   }
 
-  async send(n: Notification): Promise<DeliveryResult> {
-    const [ntfy, telegram] = await Promise.all([this.sendNtfy(n), this.sendTelegram(n)]);
+  /** Envoi sur les canaux du serveur (ntfy, conversation Telegram de l'administrateur). */
+  async send(n: Notification, opts: { telegram?: boolean } = {}): Promise<DeliveryResult> {
+    const [ntfy, telegram] = await Promise.all([
+      this.sendNtfy(n),
+      opts.telegram === false || !this.telegramEnabled
+        ? false
+        : this.sendTelegram(n, this.config.telegramChatId!),
+    ]);
     return { ntfy, telegram };
+  }
+
+  /** Conversation Telegram du serveur (TELEGRAM_CHAT_ID), pour éviter un doublon. */
+  get serverChatId(): string | undefined {
+    return this.telegramEnabled ? this.config.telegramChatId : undefined;
+  }
+
+  /** Bot configuré (jeton présent) : liaison des Telegram personnels possible. */
+  get hasBot(): boolean {
+    return Boolean(this.config.telegramBotToken);
+  }
+
+  /** Envoi sur la conversation Telegram personnelle d'un utilisateur. */
+  async sendTelegramTo(chatId: string, n: Notification): Promise<boolean> {
+    if (!this.config.telegramBotToken) return false;
+    return this.sendTelegram(n, chatId);
+  }
+
+  /** Appel de l'API du bot ; null en cas d'échec. */
+  async botApi<T>(method: string, body?: Record<string, unknown>): Promise<T | null> {
+    if (!this.config.telegramBotToken) return null;
+    try {
+      const res = await this.fetchImpl(
+        `https://api.telegram.org/bot${this.config.telegramBotToken}/${method}`,
+        {
+          method: body ? 'POST' : 'GET',
+          headers: body ? { 'content-type': 'application/json' } : undefined,
+          body: body ? JSON.stringify(body) : undefined,
+          signal: AbortSignal.timeout(15_000),
+        },
+      );
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json = (await res.json()) as { ok: boolean; result: T };
+      return json.ok ? json.result : null;
+    } catch (err) {
+      this.logger.warn({ err: String(err), channel: 'telegram' }, `Telegram ${method} impossible`);
+      return null;
+    }
   }
 
   private async sendNtfy(n: Notification): Promise<boolean> {
@@ -128,8 +172,7 @@ export class Notifier {
     return [...chats.values()];
   }
 
-  private async sendTelegram(n: Notification): Promise<boolean> {
-    if (!this.telegramEnabled) return false;
+  private async sendTelegram(n: Notification, chatId: string): Promise<boolean> {
     const escape = (s: string) =>
       s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
     const text = [
@@ -156,7 +199,7 @@ export class Notifier {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({
-            chat_id: this.config.telegramChatId,
+            chat_id: chatId,
             text,
             parse_mode: 'HTML',
             disable_notification: Boolean(n.silent),

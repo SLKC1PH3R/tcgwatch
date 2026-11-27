@@ -1,5 +1,6 @@
 'use server';
 
+import { randomBytes } from 'node:crypto';
 import { revalidatePath } from 'next/cache';
 import { prisma, type AlertType } from '@tcgwatch/db';
 import { ALERT_TYPES, fromClock } from '@/lib/alerts';
@@ -96,5 +97,43 @@ export async function saveAlertTypesAction(formData: FormData) {
 export async function setProductAlertMuteAction(productId: string, type: AlertType, mute: boolean) {
   const user = await requireUser();
   await setFollowMute(user.id, productId, type, mute);
+  refresh();
+}
+
+/** Durée de validité du lien de liaison Telegram. */
+const TELEGRAM_LINK_MS = 15 * 60 * 1000;
+
+/** Prépare un lien de liaison Telegram (jeton à usage unique, valable 15 minutes). */
+export async function createTelegramLinkAction() {
+  const user = await requireUser();
+  await prisma.user.update({
+    where: { id: user.id },
+    data: {
+      telegramLinkToken: randomBytes(18).toString('base64url'),
+      telegramLinkExpires: new Date(Date.now() + TELEGRAM_LINK_MS),
+    },
+  });
+  refresh();
+}
+
+/** Active ou coupe ses alertes Telegram (même effet que /start et /stop dans le bot). */
+export async function setTelegramEnabledAction(enabled: boolean) {
+  const user = await requireUser();
+  await prisma.user.update({ where: { id: user.id }, data: { telegramEnabled: enabled } });
+  refresh();
+}
+
+/** Délie la conversation Telegram du compte. */
+export async function unlinkTelegramAction() {
+  const user = await requireUser();
+  await prisma.user.update({
+    where: { id: user.id },
+    data: {
+      telegramChatId: null,
+      telegramName: null,
+      telegramLinkToken: null,
+      telegramLinkExpires: null,
+    },
+  });
   refresh();
 }

@@ -1,6 +1,7 @@
 import { prisma, type AlertType } from '@tcgwatch/db';
 import { formatPrice, toNumber } from '@tcgwatch/shared';
 import type { WorkerContext } from '../context';
+import { deliverToUser } from '../deliver';
 import type { Notification } from '../notify';
 import { inQuietHours } from '../quiet-hours';
 
@@ -68,7 +69,7 @@ export async function alertRecipients(alert: AlertToDispatch): Promise<Recipient
 
 /**
  * Journalise l'alerte (AlertEvent, une par destinataire) puis l'envoie : canaux du serveur
- * (ntfy, Telegram) pour les administrateurs, notifications du navigateur pour chacun. Une
+ * (ntfy, Telegram) pour les administrateurs, Telegram personnel et navigateur pour chacun. Une
  * alerte identique déjà émise à un destinataire dans la fenêtre d'anti-doublon est ignorée.
  */
 export async function dispatchAlert(ctx: WorkerContext, alert: AlertToDispatch): Promise<boolean> {
@@ -118,13 +119,14 @@ export async function dispatchAlert(ctx: WorkerContext, alert: AlertToDispatch):
 
     details ??= alert.productId ? await priceDetails(alert.productId) : [];
     const notification = { ...alert, details, silent };
-    const delivery = r.admin
-      ? await ctx.notifier.send(notification)
-      : { ntfy: false, telegram: false };
-    const push = ctx.push ? await ctx.push.sendToUser(r.userId, notification) : 0;
+    const delivery = await deliverToUser(ctx, r.userId, r.admin, notification);
     await prisma.alertEvent.update({
       where: { id: event.id },
-      data: { sentNtfy: delivery.ntfy, sentTelegram: delivery.telegram, sentPush: push > 0 },
+      data: {
+        sentNtfy: delivery.ntfy,
+        sentTelegram: delivery.telegram,
+        sentPush: delivery.push,
+      },
     });
   }
   if (emitted) {

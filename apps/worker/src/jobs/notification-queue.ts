@@ -1,23 +1,11 @@
 import { prisma } from '@tcgwatch/db';
 import type { WorkerContext } from '../context';
-import type { Notification } from '../notify';
+import { deliverToUser } from '../deliver';
 import { inQuietHours, minutesOfDay } from '../quiet-hours';
 
 const DAY_MS = 86_400_000;
 /** Lignes listées dans un récapitulatif (le reste est résumé en « + N autres »). */
 const MAX_LINES = 8;
-
-/** Envoie une notification à un utilisateur : canaux du serveur s'il est admin, navigateur. */
-async function deliver(
-  ctx: WorkerContext,
-  userId: string,
-  admin: boolean,
-  n: Notification,
-): Promise<{ ntfy: boolean; telegram: boolean; push: boolean }> {
-  const server = admin ? await ctx.notifier.send(n) : { ntfy: false, telegram: false };
-  const push = ctx.push ? (await ctx.push.sendToUser(userId, n)) > 0 : false;
-  return { ...server, push };
-}
 
 /** Lignes d'un récapitulatif : titres des alertes, les plus récentes d'abord. */
 export function summaryLines(titles: string[]): string[] {
@@ -70,7 +58,7 @@ export async function runNotificationQueue(ctx: WorkerContext, now = new Date())
           select: { id: true, title: true },
         });
         if (events.length > 0) {
-          const sent = await deliver(ctx, s.userId, admin, {
+          const sent = await deliverToUser(ctx, s.userId, admin, {
             title: `☀️ Résumé : ${events.length} alerte${events.length > 1 ? 's' : ''} en 24 h`,
             message: 'Les alertes des dernières 24 heures.',
             details: summaryLines(events.map((e) => e.title)),
@@ -105,7 +93,7 @@ export async function runNotificationQueue(ctx: WorkerContext, now = new Date())
         });
         if (held.length === 0) continue;
         const one = held.length === 1 ? held[0]! : null;
-        const sent = await deliver(ctx, s.userId, admin, {
+        const sent = await deliverToUser(ctx, s.userId, admin, {
           title: one ? one.title : `🌙 ${held.length} alertes pendant les heures silencieuses`,
           message: one ? 'Alerte reçue pendant les heures silencieuses.' : 'Pendant la nuit :',
           details: one ? undefined : summaryLines(held.map((e) => e.title)),

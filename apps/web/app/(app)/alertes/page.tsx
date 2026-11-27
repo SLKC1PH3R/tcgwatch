@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { parsePausedUntil, TELEGRAM_SETTINGS } from '@tcgwatch/shared';
 import { prisma, type Prisma } from '@tcgwatch/db';
 import { FitPage } from '@/components/fit-page';
 import { PageHeader } from '@/components/page-header';
@@ -33,12 +34,16 @@ import {
   setProductAlertMuteAction,
 } from './actions';
 import { SettingsStack } from './settings-stack';
+import { TelegramPanel } from './telegram-panel';
 
 export const metadata: Metadata = { title: 'Alertes' };
 
 type Props = { searchParams: Promise<{ etat?: string; type?: string }> };
 
 const PAGE_SIZE = 150;
+
+/** Heure de la requête (validité du lien Telegram, pauses). */
+const currentTime = () => new Date();
 
 export default async function AlertsPage({ searchParams }: Props) {
   const { etat, type: rawType } = await searchParams;
@@ -103,6 +108,24 @@ export default async function AlertsPage({ searchParams }: Props) {
       .then((rows) => rows.map((r) => ({ ...r.product, mutedAlerts: r.mutedAlerts }))),
   ]);
   const typeCount = new Map(byType.map((t) => [t.type, t._count._all]));
+  const [telegram, telegramSettings] = await Promise.all([
+    prisma.user.findUniqueOrThrow({
+      where: { id: user.id },
+      select: {
+        telegramChatId: true,
+        telegramName: true,
+        telegramEnabled: true,
+        telegramAdminMode: true,
+        telegramPausedUntil: true,
+        telegramLinkToken: true,
+        telegramLinkExpires: true,
+      },
+    }),
+    prisma.appSetting.findMany({
+      where: { key: { in: [TELEGRAM_SETTINGS.botUsername, TELEGRAM_SETTINGS.pausedUntil] } },
+    }),
+  ]);
+  const setting = (key: string) => telegramSettings.find((r) => r.key === key)?.value ?? null;
   const mutedTypes = new Set(settings?.mutedTypes ?? []);
   const quietOn = settings?.quietStart != null && settings?.quietEnd != null;
   const shownCount = type ? (typeCount.get(type) ?? 0) : unreadOnly ? unread : total;
@@ -342,6 +365,12 @@ export default async function AlertsPage({ searchParams }: Props) {
             bodyClassName: 'space-y-4',
             body: (
               <>
+                <TelegramPanel
+                  user={telegram}
+                  bot={setting(TELEGRAM_SETTINGS.botUsername)}
+                  globalPause={parsePausedUntil(setting(TELEGRAM_SETTINGS.pausedUntil))}
+                  now={currentTime()}
+                />
                 {vapidKey && (
                   <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border p-3">
                     <div className="min-w-0">
