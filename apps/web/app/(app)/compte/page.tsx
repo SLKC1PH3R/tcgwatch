@@ -45,7 +45,7 @@ export default async function AccountPage() {
             </CardHeader>
             <CardContent className="flex flex-wrap gap-2">
               {[
-                { href: '/membres', label: 'Membres et Telegram' },
+                { href: '/membres', label: 'Membres et bot Telegram' },
                 { href: '/sources/erreurs', label: 'Erreurs du worker' },
                 { href: '/sources', label: 'Sources de données' },
                 { href: '/revendeurs/etat', label: 'État des relevés' },

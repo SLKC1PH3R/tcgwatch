@@ -1,5 +1,5 @@
 import { prisma } from '@tcgwatch/db';
-import { parsePausedUntil, telegramDecision, TELEGRAM_SETTINGS } from '@tcgwatch/shared';
+import { parsePausedUntil, TELEGRAM_SETTINGS } from '@tcgwatch/shared';
 import type { WorkerContext } from './context';
 import type { Notification } from './notify';
 
@@ -9,19 +9,18 @@ export interface UserDelivery {
   push: boolean;
 }
 
-/** Pause globale de Telegram (réglage administrateur), ou null. */
-export async function telegramGlobalPause(): Promise<Date | null> {
+/** Bot Telegram en pause (réglage administrateur) ? */
+export async function telegramPaused(now = new Date()): Promise<boolean> {
   const row = await prisma.appSetting.findUnique({
     where: { key: TELEGRAM_SETTINGS.pausedUntil },
   });
-  return parsePausedUntil(row?.value);
+  const until = parsePausedUntil(row?.value);
+  return until !== null && until > now;
 }
 
 /**
- * Envoie une notification à un utilisateur sur tous ses canaux :
- * - administrateur : ntfy et conversation Telegram du serveur ;
- * - Telegram personnel s'il est relié (réglages de l'utilisateur et de l'administrateur) ;
- * - notifications du navigateur.
+ * Envoie une notification à un utilisateur : canaux du serveur (ntfy, groupe Telegram) pour
+ * les administrateurs, sauf bot en pause ; notifications du navigateur pour chacun.
  */
 export async function deliverToUser(
   ctx: WorkerContext,
@@ -29,36 +28,12 @@ export async function deliverToUser(
   admin: boolean,
   n: Notification,
 ): Promise<UserDelivery> {
-  const [user, globalPause] = await Promise.all([
-    prisma.user.findUnique({
-      where: { id: userId },
-      select: {
-        telegramChatId: true,
-        telegramEnabled: true,
-        telegramAdminMode: true,
-        telegramPausedUntil: true,
-      },
-    }),
-    telegramGlobalPause(),
-  ]);
-  const now = new Date();
-  const telegramOpen = !(globalPause && globalPause > now);
-  const server = admin
-    ? await ctx.notifier.send(n, { telegram: telegramOpen })
-    : { ntfy: false, telegram: false };
-  let telegram = server.telegram;
-  if (user) {
-    const decision = telegramDecision(user, globalPause, now);
-    // Conversation personnelle = celle du serveur : déjà envoyée ci-dessus.
-    const duplicate = admin && server.telegram && user.telegramChatId === ctx.notifier.serverChatId;
-    if (decision.send && !duplicate) {
-      const sent = await ctx.notifier.sendTelegramTo(user.telegramChatId!, {
-        ...n,
-        silent: n.silent || decision.silent,
-      });
-      telegram ||= sent;
-    }
+  let server = { ntfy: false, telegram: false };
+  if (admin) {
+    // Une base injoignable ne doit pas bloquer l'envoi : la pause est alors ignorée.
+    const paused = await telegramPaused().catch(() => false);
+    server = await ctx.notifier.send(n, { telegram: !paused });
   }
   const push = ctx.push ? (await ctx.push.sendToUser(userId, n)) > 0 : false;
-  return { ntfy: server.ntfy, telegram, push };
+  return { ...server, push };
 }

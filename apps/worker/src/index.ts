@@ -18,7 +18,6 @@ import { runSecondhandPrices } from './jobs/secondhand';
 import { runCardFrPrices } from './jobs/card-fr-prices';
 import { runCardWatch } from './jobs/card-watch';
 import { runNotificationQueue } from './jobs/notification-queue';
-import { runTelegramBot } from './jobs/telegram-bot';
 import { syncRetailers } from './jobs/sync-retailers';
 import { recordApiCalls, startJobRun } from './usage';
 
@@ -43,7 +42,8 @@ function exclusive(ctx: WorkerContext, name: string, fn: () => Promise<unknown>)
     } finally {
       running = false;
       await finish(failure);
-      await recordApiCalls('ebay', EbayClient.calls - ebayBefore);
+      // Compteur eBay global : seule la tâche eBay l'utilise, les autres tournent en parallèle.
+      if (name === 'ebay') await recordApiCalls('ebay', EbayClient.calls - ebayBefore);
     }
   };
 }
@@ -108,9 +108,6 @@ async function main() {
   });
 
   const notifyQueueJob = exclusive(ctx, 'notify-queue', () => runNotificationQueue(ctx));
-  const telegramBotJob = exclusive(ctx, 'telegram-bot', async () => {
-    await runTelegramBot(ctx);
-  });
 
   const cardHashJob = exclusive(ctx, 'card-hashes', async () => {
     await runCardHashes(ctx);
@@ -123,7 +120,6 @@ async function main() {
     cron.schedule(env.HISTORY_CRON, historyJob, { timezone, name: 'history' }),
     cron.schedule(env.CARD_HASH_CRON, cardHashJob, { timezone, name: 'card-hashes' }),
     cron.schedule(env.NOTIFY_QUEUE_CRON, notifyQueueJob, { timezone, name: 'notify-queue' }),
-    cron.schedule(env.TELEGRAM_BOT_CRON, telegramBotJob, { timezone, name: 'telegram-bot' }),
     cron.schedule(env.RELEASE_REMINDER_CRON, releaseReminderJob, {
       timezone,
       name: 'release-reminders',

@@ -123,17 +123,6 @@ model User {
   profileAccent       String?
   profileFavorite     String?
   profileLocation     String?
-  /// Telegram personnel : conversation reliée au bot (lien /start avec un jeton à usage unique).
-  telegramChatId      String?            @unique
-  telegramName        String?
-  telegramLinkToken   String?            @unique
-  telegramLinkExpires DateTime?
-  /// Choix de l'utilisateur : recevoir ses alertes sur Telegram.
-  telegramEnabled     Boolean            @default(true)
-  /// Réglage administrateur : « active », « silent » (sans son) ou « off » (coupé).
-  telegramAdminMode   String             @default("active")
-  /// Pause décidée par un administrateur jusqu'à cette date.
-  telegramPausedUntil DateTime?
   profileContact      String?
   /// Vitrine mise en avant en haut de la page publique.
   profileFeaturedId   String?
@@ -938,8 +927,8 @@ model CardSale {
   @@index([userId, soldAt])
 }
 
-/// Réglages globaux de l'application (clé → valeur) : pause Telegram, nom du bot, curseur
-/// de lecture des messages du bot…
+/// Réglages globaux de l'application (clé → valeur) : pause du bot Telegram, lien
+/// d'invitation du groupe…
 model AppSetting {
   key       String   @id
   value     String

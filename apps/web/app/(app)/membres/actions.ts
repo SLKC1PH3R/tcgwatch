@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { prisma } from '@tcgwatch/db';
-import { parseTelegramMode, TELEGRAM_SETTINGS } from '@tcgwatch/shared';
+import { parseTelegramInvite, TELEGRAM_SETTINGS } from '@tcgwatch/shared';
 import { requireAdmin } from '@/lib/auth';
 
 const PAGE = '/membres';
@@ -31,27 +31,7 @@ export async function setRoleAction(userId: string, admin: boolean) {
   revalidatePath('/', 'layout');
 }
 
-/** Réglage administrateur du Telegram d'un membre : actif, sans son ou coupé. */
-export async function setTelegramModeAction(userId: string, formData: FormData) {
-  await requireAdmin();
-  await prisma.user.update({
-    where: { id: userId },
-    data: { telegramAdminMode: parseTelegramMode(String(formData.get('mode') ?? '')) },
-  });
-  revalidatePath(PAGE);
-}
-
-/** Met en pause (ou reprend) le Telegram d'un membre. */
-export async function pauseTelegramAction(userId: string, formData: FormData) {
-  await requireAdmin();
-  await prisma.user.update({
-    where: { id: userId },
-    data: { telegramPausedUntil: pauseEnd(formData) },
-  });
-  revalidatePath(PAGE);
-}
-
-/** Pause de Telegram pour tout le monde, conversation du serveur comprise (ou reprise). */
+/** Met le bot Telegram en pause (ou le reprend) : plus rien n'est envoyé au groupe. */
 export async function setGlobalTelegramPauseAction(formData: FormData) {
   await requireAdmin();
   const until = pauseEnd(formData);
@@ -63,6 +43,26 @@ export async function setGlobalTelegramPauseAction(formData: FormData) {
     });
   } else {
     await prisma.appSetting.deleteMany({ where: { key: TELEGRAM_SETTINGS.pausedUntil } });
+  }
+  revalidatePath('/', 'layout');
+}
+
+/** Lien d'invitation du groupe Telegram, affiché dans la page Alertes (vide : masqué). */
+export async function setTelegramInviteAction(formData: FormData) {
+  await requireAdmin();
+  const raw = String(formData.get('lien') ?? '').trim();
+  const url = parseTelegramInvite(raw);
+  if (raw && !url) {
+    redirect(`${PAGE}?erreur=${encodeURIComponent('Le lien doit commencer par https://t.me/')}`);
+  }
+  if (url) {
+    await prisma.appSetting.upsert({
+      where: { key: TELEGRAM_SETTINGS.inviteUrl },
+      create: { key: TELEGRAM_SETTINGS.inviteUrl, value: url },
+      update: { value: url },
+    });
+  } else {
+    await prisma.appSetting.deleteMany({ where: { key: TELEGRAM_SETTINGS.inviteUrl } });
   }
   revalidatePath('/', 'layout');
 }

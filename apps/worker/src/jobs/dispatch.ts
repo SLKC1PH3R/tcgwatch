@@ -69,7 +69,7 @@ export async function alertRecipients(alert: AlertToDispatch): Promise<Recipient
 
 /**
  * Journalise l'alerte (AlertEvent, une par destinataire) puis l'envoie : canaux du serveur
- * (ntfy, Telegram) pour les administrateurs, Telegram personnel et navigateur pour chacun. Une
+ * (ntfy, groupe Telegram) pour les administrateurs, navigateur pour chacun. Une
  * alerte identique déjà émise à un destinataire dans la fenêtre d'anti-doublon est ignorée.
  */
 export async function dispatchAlert(ctx: WorkerContext, alert: AlertToDispatch): Promise<boolean> {
