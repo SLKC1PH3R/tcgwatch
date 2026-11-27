@@ -30,9 +30,11 @@ export async function createOpeningAction(
   if (!parsed.success) return { error: firstIssue(parsed.error) };
   const product = await prisma.product.findUnique({
     where: { id: parsed.data.productId },
-    select: { releaseId: true },
+    select: { releaseId: true, extensionId: true },
   });
-  if (!product?.releaseId) return { error: 'Ce produit n’est lié à aucune extension.' };
+  if (!product?.extensionId && !product?.releaseId) {
+    return { error: 'Ce produit n’est lié à aucune extension.' };
+  }
   const opening = await prisma.productOpening.create({
     data: {
       userId: user.id,
@@ -67,11 +69,12 @@ export async function saveOpeningCardsAction(
     where: { id, userId: user.id },
     select: {
       id: true,
-      product: { select: { releaseId: true } },
+      product: { select: { releaseId: true, extensionId: true } },
       cards: { select: { cardId: true, variant: true, quantity: true } },
     },
   });
-  if (!opening?.product.releaseId) return { saved: 0, error: 'Ouverture introuvable' };
+  const cardRelease = opening?.product.extensionId ?? opening?.product.releaseId;
+  if (!opening || !cardRelease) return { saved: 0, error: 'Ouverture introuvable' };
   const wanted = (['normal', 'reverse'] as const).flatMap((variant) =>
     Object.entries(parsed.data[variant])
       .filter(([, q]) => q > 0)
@@ -83,7 +86,7 @@ export async function saveOpeningCardsAction(
       await prisma.card.findMany({
         where: {
           id: { in: wanted.map((w) => w.cardId) },
-          releaseId: opening.product.releaseId,
+          releaseId: cardRelease,
         },
         select: { id: true },
       })

@@ -21,7 +21,7 @@ export default async function OpeningPage({ params }: Props) {
   const user = await requireUser();
   const opening = await getOpening(user.id, id);
   if (!opening) notFound();
-  const code = opening.product.release?.tcgdexId;
+  const code = opening.product.extension?.tcgdexId ?? opening.product.release?.tcgdexId;
   const data = code ? await getReleaseCards(user.id, code) : null;
 
   return (

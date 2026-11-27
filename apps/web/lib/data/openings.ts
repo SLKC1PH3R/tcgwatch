@@ -28,6 +28,8 @@ const openingInclude = {
       name: true,
       type: true,
       imageUrl: true,
+      // Extension des cartes : `extension` (rattachement), sinon l'ancienne sortie `release`.
+      extension: { select: { tcgdexId: true, nameFr: true } },
       release: { select: { tcgdexId: true, nameFr: true } },
     },
   },
