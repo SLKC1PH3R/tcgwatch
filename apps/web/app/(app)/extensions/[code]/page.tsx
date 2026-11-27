@@ -495,13 +495,15 @@ async function PricesTab({ ext }: { ext: Extension }) {
       <CardHeader className="flex-col">
         <CardTitle>Displays et ETB depuis la sortie</CardTitle>
         <CardDescription>
-          Meilleur prix achetable du jour, en écart au prix conseillé (0 % = prix conseillé). Les
-          points mis de côté (prix aberrants) ne comptent pas.
+          {evo.unit === 'pct'
+            ? 'Meilleur prix achetable du jour, en écart au prix conseillé (0 % = prix conseillé).'
+            : 'Meilleur prix achetable du jour, en euros (prix conseillé pas encore connu pour tous les produits).'}{' '}
+          Les points mis de côté (prix aberrants) ne comptent pas.
         </CardDescription>
       </CardHeader>
       <CardContent>
         <TrendChart
-          unit="pct"
+          unit={evo.unit}
           height="h-72"
           data={evo.data}
           series={evo.series.map((s, i) => ({
@@ -509,7 +511,11 @@ async function PricesTab({ ext }: { ext: Extension }) {
             label: s.name,
             color: CHART_COLORS[i % CHART_COLORS.length]!,
           }))}
-          empty="Pas encore d’historique de prix pour les displays et ETB de cette extension (prix conseillé nécessaire)."
+          empty={
+            evo.series.length === 0
+              ? 'Aucun display ni ETB de cette extension n’a encore de prix relevé en boutique.'
+              : 'Premier jour de relevé : la courbe apparaît dès demain (il faut au moins deux jours).'
+          }
         />
       </CardContent>
     </Card>

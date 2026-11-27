@@ -171,14 +171,16 @@ export async function getExtensionChaseCards(releaseId: string) {
 }
 
 /**
- * Évolution des displays et ETB depuis la sortie : meilleur prix achetable du jour (résumés
- * quotidiens retenus) en % du prix conseillé, une courbe par produit.
+ * Évolution du meilleur prix achetable des displays et ETB de l'extension, jour par jour
+ * (historique quotidien des fiches, plus le prix relevé aujourd'hui).
+ * - en écart au prix conseillé si tous les produits suivis en ont un (0 % = prix conseillé) ;
+ * - sinon en euros, pour ne pas laisser le graphique vide faute de prix conseillé.
  */
 export async function getExtensionPriceEvolution(products: ExtensionProduct[]) {
-  const tracked = products.filter(
-    (p) => (p.type === 'DISPLAY' || p.type === 'ETB') && p.msrp && p.msrp > 0,
-  );
-  if (tracked.length === 0) return { data: [], series: [] };
+  const tracked = products.filter((p) => p.type === 'DISPLAY' || p.type === 'ETB');
+  const unit: 'pct' | 'eur' =
+    tracked.length > 0 && tracked.every((p) => p.msrp && p.msrp > 0) ? 'pct' : 'eur';
+  if (tracked.length === 0) return { unit, data: [], series: [], days: 0 };
   const rows = await prisma.$queryRaw<{ productId: string; date: Date; best: number }[]>`
     SELECT l."productId", d."date", MIN(d."minBuyablePrice")::float8 AS best
     FROM "ListingDaily" d JOIN "Listing" l ON l."id" = d."listingId"
@@ -186,17 +188,34 @@ export async function getExtensionPriceEvolution(products: ExtensionProduct[]) {
       AND d."minBuyablePrice" IS NOT NULL AND NOT COALESCE(d."excluded", d."suspect")
     GROUP BY l."productId", d."date"
     ORDER BY d."date"`;
+  // Aujourd'hui : meilleur prix achetable actuel (l'historique du jour n'est calculé que la nuit).
+  const today = new Date().toISOString().slice(0, 10);
+  const points = [
+    ...rows.map((r) => ({
+      productId: r.productId,
+      day: r.date.toISOString().slice(0, 10),
+      best: r.best,
+    })),
+    ...tracked
+      .filter((p) => p.best)
+      .map((p) => ({ productId: p.id, day: today, best: p.best!.price })),
+  ];
   const byDay = new Map<string, Record<string, number | string>>();
-  const msrp = new Map(tracked.map((p) => [p.id, p.msrp!]));
-  for (const r of rows) {
-    const day = r.date.toISOString().slice(0, 10);
-    const row = byDay.get(day) ?? { day };
-    row[r.productId] = Math.round((r.best / msrp.get(r.productId)! - 1) * 1000) / 10;
-    byDay.set(day, row);
+  const msrp = new Map(tracked.map((p) => [p.id, p.msrp ?? 0]));
+  for (const r of points) {
+    const row = byDay.get(r.day) ?? { day: r.day };
+    row[r.productId] =
+      unit === 'pct'
+        ? Math.round((r.best / msrp.get(r.productId)! - 1) * 1000) / 10
+        : Math.round(r.best * 100) / 100;
+    byDay.set(r.day, row);
   }
-  const present = new Set(rows.map((r) => r.productId));
+  const present = new Set(points.map((r) => r.productId));
+  const data = [...byDay.values()].sort((a, b) => String(a.day).localeCompare(String(b.day)));
   return {
-    data: [...byDay.values()],
+    unit,
+    data,
+    days: data.length,
     series: tracked.filter((p) => present.has(p.id)).map((p) => ({ id: p.id, name: p.name })),
   };
 }
