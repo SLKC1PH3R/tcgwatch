@@ -45,16 +45,27 @@ export async function getSeries() {
       },
     },
   });
-  // Valeur de chaque extension : somme des cotes Cardmarket du jour de ses cartes.
+  // Valeur de chaque extension : somme des cotes Cardmarket du jour de ses cartes, et somme des
+  // prix eBay FR relevés (seulement pour les cartes déjà relevées).
+  const [cm, fr] = await Promise.all([
+    prisma.card.groupBy({
+      by: ['releaseId'],
+      where: { priceTrend: { gt: 0 } },
+      _sum: { priceTrend: true },
+      _count: { _all: true },
+    }),
+    prisma.card.groupBy({
+      by: ['releaseId'],
+      where: { frPrice: { gt: 0 } },
+      _sum: { frPrice: true },
+      _count: { _all: true },
+    }),
+  ]);
   const values = new Map(
-    (
-      await prisma.card.groupBy({
-        by: ['releaseId'],
-        where: { priceTrend: { gt: 0 } },
-        _sum: { priceTrend: true },
-        _count: { _all: true },
-      })
-    ).map((g) => [g.releaseId, { value: toNumber(g._sum.priceTrend), priced: g._count._all }]),
+    cm.map((g) => [g.releaseId, { value: toNumber(g._sum.priceTrend), priced: g._count._all }]),
+  );
+  const frValues = new Map(
+    fr.map((g) => [g.releaseId, { value: toNumber(g._sum.frPrice), priced: g._count._all }]),
   );
   const withSets = series
     .filter((s) => s.releases.length > 0)
@@ -65,6 +76,8 @@ export async function getSeries() {
         coverUrl: r.imageUrl || r.symbolUrl ? null : coverOf(extensionProducts, cards),
         cardsValue: values.get(r.id)?.value ?? null,
         pricedCards: values.get(r.id)?.priced ?? 0,
+        cardsValueFr: frValues.get(r.id)?.value ?? null,
+        pricedCardsFr: frValues.get(r.id)?.priced ?? 0,
       })),
     }));
   return {

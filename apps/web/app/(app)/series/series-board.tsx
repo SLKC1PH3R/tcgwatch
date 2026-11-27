@@ -1,21 +1,25 @@
 import { Search } from 'lucide-react';
+import { cookies } from 'next/headers';
 import Link from 'next/link';
 import { formatDate, formatPrice } from '@tcgwatch/shared';
 import { FitPage } from '@/components/fit-page';
 import { PageHeader } from '@/components/page-header';
+import { PriceSourceToggle } from '@/components/price-source-toggle';
 import { SafeImg } from '@/components/safe-img';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { getSeries, type SerieWithSets } from '@/lib/data/encyclopedia';
 import { fitCard, fitGrid, fitScroll } from '@/lib/fit';
+import { parsePriceSource, PRICE_COOKIE, type PriceSource } from '@/lib/price-source';
 import { cn } from '@/lib/utils';
 
 /** Vue de l'encyclopédie : par produit (onglet Produits de l'extension) ou par cartes. */
 export type SeriesMode = 'produits' | 'cartes';
 
 export async function SeriesBoard({ mode, serie: picked }: { mode: SeriesMode; serie?: string }) {
-  const { main, side } = await getSeries();
+  const [{ main, side }, jar] = await Promise.all([getSeries(), cookies()]);
+  const priceSource = parsePriceSource(jar.get(PRICE_COOKIE)?.value);
   const all = [...main, ...side];
   const sets = all.reduce((n, s) => n + s.releases.length, 0);
   // Génération affichée : celle choisie dans le rail, sinon la plus récente.
@@ -50,7 +54,7 @@ export async function SeriesBoard({ mode, serie: picked }: { mode: SeriesMode; s
         title="Encyclopédie"
         description={
           mode === 'cartes'
-            ? `${sets} extensions FR, de la plus récente à la plus ancienne : liste des cartes, raretés et valeur de chaque extension (somme des cotes Cardmarket du jour).`
+            ? `${sets} extensions FR, de la plus récente à la plus ancienne : liste des cartes, raretés et valeur de chaque extension (somme des cotes Cardmarket du jour, ou des prix eBay FR relevés).`
             : `${main.length} générations et ${sets} extensions FR (TCGdex), de la plus récente à la plus ancienne : produits scellés de chaque extension.`
         }
       />
@@ -80,14 +84,22 @@ export async function SeriesBoard({ mode, serie: picked }: { mode: SeriesMode; s
               )}
             </nav>
           </Card>
-          {current && <SerieCard serie={current} mode={mode} />}
+          {current && <SerieCard serie={current} mode={mode} priceSource={priceSource} />}
         </div>
       )}
     </FitPage>
   );
 }
 
-function SerieCard({ serie, mode }: { serie: SerieWithSets; mode: SeriesMode }) {
+function SerieCard({
+  serie,
+  mode,
+  priceSource,
+}: {
+  serie: SerieWithSets;
+  mode: SeriesMode;
+  priceSource: PriceSource;
+}) {
   const dates = serie.releases.map((r) => r.releaseDate).filter((d): d is Date => !!d);
   const years = dates.length
     ? [
@@ -129,6 +141,7 @@ function SerieCard({ serie, mode }: { serie: SerieWithSets; mode: SeriesMode }) 
               </Link>
             ))}
           </nav>
+          {mode === 'cartes' && <PriceSourceToggle current={priceSource} />}
           <form action="/cartes" className="flex min-w-0 flex-1 gap-2 sm:flex-none">
             <Input
               name="q"
@@ -184,7 +197,24 @@ function SerieCard({ serie, mode }: { serie: SerieWithSets; mode: SeriesMode }) 
                     .join(' · ')}
                 </span>
                 {mode === 'cartes' ? (
-                  r.cardsValue ? (
+                  priceSource === 'ebay' ? (
+                    r.cardsValueFr ? (
+                      <span
+                        className="text-xs text-primary"
+                        title="Somme des prix eBay FR relevés : seulement les cartes déjà relevées"
+                      >
+                        eBay FR {formatPrice(r.cardsValueFr)}
+                        <span className="block text-muted-foreground">
+                          {r.pricedCardsFr} carte{r.pricedCardsFr > 1 ? 's' : ''} relevée
+                          {r.pricedCardsFr > 1 ? 's' : ''}
+                        </span>
+                      </span>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">
+                        Pas encore de prix eBay FR
+                      </span>
+                    )
+                  ) : r.cardsValue ? (
                     <span className="text-xs text-primary">Valeur {formatPrice(r.cardsValue)}</span>
                   ) : null
                 ) : (
