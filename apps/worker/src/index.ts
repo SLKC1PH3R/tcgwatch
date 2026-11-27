@@ -18,6 +18,7 @@ import { runSecondhandPrices } from './jobs/secondhand';
 import { runCardFrPrices } from './jobs/card-fr-prices';
 import { runCardWatch } from './jobs/card-watch';
 import { runNotificationQueue } from './jobs/notification-queue';
+import { runRequestedNotifyTest } from './jobs/notify-test';
 import { syncRetailers } from './jobs/sync-retailers';
 import { recordApiCalls, startJobRun } from './usage';
 
@@ -120,6 +121,16 @@ async function main() {
     cron.schedule(env.HISTORY_CRON, historyJob, { timezone, name: 'history' }),
     cron.schedule(env.CARD_HASH_CRON, cardHashJob, { timezone, name: 'card-hashes' }),
     cron.schedule(env.NOTIFY_QUEUE_CRON, notifyQueueJob, { timezone, name: 'notify-queue' }),
+    // Test demandé depuis la page Membres : une simple lecture par minute, sans journal.
+    cron.schedule(
+      '* * * * *',
+      () => {
+        runRequestedNotifyTest(ctx).catch((err) =>
+          ctx.logger.warn({ err }, 'Test de notification impossible'),
+        );
+      },
+      { timezone, name: 'notify-test' },
+    ),
     cron.schedule(env.RELEASE_REMINDER_CRON, releaseReminderJob, {
       timezone,
       name: 'release-reminders',

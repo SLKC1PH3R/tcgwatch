@@ -66,3 +66,15 @@ export async function setTelegramInviteAction(formData: FormData) {
   }
   revalidatePath('/', 'layout');
 }
+
+/** Demande un message de test (ntfy et groupe Telegram), envoyé par le worker dans la minute. */
+export async function requestNotifyTestAction() {
+  await requireAdmin();
+  const now = new Date().toISOString();
+  await prisma.appSetting.upsert({
+    where: { key: TELEGRAM_SETTINGS.testRequestedAt },
+    create: { key: TELEGRAM_SETTINGS.testRequestedAt, value: now },
+    update: { value: now },
+  });
+  revalidatePath(PAGE);
+}

@@ -4,7 +4,29 @@ export const TELEGRAM_SETTINGS = {
   pausedUntil: 'telegram.pausedUntil',
   /** Lien d'invitation du groupe Telegram, affiché dans la page Alertes. */
   inviteUrl: 'telegram.inviteUrl',
+  /** Test demandé depuis la page Membres (ISO) : le worker l'envoie dans la minute. */
+  testRequestedAt: 'notify.testRequestedAt',
+  /** Résultat du dernier test : { at, ntfy, telegram } en JSON. */
+  testResult: 'notify.testResult',
 } as const;
+
+export interface NotifyTestResult {
+  at: string;
+  ntfy: boolean;
+  telegram: boolean;
+  /** Bot en pause : Telegram non essayé. */
+  paused?: boolean;
+}
+
+export function parseNotifyTestResult(value: string | null | undefined): NotifyTestResult | null {
+  if (!value) return null;
+  try {
+    const r = JSON.parse(value) as NotifyTestResult;
+    return typeof r.at === 'string' ? r : null;
+  } catch {
+    return null;
+  }
+}
 
 /** Date d'une pause enregistrée (ISO), ou null si absente ou illisible. */
 export function parsePausedUntil(value: string | null | undefined): Date | null {

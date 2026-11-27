@@ -3,19 +3,28 @@ import Link from 'next/link';
 import { prisma } from '@tcgwatch/db';
 import {
   formatDateTime,
+  parseNotifyTestResult,
   parsePausedUntil,
   parseTelegramInvite,
   TELEGRAM_SETTINGS,
 } from '@tcgwatch/shared';
+import { Send } from 'lucide-react';
+import { AutoRefresh } from '@/components/auto-refresh';
 import { FormError } from '@/components/form-message';
 import { PageHeader } from '@/components/page-header';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { ago } from '@/lib/alerts';
 import { requireAdmin } from '@/lib/auth';
 import { cn } from '@/lib/utils';
-import { setGlobalTelegramPauseAction, setRoleAction, setTelegramInviteAction } from './actions';
+import {
+  requestNotifyTestAction,
+  setGlobalTelegramPauseAction,
+  setRoleAction,
+  setTelegramInviteAction,
+} from './actions';
 
 export const metadata: Metadata = { title: 'Membres' };
 
@@ -50,13 +59,25 @@ export default async function MembersPage({ searchParams }: Props) {
       },
     }),
     prisma.appSetting.findMany({
-      where: { key: { in: [TELEGRAM_SETTINGS.pausedUntil, TELEGRAM_SETTINGS.inviteUrl] } },
+      where: {
+        key: {
+          in: [
+            TELEGRAM_SETTINGS.pausedUntil,
+            TELEGRAM_SETTINGS.inviteUrl,
+            TELEGRAM_SETTINGS.testRequestedAt,
+            TELEGRAM_SETTINGS.testResult,
+          ],
+        },
+      },
     }),
   ]);
   const setting = (key: string) => settings.find((s) => s.key === key)?.value ?? null;
   const pause = parsePausedUntil(setting(TELEGRAM_SETTINGS.pausedUntil));
   const paused = pause !== null && pause > now;
   const invite = parseTelegramInvite(setting(TELEGRAM_SETTINGS.inviteUrl));
+  const testPending = setting(TELEGRAM_SETTINGS.testRequestedAt) !== null;
+  const lastTest = parseNotifyTestResult(setting(TELEGRAM_SETTINGS.testResult));
+  const mark = (ok: boolean) => (ok ? '✓' : '✗');
 
   return (
     <div className="space-y-6">
@@ -83,6 +104,42 @@ export default async function MembersPage({ searchParams }: Props) {
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
+          <div className="flex flex-wrap items-center gap-3">
+            <form action={requestNotifyTestAction}>
+              <Button type="submit" size="sm" disabled={testPending}>
+                <Send /> {testPending ? 'Test en cours…' : 'Envoyer un test'}
+              </Button>
+            </form>
+            <p className="text-xs text-muted-foreground" aria-live="polite">
+              {testPending ? (
+                <>
+                  Le worker l’envoie dans la minute (ntfy et groupe Telegram).
+                  <AutoRefresh seconds={8} />
+                </>
+              ) : lastTest ? (
+                <>
+                  Dernier test {ago(new Date(lastTest.at))} :{' '}
+                  <span className={lastTest.ntfy ? 'text-success' : 'text-destructive'}>
+                    ntfy {mark(lastTest.ntfy)}
+                  </span>{' '}
+                  ·{' '}
+                  <span
+                    className={
+                      lastTest.paused
+                        ? 'text-warning'
+                        : lastTest.telegram
+                          ? 'text-success'
+                          : 'text-destructive'
+                    }
+                  >
+                    Telegram {lastTest.paused ? '(bot en pause)' : mark(lastTest.telegram)}
+                  </span>
+                </>
+              ) : (
+                'Même message que la commande notify-test du worker.'
+              )}
+            </p>
+          </div>
           <form action={setGlobalTelegramPauseAction} className="flex flex-wrap gap-1.5">
             {PAUSES.map((p) => (
               <Button

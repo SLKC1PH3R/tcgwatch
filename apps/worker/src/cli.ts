@@ -31,6 +31,7 @@ import { importTcgdex } from './jobs/import-tcgdex';
 import { linkProductExtensions } from './jobs/link-extensions';
 import { runCardWatch } from './jobs/card-watch';
 import { runNotificationQueue } from './jobs/notification-queue';
+import { sendNotifyTest } from './jobs/notify-test';
 import { applyCardPrices, resolveCardmarketIds, snapshotMarketIndex } from './jobs/card-prices';
 import { runMarketJob, saveQuotes } from './jobs/market';
 import { linkSealedProducts } from './jobs/sealed-links';
@@ -172,13 +173,7 @@ try {
       break;
     }
     case 'notify-test': {
-      const sent = await ctx.notifier.send({
-        title: '🔔 Test TCGWatch',
-        message: 'Les alertes arrivent bien ici : retours en stock, bons prix, annonces.',
-        url: ctx.env.APP_URL,
-        linkLabel: 'Ouvrir TCGWatch',
-        tags: ['bell'],
-      });
+      const sent = await sendNotifyTest(ctx);
       ctx.logger.info(sent, 'Notification de test');
       if (!sent.ntfy && !sent.telegram) process.exitCode = 1;
       break;
