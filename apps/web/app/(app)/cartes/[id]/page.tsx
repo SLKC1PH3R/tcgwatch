@@ -168,15 +168,15 @@ export default async function CardPage({ params, searchParams }: Props) {
           'lg:grid-cols-[minmax(0,16rem)_minmax(0,1fr)] xl:grid-cols-[minmax(0,20rem)_minmax(0,1fr)_20rem]',
         )}
       >
-        {/* La carte en grand : sur une page plein écran, elle suit la hauteur disponible. */}
-        <HeroStage className="min-h-80 p-6 fit:min-h-0">
+        {/* La carte en grand, dans un cadre ajusté à sa hauteur. */}
+        <HeroStage className="px-6 py-8 lg:self-start">
           {card.image ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
               referrerPolicy="no-referrer"
               src={card.image}
               alt={card.name}
-              className="aspect-[63/88] w-full max-w-72 -rotate-3 rounded-xl object-contain shadow-[0_30px_60px_-20px_rgb(0_0_0/0.6),0_0_50px_-8px_color-mix(in_oklab,var(--primary)_50%,transparent)] fit:h-[88%] fit:w-auto fit:max-w-[88%]"
+              className="h-auto w-[84%] max-w-64 -rotate-3 rounded-[4.5%/3.2%] shadow-[0_30px_60px_-20px_rgb(0_0_0/0.6),0_0_50px_-8px_color-mix(in_oklab,var(--primary)_50%,transparent)]"
             />
           ) : (
             <div className="aspect-[63/88] w-full max-w-60 -rotate-3 rounded-xl border bg-muted" />
