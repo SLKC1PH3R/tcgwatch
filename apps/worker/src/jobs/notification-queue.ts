@@ -31,7 +31,15 @@ export function digestDue(now: Date, hour: number, sentAt: Date | null): boolean
  */
 export async function runNotificationQueue(ctx: WorkerContext, now = new Date()): Promise<void> {
   const settings = await prisma.alertSettings.findMany({
-    where: { OR: [{ quietMode: 'hold' }, { digest: true }, { digestOnly: true }] },
+    where: {
+      OR: [
+        { quietMode: 'hold' },
+        { digest: true },
+        { digestOnly: true },
+        // Alertes encore retenues après un changement de réglage (« Résumé seulement » décoché).
+        { user: { alerts: { some: { held: true, muted: false } } } },
+      ],
+    },
     select: {
       userId: true,
       quietStart: true,
@@ -79,8 +87,9 @@ export async function runNotificationQueue(ctx: WorkerContext, now = new Date())
         });
         continue;
       }
-      // Fin de la nuit : récapitulatif des alertes retenues.
-      if (s.quietMode === 'hold' && !s.digestOnly && !quiet) {
+      // Fin de la nuit, ou mode « résumé seulement » désactivé : récapitulatif des alertes
+      // retenues.
+      if (!s.digestOnly && !(quiet && s.quietMode === 'hold')) {
         const held = await prisma.alertEvent.findMany({
           where: {
             userId: s.userId,
@@ -95,7 +104,7 @@ export async function runNotificationQueue(ctx: WorkerContext, now = new Date())
         const one = held.length === 1 ? held[0]! : null;
         const sent = await deliverToUser(ctx, s.userId, admin, {
           title: one ? one.title : `🌙 ${held.length} alertes pendant les heures silencieuses`,
-          message: one ? 'Alerte reçue pendant les heures silencieuses.' : 'Pendant la nuit :',
+          message: one ? 'Alerte retenue, envoyée maintenant.' : 'Alertes retenues :',
           details: one ? undefined : summaryLines(held.map((e) => e.title)),
           url: one?.url ?? `${appUrl}/alertes`,
           linkLabel: one ? undefined : 'Voir les alertes',

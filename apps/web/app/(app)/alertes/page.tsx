@@ -121,12 +121,26 @@ export default async function AlertsPage({ searchParams }: Props) {
     return qs ? `/alertes?${qs}` : '/alertes';
   };
 
+  // Alertes retenues par un réglage : à dire clairement, sinon on croit que rien ne part.
+  const holding = settings?.digestOnly
+    ? `« Résumé seulement » est coché : vos alertes ne partent plus une à une, mais dans un résumé chaque jour à ${String(settings.digestHour).padStart(2, '0')} h.`
+    : settings?.quietMode === 'hold' && settings.quietStart !== null
+      ? 'Pendant vos heures silencieuses, les alertes sont retenues et envoyées en un récapitulatif à la fin de la plage.'
+      : null;
+
   return (
     <FitPage>
       <PageHeader
         title="Alertes"
         description="Tout ce que TCGWatch vous a envoyé, avec ce que vous avez déjà vu. Les réglages décident de ce qui part, et quand."
       />
+
+      {holding && (
+        <p className="shrink-0 rounded-xl border border-warning/50 bg-warning/10 px-4 py-2.5 text-sm">
+          <Hourglass className="mr-1.5 inline size-4 align-[-3px] text-warning" />
+          {holding} Réglage dans « Quand recevoir », à droite.
+        </p>
+      )}
 
       <div
         className={cn(
